@@ -1,11 +1,11 @@
 #pragma once
+#include <3rdPartyLibs/Rocket.hpp>
 #include <Assets/AssetPipeline.hpp>
 #include <Assets/AssetTextures.hpp>
 #include <Gui/ImGui/IconHeaders/IconMaterialDesign.hpp>
 #include <Gui/ImGui/UIRegistry.hpp>
 #include <Gui/ImGui/ocornut/imgui.h>
 #include <Gui/ImGui/ocornut/imgui_internal.h>
-#include <LowLevel/Rocket.hpp>
 #include <LowLevel/Reflection/RTTI/RTTICast.hpp>
 #include <Rendering/RHI/Images/Image.hpp>
 #include <filesystem>
@@ -13,6 +13,7 @@
 #include <optional>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 // X.h leaks this
@@ -60,7 +61,40 @@ namespace SF::Engine
             None,
             RenameFolder,
             NewScene,
-            RenameScene
+            RenameScene,
+            RenameAsset
+        };
+
+        // Drag-and-drop wiring for a folder/scene tile: what it carries when dragged, and (folders only)
+        // which folder it accepts drops for.
+        struct TileDnD
+        {
+            const char *payloadType = nullptr;
+            std::string payload;
+            const std::filesystem::path *dropFolder = nullptr;
+        };
+
+        // One content-browser card: thumbnail on top, a coloured type bar, the name, then the type label.
+        struct CardDesc
+        {
+            std::string name;
+            std::string typeLabel;
+            Vec4 accent{0.5f, 0.5f, 0.5f, 1.0f};
+            bool selected        = false;
+            bool highlighted     = false; // e.g. the open scene (name drawn in the highlight colour)
+            bool editing         = false; // replaces the name with the inline rename field
+            ImTextureID thumbTex = 0;     // 0 = draw `glyph` instead
+            Vec2 thumbSize{};             // pixel size of thumbTex, for aspect-correct fitting (0 = square)
+            float thumbScale     = 1.0f;  // <1 for icon-style thumbnails that shouldn't fill the box
+            const char *glyph    = nullptr;
+            TileDnD dnd;
+        };
+
+        struct CardResult
+        {
+            bool clicked       = false;
+            bool rightClicked  = false;
+            bool doubleClicked = false;
         };
 
         struct TexturePreview
@@ -79,7 +113,7 @@ namespace SF::Engine
         // TODO: Replace with Assets/Bitmaps/SVG. Only `folder` and `scene` are used right now.
         struct Icons
         {
-            std::shared_ptr<Image2d> save, newFile, hpp, h, folder, file, c, cpp, scene;
+            std::shared_ptr<Image2d> save, newFile, hpp, h, folder, file, c, cpp, scene, audio;
         };
 
         static constexpr AssetType kAllTypes = static_cast<AssetType>(-1);
@@ -114,9 +148,10 @@ namespace SF::Engine
 
         //  grid view
         void DrawGridView(const AssetList &assets);
-        // Returns true when the tile was double-clicked.
-        bool DrawIconTile(const std::shared_ptr<Image2d> &icon, const std::string &name, bool editing,
-                          bool highlighted = false);
+        // Draws one card. Its invisible button is left as the "last item" (unless `editing`), so callers can
+        // attach a context menu straight after.
+        CardResult DrawCard(const CardDesc &card);
+        bool ResolveThumbnail(const std::shared_ptr<AssetBase> &asset, ImTextureID &texture, Vec2 &size);
         void DrawFolderTile(const DirEntry &folder);
         void DrawSceneFileTile(const DirEntry &scene);
         void DrawNewSceneTile();
@@ -167,9 +202,19 @@ namespace SF::Engine
         void CommitSceneRename();
         void BeginRenameFolder(const std::filesystem::path &path);
         void BeginRenameScene(const std::filesystem::path &file);
+        void BeginRenameAsset(const std::shared_ptr<AssetBase> &asset);
+        void CommitAssetRename();
+
+        //  moving things between folders by drag-and-drop
+        void AcceptBrowserDrop(const std::filesystem::path &destFolder); // call right after a folder-like item
+        bool MoveAssetTo(const UUID &id, const std::filesystem::path &folder);
+        bool MoveSceneTo(const std::filesystem::path &file, const std::filesystem::path &folder);
+        bool MoveFolderTo(const std::filesystem::path &folder, const std::filesystem::path &destFolder);
 
         //  delete
         void RequestDelete(const std::filesystem::path &path, bool isScene);
+        void RequestDeleteAsset(const std::shared_ptr<AssetBase> &asset);
+        void SyncAssetsWithDisk(bool force);
         void DrawDeleteConfirmPopup();
         void ExecuteDelete();
 
@@ -192,6 +237,7 @@ namespace SF::Engine
 
         // selection + previews
         std::optional<UUID> m_selectedAsset;
+        std::filesystem::path m_selectedPath; // selected folder / scene file (ignored while an asset is selected)
         std::unordered_map<UUID, TexturePreview> m_previewCache;
 
         // directory cache: rebuilt on navigation, on mutation (m_dirDirty) or when the folder's mtime changes
@@ -212,6 +258,13 @@ namespace SF::Engine
         bool m_showDeleteConfirmPopup = false;
         bool m_deleteTargetIsScene    = false;
         std::filesystem::path m_deleteTargetPath;
+        std::optional<UUID>
+                m_deleteTargetAsset; // set when deleting an asset (its source file + .meta), not a folder/scene
+
+        // keeps the live asset list in step with the Assets folder (files deleted/added outside the editor)
+        double m_nextAssetSync = 0.0;
+        double m_nextAssetScan = 0.0;
+        std::unordered_set<UUID> m_loadAttempted; // images we already tried to load for a thumbnail
 
         // import / placement state
         rocket::connection m_dropConnection;

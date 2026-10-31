@@ -1,8 +1,13 @@
 #include "AssetsWindow.hpp"
+#include <Assets/Audio/AudioAsset.hpp>
+#include <Assets/Import/AssetImporter.hpp>
+#include <Assets/Models/MeshAsset.hpp>
+#include <Controllers/CameraController.hpp>
 #include <Engine/Project/Project.hpp>
 #include <Gui/ImGui/CommonGuiFunctions.hpp>
 #include <Gui/ImGui/ocornut/imgui_impl_vulkan.h>
 #include <LowLevel/FileSystem/File.hpp>
+#include <Platform/Windowing/WindowManager.hpp>
 #include <Scene/Scene.hpp>
 #include "../Wizards/Shaders.hpp"
 #include "Panels.hpp"
@@ -37,14 +42,18 @@ namespace SF::Engine
                                                     "Library",
                                                     "AnimationStateMachine"};
 
-        constexpr char kWindowTitle[] = ICON_MD_FOLDER " Asset Browser";
+        constexpr char kWindowTitle[]   = ICON_MD_FOLDER " Asset Browser";
+        constexpr char kAssetPayload[]  = "SF_ASSET";  // ImGui drag-drop payload: a 16-byte asset UUID
+        constexpr char kFolderPayload[] = "SF_FOLDER"; // payload: UTF-8 path of a folder
+        constexpr char kScenePayload[]  = "SF_SCENE";  // payload: UTF-8 path of a scene file
+        constexpr float kGroundY        = 0.0f;        // placement plane when dropping onto the 3D view
+        constexpr float kMaxPlaceDist   = 500.0f;      // ray hits further than this fall back to a point in front
 
-        constexpr double kDirPollIntervalSec      = 0.5;
-        constexpr float kTileLabelPadding         = 4.0f;
-        constexpr float kListPreviewSize          = 50.0f;
-        constexpr float kDetailsPreviewMaxHeight  = 300.0f;
-        constexpr std::uint32_t kDefaultImageSize = 256;
-        constexpr VkFormat kDefaultImageFormat    = VK_FORMAT_R8G8B8A8_UNORM;
+        constexpr double kDirPollIntervalSec     = 0.5;
+        constexpr float kListPreviewSize         = 50.0f;
+        constexpr float kDetailsPreviewMaxHeight = 300.0f;
+        constexpr uint32_t kDefaultImageSize     = 256;
+        constexpr VkFormat kDefaultImageFormat   = VK_FORMAT_R8G8B8A8_UNORM;
 
         constexpr Vec4 kHeadingColor(0.5f, 0.8f, 1.0f, 1.0f);
         constexpr Vec4 kErrorColor(1.0f, 0.3f, 0.3f, 1.0f);
@@ -66,7 +75,7 @@ namespace SF::Engine
         // that share a name can never collide.
         struct ScopedId
         {
-            ScopedId(const char *scope, const std::string &name)
+            ScopedId(const char *scope, const string &name)
             {
                 ImGui::PushID(scope);
                 ImGui::PushID(name.c_str());
@@ -80,66 +89,74 @@ namespace SF::Engine
             ScopedId &operator=(const ScopedId &) = delete;
         };
 
-        std::string ToLower(std::string_view s)
+        string ToLower(string_view s)
         {
-            std::string out(s);
-            ranges::transform(out, out.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+            string out(s);
+            ranges::transform(out, out.begin(), [](unsigned char c) { return static_cast<char>(tolower(c)); });
             return out;
         }
 
-        bool ContainsNoCase(std::string_view haystack, std::string_view needle)
+        bool ContainsNoCase(string_view haystack, string_view needle)
         {
             if (needle.empty())
                 return true;
             const auto it =
-                    ranges::search(
-                            haystack, needle, [](char h, char n)
-                            { return std::tolower(static_cast<unsigned char>(h)) == static_cast<unsigned char>(n); })
+                    ranges::search(haystack, needle, [](char h, char n)
+                                   { return tolower(static_cast<unsigned char>(h)) == static_cast<unsigned char>(n); })
                             .begin();
             return it != haystack.end();
         }
 
-        bool LessNoCase(const std::string &a, const std::string &b)
+        bool LessNoCase(const string &a, const string &b)
         {
             return ranges::lexicographical_compare(a, b, [](unsigned char x, unsigned char y)
-                                                   { return std::tolower(x) < std::tolower(y); });
+                                                   { return tolower(x) < tolower(y); });
         }
 
-        std::string CleanFileName(std::string s)
+        string CleanFileName(string s)
         {
             for (char &c: s)
-                if (std::strchr("<>:\"/\\|?*", c) || static_cast<unsigned char>(c) < 32)
+                if (strchr("<>:\"/\\|?*", c) || static_cast<unsigned char>(c) < 32)
                     c = '_';
             s.erase(s.find_last_not_of(" \t\n\r\f\v") + 1); // trailing whitespace (npos + 1 == 0 -> clears all-blank)
             return s;
         }
 
-        bool IsSceneFile(const std::filesystem::path &p)
+        bool IsSceneFile(const filesystem::path &p)
         {
-            const std::string f        = p.filename().string();
-            const std::string_view ext = SceneFileExtension;
+            const string f            = p.filename().string();
+            constexpr string_view ext = SceneFileExtension;
             return f.size() > ext.size() && f.compare(f.size() - ext.size(), ext.size(), ext) == 0;
         }
 
-        // "Level1.scene" -> "Level1". Only call on paths that passed IsSceneFile.
-        std::string SceneDisplayName(const std::filesystem::path &p)
+        string SceneDisplayName(const filesystem::path &p)
         {
-            std::string name = p.filename().string();
+            string name = p.filename().string();
             name.resize(name.size() - SceneFileExtension.size());
             return name;
         }
 
-        // True if `path` is `folder` or lives somewhere below it (component-wise, not a string prefix).
-        bool IsSameOrInside(const std::filesystem::path &path, const std::filesystem::path &folder)
+        bool IsSameOrInside(const filesystem::path &path, const filesystem::path &folder)
         {
             const auto rel = path.lexically_relative(folder);
-            return !rel.empty() && *rel.begin() != std::filesystem::path("..");
+            return !rel.empty() && *rel.begin() != filesystem::path("..");
         }
 
-        std::string ToHex(std::uint32_t v)
+        string PathToPayload(const filesystem::path &p)
+        {
+            const u8string u8 = p.u8string();
+            return {reinterpret_cast<const char *>(u8.data()), u8.size()};
+        }
+
+        filesystem::path PathFromPayload(const ImGuiPayload *payload)
+        {
+            return {u8string(static_cast<const char8_t *>(payload->Data), static_cast<size_t>(payload->DataSize))};
+        }
+
+        string ToHex(uint32_t v)
         {
             char buf[16];
-            std::snprintf(buf, sizeof(buf), "0x%X", v);
+            snprintf(buf, sizeof(buf), "0x%X", v);
             return buf;
         }
 
@@ -148,9 +165,9 @@ namespace SF::Engine
         {
             if (src.x <= 0.0f || src.y <= 0.0f)
                 return box;
-            float scale = std::min(box.x / src.x, box.y / src.y);
+            float scale = min(box.x / src.x, box.y / src.y);
             if (!allowUpscale)
-                scale = std::min(scale, 1.0f);
+                scale = min(scale, 1.0f);
             return {src.x * scale, src.y * scale};
         }
 
@@ -163,19 +180,12 @@ namespace SF::Engine
 
         void Heading(const char *text) { ImGui::TextColored(kHeadingColor, "%s", text); }
 
-        void DrawIcon(const std::shared_ptr<Image2d> &icon, Vec2 size)
+        void DrawIcon(const shared_ptr<Image2d> &icon, Vec2 size)
         {
             if (icon)
                 ImGui::Image(icon->GetTexID(), size);
             else
                 ImGui::Dummy(size);
-        }
-
-        // Outline around the last item (used for the selected tile).
-        void DrawSelectionOutline()
-        {
-            ImGui::GetWindowDrawList()->AddRect(ImGui::GetItemRectMin(), ImGui::GetItemRectMax(),
-                                                ImGui::GetColorU32(ImGuiCol_HeaderActive), 3.0f);
         }
 
         bool BeginPropertyTable(const char *id)
@@ -188,7 +198,7 @@ namespace SF::Engine
             return true;
         }
 
-        void PropertyRow(const char *label, std::string_view value)
+        void PropertyRow(const char *label, string_view value)
         {
             ImGui::TableNextRow();
             ImGui::TableSetColumnIndex(0);
@@ -199,7 +209,7 @@ namespace SF::Engine
 
 
         template<typename TImage, typename Fn>
-        bool TryVisit(const std::shared_ptr<AssetBase> &asset, Fn &fn)
+        bool TryVisit(const shared_ptr<AssetBase> &asset, Fn &fn)
         {
             if (const auto image = ::SF::RTTI::rtti_pointer_cast<ImageAsset<TImage>>(asset))
             {
@@ -210,7 +220,7 @@ namespace SF::Engine
         }
 
         template<typename Fn>
-        bool VisitImageAsset(const std::shared_ptr<AssetBase> &asset, Fn &&fn)
+        bool VisitImageAsset(const shared_ptr<AssetBase> &asset, Fn &&fn)
         {
             return TryVisit<Image2d>(asset, fn) || TryVisit<Image3d>(asset, fn) || TryVisit<Image2dArray>(asset, fn) ||
                    TryVisit<Cubemap>(asset, fn);
@@ -347,12 +357,21 @@ namespace SF::Engine
             return;
 
         EnsureIconsLoaded();
+        SyncAssetsWithDisk(false);
+        EnsureDropSubscribed();
+        ProcessPendingDrops();
+        ProcessSceneAssetDrag();
 
         if (!ImGui::Begin(kWindowTitle, nullptr, ImGuiWindowFlags_MenuBar))
         {
+            m_windowRectValid = false;
             ImGui::End();
             return;
         }
+
+        m_windowMin       = ImGui::GetWindowPos();
+        m_windowMax       = Vec2(ImGui::GetWindowPos()) + Vec2(ImGui::GetWindowSize());
+        m_windowRectValid = true;
 
         if (m_currentPath.empty())
             NavigateTo(ProjectManager::Get()->GetProjectAssetPath());
@@ -370,6 +389,7 @@ namespace SF::Engine
 
         DrawFilterControls();
         ImGui::Separator();
+        DrawStatus();
 
         if (m_inlineEditMode != InlineEditMode::None && ImGui::IsKeyPressed(ImGuiKey_Escape))
             EndInlineEdit();
@@ -407,6 +427,8 @@ namespace SF::Engine
             m_icons.cpp = GetCppLogo();
         if (!m_icons.scene)
             m_icons.scene = GetSceneLogo();
+        if (!m_icons.audio)
+            m_icons.audio = GetAudioLogo();
     }
 
     void AssetBrowser::DrawContent()
@@ -544,6 +566,10 @@ namespace SF::Engine
         ImGui::SameLine();
         if (ImGui::Button(ICON_MD_ARROW_UPWARD))
             NavigateUp();
+        // Dropping something on "up" moves it to the parent folder (never above the Assets root).
+        if (m_currentPath.has_parent_path() &&
+            IsSameOrInside(m_currentPath.parent_path(), ProjectManager::Get()->GetProjectAssetPath()))
+            AcceptBrowserDrop(m_currentPath.parent_path());
         ImGui::SameLine();
 
         ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x - 150);
@@ -574,7 +600,7 @@ namespace SF::Engine
     }
 
 
-    void AssetBrowser::NavigateTo(const std::filesystem::path &path)
+    void AssetBrowser::NavigateTo(const filesystem::path &path)
     {
         if (path == m_currentPath)
             return;
@@ -591,7 +617,33 @@ namespace SF::Engine
     void AssetBrowser::RefreshAssets()
     {
         m_previewCache.clear();
+        m_loadAttempted.clear();
         m_dirDirty = true;
+        SyncAssetsWithDisk(/*force=*/true);
+    }
+
+    // Files deleted or added outside the editor. Pruning is a handful of stat calls per known asset, so it
+    // runs every second; looking for new .meta files walks the whole Assets tree, so that is every 5 s
+    // (or immediately on Refresh).
+    void AssetBrowser::SyncAssetsWithDisk(bool force)
+    {
+        const double now = ImGui::GetTime();
+        if (!force && now < m_nextAssetSync)
+            return;
+        m_nextAssetSync = now + 1.0;
+
+        const bool scanForNew = force || now >= m_nextAssetScan;
+        if (scanForNew)
+            m_nextAssetScan = now + 5.0;
+
+        auto *controller = AssetController::Get();
+        if (!controller || !controller->SyncWithDisk(scanForNew))
+            return;
+
+        m_dirDirty = true;
+        if (m_selectedAsset && !controller->FindByUUID(*m_selectedAsset))
+            m_selectedAsset.reset();
+        erase_if(m_previewCache, [&](const auto &entry) { return !controller->FindByUUID(entry.first); });
     }
 
     // Listing a directory is a syscall storm; doing it every frame (as before, twice) is what made
@@ -599,10 +651,21 @@ namespace SF::Engine
     // or the folder's mtime changes (polled a couple of times per second).
     void AssetBrowser::RefreshDirectoryCache()
     {
-        namespace fs = std::filesystem;
+        namespace fs = filesystem;
 
         const double now = ImGui::GetTime();
-        std::error_code ec;
+        error_code ec;
+
+        // The folder we're viewing was deleted (e.g. in Explorer): fall back to the nearest folder that exists.
+        if (!fs::exists(m_currentPath, ec) && !ec)
+        {
+            const fs::path root = ProjectManager::Get()->GetProjectAssetPath();
+            fs::path p          = m_currentPath;
+            while (p != root && p != p.parent_path() && !fs::exists(p, ec))
+                p = p.parent_path();
+            NavigateTo(fs::exists(p, ec) ? p : root);
+            m_dirDirty = true;
+        }
 
         if (!m_dirDirty && m_cachedPath == m_currentPath)
         {
@@ -625,7 +688,7 @@ namespace SF::Engine
 
         for (fs::directory_iterator it(m_currentPath, ec), end; !ec && it != end; it.increment(ec))
         {
-            std::error_code entryEc;
+            error_code entryEc;
             const fs::path &path = it->path();
 
             if (it->is_directory(entryEc))
@@ -635,29 +698,24 @@ namespace SF::Engine
         }
 
         const auto byName = [](const DirEntry &a, const DirEntry &b) { return LessNoCase(a.name, b.name); };
-        std::sort(m_folders.begin(), m_folders.end(), byName);
-        std::sort(m_sceneFiles.begin(), m_sceneFiles.end(), byName);
+        ranges::sort(m_folders, byName);
+        ranges::sort(m_sceneFiles, byName);
     }
 
-    std::filesystem::path AssetBrowser::CreateUniqueFolder(const std::filesystem::path &parent,
-                                                           const std::string &baseName)
+    filesystem::path AssetBrowser::CreateUniqueFolder(const filesystem::path &parent, const string &baseName)
     {
-        std::filesystem::path candidate = parent / baseName;
-        int suffix                      = 1;
+        filesystem::path candidate = parent / baseName;
+        int suffix                 = 1;
         while (File::Exists(candidate.string()))
-            candidate = parent / (baseName + " (" + std::to_string(suffix++) + ")");
+            candidate = parent / (baseName + " (" + to_string(suffix++) + ")");
         return candidate;
     }
 
-    void AssetBrowser::OpenSceneFile(const std::filesystem::path &file)
+    void AssetBrowser::OpenSceneFile(const filesystem::path &file)
     {
         if (!OpenScene(file))
             Log::Error("Failed to open scene: {}", file.string());
     }
-
-    // ======================================================================
-    //  Content area
-    // ======================================================================
 
     void AssetBrowser::DrawAssetGrid()
     {
@@ -724,23 +782,24 @@ namespace SF::Engine
         ImGui::EndMenu();
     }
 
-    bool AssetBrowser::ShouldShowAsset(const std::shared_ptr<AssetBase> &asset) const
+    bool AssetBrowser::ShouldShowAsset(const shared_ptr<AssetBase> &asset) const
     {
         if (m_typeFilter != kAllTypes && asset->type != m_typeFilter)
+            return false;
+        // Imported assets live next to their .meta; show them only in their own folder.
+        // Assets without a source file (procedural) show everywhere, as before.
+        if (!asset->assetPath.empty() && asset->assetPath.parent_path() != m_currentPath)
             return false;
         return ContainsNoCase(asset->name, m_searchFilter);
     }
 
-    // ======================================================================
-    //  Grid view
-    // ======================================================================
 
     void AssetBrowser::DrawGridView(const AssetList &assets)
     {
-        const float cellSize = m_thumbnailSize + 40.0f;
-        const int columns    = std::max(1, static_cast<int>(ImGui::GetContentRegionAvail().x / cellSize));
+        const float cellSize = m_thumbnailSize + 11.0f; // card = thumbnail + 2 x 5 padding, plus cell spacing
 
-        if (!ImGui::BeginTable("AssetGrid", columns, ImGuiTableFlags_None))
+        if (const int columns = max(1, static_cast<int>(ImGui::GetContentRegionAvail().x / cellSize));
+            !ImGui::BeginTable("AssetGrid", columns, ImGuiTableFlags_None))
             return;
 
         for (const DirEntry &folder: m_folders)
@@ -774,40 +833,116 @@ namespace SF::Engine
         ImGui::EndTable();
     }
 
-    // Shared layout for folder / scene-file tiles: icon on top, label (or inline-edit field) below.
-    // Leaves the whole tile as the "last item", so callers can attach a context menu right after.
-    bool AssetBrowser::DrawIconTile(const std::shared_ptr<Image2d> &icon, const std::string &name, bool editing,
-                                    bool highlighted)
+    namespace
     {
-        const Vec2 thumbnailSize(m_thumbnailSize, m_thumbnailSize);
-        const Vec2 tileSize(thumbnailSize.x, thumbnailSize.y + ImGui::GetTextLineHeight() + kTileLabelPadding);
-        const Vec2 origin = ImGui::GetCursorPos();
-
-        // A real interactive item covering the whole tile (Image/Text aren't clickable on their own).
-        ImGui::InvisibleButton("##tile", tileSize);
-        const bool doubleClicked = !editing && ImGui::IsItemHovered() && ImGui::IsMouseDoubleClicked(0);
-
-        ImGui::SetCursorPos(origin);
-        ImGui::BeginGroup();
-
-        DrawIcon(icon, thumbnailSize);
-
-        if (editing)
+        // Type colour shown as the bar under a card's thumbnail (same idea as the Unreal content browser).
+        Vec4 AssetAccent(const AssetType type)
         {
-            DrawInlineEditField(thumbnailSize.x);
-        } else
-        {
-            if (highlighted)
-                ImGui::PushStyleColor(ImGuiCol_Text, kCurrentSceneColor);
-            ImGui::PushTextWrapPos(ImGui::GetCursorPosX() + thumbnailSize.x);
-            ImGui::TextWrapped("%s", name.c_str());
-            ImGui::PopTextWrapPos();
-            if (highlighted)
-                ImGui::PopStyleColor();
+            switch (type)
+            {
+                case AssetType::Texture:
+                    return {0.89f, 0.34f, 0.34f, 1.0f};
+                case AssetType::Mesh:
+                    return {0.35f, 0.62f, 0.95f, 1.0f};
+                case AssetType::Audio:
+                    return {1.00f, 0.72f, 0.12f, 1.0f};
+                case AssetType::Scene:
+                    return {1.00f, 0.55f, 0.10f, 1.0f};
+                case AssetType::Shader:
+                    return {0.65f, 0.45f, 0.95f, 1.0f};
+                case AssetType::Material:
+                    return {0.35f, 0.80f, 0.40f, 1.0f};
+                case AssetType::LuaScript:
+                case AssetType::CppCode:
+                    return {0.40f, 0.85f, 0.85f, 1.0f};
+                default:
+                    return {0.60f, 0.60f, 0.60f, 1.0f};
+            }
         }
 
-        ImGui::EndGroup();
-        return doubleClicked;
+        uint32_t ToU32(const Vec4 &c) { return ImGui::ColorConvertFloat4ToU32(c); }
+    } // namespace
+
+    // One content-browser card, drawn like Unreal's: dark rounded card, thumbnail on top, a coloured type bar
+    // under it, then the name (two lines max) and a dimmed type label. The whole card is one invisible button,
+    // which is also the drag source / drop target, and is left as the "last item" for context menus.
+    AssetBrowser::CardResult AssetBrowser::DrawCard(const CardDesc &card)
+    {
+        constexpr float kPad = 5.0f, kRound = 6.0f, kAccentH = 3.0f, kGap = 4.0f;
+
+        const float thumb  = m_thumbnailSize;
+        const float lineH  = ImGui::GetTextLineHeight();
+        const float width  = thumb + kPad * 2.0f;
+        const float height = kPad + thumb + kAccentH + kGap + lineH * 3.0f + kPad; // 2 name lines + type label
+
+        const Vec2 min = ImGui::GetCursorScreenPos();
+        const Vec2 max = min + Vec2(width, height);
+
+        ImGui::InvisibleButton("##card", Vec2(width, height));
+        const bool hovered = ImGui::IsItemHovered();
+
+        CardResult result;
+        result.clicked       = ImGui::IsItemClicked(ImGuiMouseButton_Left);
+        result.rightClicked  = ImGui::IsItemClicked(ImGuiMouseButton_Right);
+        result.doubleClicked = !card.editing && hovered && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left);
+
+        if (!card.editing && card.dnd.payloadType && ImGui::BeginDragDropSource())
+        {
+            ImGui::SetDragDropPayload(card.dnd.payloadType, card.dnd.payload.data(), card.dnd.payload.size());
+            ImGui::TextUnformatted(card.name.c_str());
+            ImGui::EndDragDropSource();
+        }
+        if (card.dnd.dropFolder)
+            AcceptBrowserDrop(*card.dnd.dropFolder);
+
+        ImDrawList *dl = ImGui::GetWindowDrawList();
+
+        // card + thumbnail well
+        dl->AddRectFilled(min, max, hovered ? IM_COL32(62, 62, 62, 255) : IM_COL32(44, 44, 44, 255), kRound);
+        const Vec2 tMin = min + Vec2(kPad, kPad);
+        const Vec2 tMax = tMin + Vec2(thumb, thumb);
+        dl->AddRectFilled(tMin, tMax, IM_COL32(20, 20, 20, 255), 3.0f);
+
+        if (card.thumbTex)
+        {
+            const Vec2 fitted = FitInside(card.thumbSize, Vec2(thumb) * card.thumbScale, true);
+            const Vec2 off    = (Vec2(thumb) - fitted) * 0.5f;
+            dl->AddImage(card.thumbTex, tMin + off, tMin + off + fitted);
+        } else if (card.glyph)
+        {
+            constexpr float kGlyphScale = 2.0f;
+            const Vec2 g                = Vec2(ImGui::CalcTextSize(card.glyph)) * kGlyphScale;
+            dl->AddText(ImGui::GetFont(), ImGui::GetFontSize() * kGlyphScale, tMin + (Vec2(thumb) - g) * 0.5f,
+                        ImGui::GetColorU32(ImGuiCol_TextDisabled), card.glyph);
+        }
+
+        // type colour bar, full card width
+        dl->AddRectFilled(Vec2(min.x, tMax.y), Vec2(max.x, tMax.y + kAccentH), ToU32(card.accent));
+
+        // name + type label
+        const auto nameMin = Vec2(min.x + kPad, tMax.y + kAccentH + kGap);
+        const float textW  = width - kPad * 2.0f;
+        if (card.editing)
+        {
+            ImGui::SetCursorScreenPos(nameMin);
+            DrawInlineEditField(textW);
+        } else
+        {
+            const uint32_t nameCol = card.highlighted ? ToU32(kCurrentSceneColor) : ImGui::GetColorU32(ImGuiCol_Text);
+            dl->PushClipRect(nameMin, nameMin + Vec2(textW, lineH * 2.0f), true);
+            dl->AddText(ImGui::GetFont(), ImGui::GetFontSize(), nameMin, nameCol, card.name.c_str(), nullptr, textW);
+            dl->PopClipRect();
+        }
+        dl->AddText(Vec2(nameMin.x, nameMin.y + lineH * 2.0f), IM_COL32(150, 150, 150, 255), card.typeLabel.c_str());
+
+        // selection: tinted fill + border
+        if (card.selected)
+        {
+            dl->AddRectFilled(min, max, IM_COL32(66, 150, 250, 40), kRound);
+            dl->AddRect(min, max, IM_COL32(66, 150, 250, 255), kRound, 2.0f);
+        }
+
+        return result;
     }
 
     void AssetBrowser::DrawFolderTile(const DirEntry &folder)
@@ -815,7 +950,28 @@ namespace SF::Engine
         const ScopedId id("folder", folder.name);
         const bool editing = IsEditing(InlineEditMode::RenameFolder, folder.path);
 
-        if (DrawIconTile(m_icons.folder, folder.name, editing))
+        CardDesc card;
+        card.name       = folder.name;
+        card.typeLabel  = "Folder";
+        card.accent     = Vec4(1.0f, 0.72f, 0.2f, 1.0f);
+        card.selected   = !m_selectedAsset && m_selectedPath == folder.path;
+        card.editing    = editing;
+        card.thumbScale = 0.7f;
+        if (m_icons.folder)
+        {
+            card.thumbTex  = m_icons.folder->GetTexID();
+            card.thumbSize = Vec2(1.0f, 1.0f); // square icon
+        }
+        card.dnd = TileDnD{
+                .payloadType = kFolderPayload, .payload = PathToPayload(folder.path), .dropFolder = &folder.path};
+
+        const auto [clicked, rightClicked, doubleClicked] = DrawCard(card);
+        if (clicked || rightClicked)
+        {
+            m_selectedAsset.reset();
+            m_selectedPath = folder.path;
+        }
+        if (doubleClicked)
             NavigateTo(folder.path);
 
         if (!editing)
@@ -827,7 +983,28 @@ namespace SF::Engine
         const ScopedId id("scene", scene.name);
         const bool editing = IsEditing(InlineEditMode::RenameScene, scene.path);
 
-        if (DrawIconTile(m_icons.scene, scene.name, editing, IsFileCurrentCurrentScene(scene.path)))
+        CardDesc card;
+        card.name        = scene.name;
+        card.typeLabel   = "Scene";
+        card.accent      = AssetAccent(AssetType::Scene);
+        card.selected    = !m_selectedAsset && m_selectedPath == scene.path;
+        card.highlighted = IsFileCurrentCurrentScene(scene.path);
+        card.editing     = editing;
+        card.thumbScale  = 0.7f;
+        if (m_icons.scene)
+        {
+            card.thumbTex  = m_icons.scene->GetTexID();
+            card.thumbSize = Vec2(1.0f, 1.0f);
+        }
+        card.dnd = TileDnD{.payloadType = kScenePayload, .payload = PathToPayload(scene.path), .dropFolder = nullptr};
+
+        const auto [clicked, rightClicked, doubleClicked] = DrawCard(card);
+        if (clicked || rightClicked)
+        {
+            m_selectedAsset.reset();
+            m_selectedPath = scene.path;
+        }
+        if (doubleClicked)
             OpenSceneFile(scene.path);
 
         if (!editing)
@@ -837,37 +1014,67 @@ namespace SF::Engine
     void AssetBrowser::DrawNewSceneTile()
     {
         ImGui::PushID("newscene_tile");
-        DrawIconTile(m_icons.scene, {}, /*editing=*/true);
+
+        CardDesc card;
+        card.typeLabel  = "Scene";
+        card.accent     = AssetAccent(AssetType::Scene);
+        card.editing    = true;
+        card.thumbScale = 0.7f;
+        if (m_icons.scene)
+        {
+            card.thumbTex  = m_icons.scene->GetTexID();
+            card.thumbSize = Vec2(1.0f, 1.0f);
+        }
+        DrawCard(card);
+
         ImGui::PopID();
     }
 
-    void AssetBrowser::DrawAssetTile(const std::shared_ptr<AssetBase> &asset, int index)
+    void AssetBrowser::DrawAssetTile(const shared_ptr<AssetBase> &asset, int index)
     {
-        const Vec2 thumbnailSize(m_thumbnailSize, m_thumbnailSize);
-        const bool isSelected = m_selectedAsset && *m_selectedAsset == asset->uuid;
-
         ImGui::PushID(index);
-        ImGui::BeginGroup();
 
-        DrawAssetThumbnail(asset, thumbnailSize);
-        if (ImGui::IsItemClicked()) // the thumbnail is the last item here, whichever branch drew it
+        const bool editing = !asset->assetPath.empty() && IsEditing(InlineEditMode::RenameAsset, asset->assetPath);
+
+        CardDesc card;
+        card.name      = asset->name;
+        card.typeLabel = GetAssetTypeName(asset->type);
+        card.accent    = AssetAccent(asset->type);
+        card.selected  = m_selectedAsset && *m_selectedAsset == asset->uuid;
+        card.editing   = editing;
+        // Drag onto a folder to move it, or onto the 3D view to place it; see ProcessSceneAssetDrag().
+        card.dnd = TileDnD{kAssetPayload, string(reinterpret_cast<const char *>(&asset->uuid), sizeof(UUID)), nullptr};
+
+        Vec2 texSize{};
+        if (ImTextureID tex = 0; m_showThumbnails && ResolveThumbnail(asset, tex, texSize))
+        {
+            card.thumbTex  = tex;
+            card.thumbSize = texSize;
+        } else if (asset->type == AssetType::Audio && m_icons.audio)
+        {
+            card.thumbTex   = m_icons.audio->GetTexID();
+            card.thumbSize  = Vec2(1.0f, 1.0f);
+            card.thumbScale = 0.7f;
+        } else if (asset->type == AssetType::Scene && m_icons.scene)
+        {
+            card.thumbTex   = m_icons.scene->GetTexID();
+            card.thumbSize  = Vec2(1.0f, 1.0f);
+            card.thumbScale = 0.7f;
+        } else
+        {
+            card.glyph = GetAssetIcon(asset->type);
+        }
+
+        if (const CardResult r = DrawCard(card); r.clicked || r.rightClicked)
             m_selectedAsset = asset->uuid;
 
-        ImGui::PushTextWrapPos(ImGui::GetCursorPosX() + thumbnailSize.x);
-        ImGui::TextWrapped("%s", asset->name.c_str()); // TODO: click = rename
-        ImGui::PopTextWrapPos();
-
-        ImGui::EndGroup();
-
-        if (isSelected)
-            DrawSelectionOutline();
-
-        DrawAssetContextMenu(asset);
+        if (!editing)
+            DrawAssetContextMenu(asset);
         ImGui::PopID();
     }
 
     // Draws exactly one item: the real preview, the scene logo, or a placeholder button.
-    void AssetBrowser::DrawAssetThumbnail(const std::shared_ptr<AssetBase> &asset, Vec2 size)
+    void AssetBrowser::DrawAssetThumbnail(const shared_ptr<AssetBase> &asset, Vec2 size)
     {
         if (m_showThumbnails && TryDrawThumbnail(asset, size))
             return;
@@ -877,14 +1084,18 @@ namespace SF::Engine
             ImGui::Image(m_icons.scene->GetTexID(), size);
             return;
         }
+        if (asset->type == AssetType::Audio && m_icons.audio)
+        {
+            ImGui::Image(m_icons.audio->GetTexID(), size);
+            return;
+        }
 
         DrawPlaceholder(asset, "##thumb", size, Vec4(0.2f, 0.2f, 0.2f, m_showThumbnails ? 1.0f : 0.0f));
     }
 
     // Flat button with the asset-type glyph centred on it. The glyph is painted through the draw list,
     // so the button stays the "last item" (the old SetCursorPos dance also placed it below the button).
-    void AssetBrowser::DrawPlaceholder(const std::shared_ptr<AssetBase> &asset, const char *id, Vec2 size,
-                                       const Vec4 &color)
+    void AssetBrowser::DrawPlaceholder(const shared_ptr<AssetBase> &asset, const char *id, Vec2 size, const Vec4 &color)
     {
         ImGui::PushStyleColor(ImGuiCol_Button, color);
         ImGui::Button(id, size);
@@ -899,23 +1110,42 @@ namespace SF::Engine
                 ImGui::GetColorU32(ImGuiCol_Text), icon);
     }
 
-    // Draws the texture preview if the asset is an image with a ready preview. True if something was drawn.
-    bool AssetBrowser::TryDrawThumbnail(const std::shared_ptr<AssetBase> &asset, Vec2 box)
+    // Resolves an image asset to a ready-to-draw texture (loading it from its source on first use).
+    bool AssetBrowser::ResolveThumbnail(const shared_ptr<AssetBase> &asset, ImTextureID &texture, Vec2 &size)
     {
-        bool drawn = false;
+        bool ok = false;
         VisitImageAsset(asset,
                         [&](const auto &image)
                         {
+                            // Assets loaded from a .meta have no texture until something asks for it.
                             if (!image->texture)
-                                return;
+                            {
+                                if (image->assetPath.empty() || !m_loadAttempted.insert(image->uuid).second)
+                                    return;
+                                if (!image->EnsureLoaded())
+                                    return;
+                            }
                             const TexturePreview &preview = GetOrCreatePreview(image->uuid, image->texture);
                             if (!preview.isValid || !preview.textureID)
                                 return;
 
-                            ImGui::Image(preview.textureID, FitInside(Vec2(preview.size), box, true));
-                            drawn = true;
+                            texture = preview.textureID;
+                            size    = Vec2(preview.size);
+                            ok      = true;
                         });
-        return drawn;
+        return ok;
+    }
+
+    // Draws the texture preview if the asset is an image with a ready preview. True if something was drawn.
+    bool AssetBrowser::TryDrawThumbnail(const shared_ptr<AssetBase> &asset, Vec2 box)
+    {
+        ImTextureID texture = 0;
+        Vec2 size{};
+        if (!ResolveThumbnail(asset, texture, size))
+            return false;
+
+        ImGui::Image(texture, FitInside(size, box, true));
+        return true;
     }
 
     void AssetBrowser::DrawFolderContextMenu(const DirEntry &folder)
@@ -930,6 +1160,9 @@ namespace SF::Engine
             BeginRenameFolder(folder.path);
         if (ImGui::MenuItem(ICON_MD_DELETE " Delete"))
             RequestDelete(folder.path, /*isScene=*/false);
+        ImGui::Separator();
+        if (ImGui::MenuItem(ICON_MD_CONTENT_COPY " Copy Path"))
+            ImGui::SetClipboardText(folder.path.string().c_str());
 
         ImGui::EndPopup();
     }
@@ -953,25 +1186,28 @@ namespace SF::Engine
         ImGui::EndPopup();
     }
 
-    void AssetBrowser::DrawAssetContextMenu(const std::shared_ptr<AssetBase> &asset)
+    void AssetBrowser::DrawAssetContextMenu(const shared_ptr<AssetBase> &asset)
     {
         if (!ImGui::BeginPopupContextItem("AssetContext"))
             return;
 
         if (ImGui::MenuItem(ICON_MD_OPEN_IN_NEW " Open"))
             m_selectedAsset = asset->uuid;
-        ImGui::MenuItem(ICON_MD_DELETE " Delete"); // TODO: asset deletion
+        // Procedural assets have no file, so there is nothing to rename on disk.
+        if (ImGui::MenuItem(ICON_MD_DRIVE_FILE_RENAME_OUTLINE " Rename", nullptr, false, !asset->assetPath.empty()))
+            BeginRenameAsset(asset);
+        if (ImGui::MenuItem(ICON_MD_DELETE " Delete"))
+            RequestDeleteAsset(asset);
+        ImGui::Separator();
         if (ImGui::MenuItem(ICON_MD_SAVE " Save"))
             asset->Save();
         if (ImGui::MenuItem(ICON_MD_CONTENT_COPY " Copy UUID"))
             ImGui::SetClipboardText(asset->uuid.ToString().c_str());
+        if (ImGui::MenuItem(ICON_MD_CONTENT_COPY " Copy Path", nullptr, false, !asset->assetPath.empty()))
+            ImGui::SetClipboardText(asset->assetPath.string().c_str());
 
         ImGui::EndPopup();
     }
-
-    // ======================================================================
-    //  List view
-    // ======================================================================
 
     void AssetBrowser::DrawListView(const AssetList &assets)
     {
@@ -1020,11 +1256,28 @@ namespace SF::Engine
         if (editing)
         {
             DrawInlineEditField(-1); // -1 = fill remaining column width
-        } else if (ImGui::Selectable(folder.name.c_str(), false,
-                                     ImGuiSelectableFlags_SpanAllColumns | ImGuiSelectableFlags_AllowDoubleClick) &&
-                   ImGui::IsMouseDoubleClicked(0))
+        } else
         {
-            NavigateTo(folder.path);
+            const bool clicked =
+                    ImGui::Selectable(folder.name.c_str(), !m_selectedAsset && m_selectedPath == folder.path,
+                                      ImGuiSelectableFlags_SpanAllColumns | ImGuiSelectableFlags_AllowDoubleClick);
+            if (clicked || ImGui::IsItemClicked(ImGuiMouseButton_Right))
+            {
+                m_selectedAsset.reset();
+                m_selectedPath = folder.path;
+            }
+            if (clicked && ImGui::IsMouseDoubleClicked(0))
+                NavigateTo(folder.path);
+
+            DrawFolderContextMenu(folder);
+            if (ImGui::BeginDragDropSource())
+            {
+                const string payload = PathToPayload(folder.path);
+                ImGui::SetDragDropPayload(kFolderPayload, payload.data(), payload.size());
+                ImGui::TextUnformatted(folder.name.c_str());
+                ImGui::EndDragDropSource();
+            }
+            AcceptBrowserDrop(folder.path);
         }
 
         ImGui::TableSetColumnIndex(2);
@@ -1076,13 +1329,28 @@ namespace SF::Engine
             if (current)
                 ImGui::PushStyleColor(ImGuiCol_Text, kCurrentSceneColor);
             const bool clicked =
-                    ImGui::Selectable(scene.name.c_str(), false,
+                    ImGui::Selectable(scene.name.c_str(), !m_selectedAsset && m_selectedPath == scene.path,
                                       ImGuiSelectableFlags_SpanAllColumns | ImGuiSelectableFlags_AllowDoubleClick);
+            const bool rightClicked = ImGui::IsItemClicked(ImGuiMouseButton_Right);
             if (current)
                 ImGui::PopStyleColor();
 
+            if (clicked || rightClicked)
+            {
+                m_selectedAsset.reset();
+                m_selectedPath = scene.path;
+            }
             if (clicked && ImGui::IsMouseDoubleClicked(0))
                 OpenSceneFile(scene.path);
+
+            DrawSceneContextMenu(scene);
+            if (ImGui::BeginDragDropSource())
+            {
+                const string payload = PathToPayload(scene.path);
+                ImGui::SetDragDropPayload(kScenePayload, payload.data(), payload.size());
+                ImGui::TextUnformatted(scene.name.c_str());
+                ImGui::EndDragDropSource();
+            }
         }
 
         ImGui::TableSetColumnIndex(2);
@@ -1099,7 +1367,7 @@ namespace SF::Engine
         }
     }
 
-    void AssetBrowser::DrawAssetRow(const std::shared_ptr<AssetBase> &asset, int index)
+    void AssetBrowser::DrawAssetRow(const shared_ptr<AssetBase> &asset, int index)
     {
         ImGui::PushID(index);
         ImGui::TableNextRow();
@@ -1109,8 +1377,21 @@ namespace SF::Engine
 
         ImGui::TableSetColumnIndex(1);
         const bool isSelected = m_selectedAsset && *m_selectedAsset == asset->uuid;
-        if (ImGui::Selectable(asset->name.c_str(), isSelected, ImGuiSelectableFlags_SpanAllColumns))
-            m_selectedAsset = asset->uuid;
+        if (!asset->assetPath.empty() && IsEditing(InlineEditMode::RenameAsset, asset->assetPath))
+        {
+            DrawInlineEditField(-1);
+        } else
+        {
+            if (ImGui::Selectable(asset->name.c_str(), isSelected, ImGuiSelectableFlags_SpanAllColumns))
+                m_selectedAsset = asset->uuid;
+            DrawAssetContextMenu(asset);
+            if (ImGui::BeginDragDropSource())
+            {
+                ImGui::SetDragDropPayload(kAssetPayload, &asset->uuid, sizeof(UUID));
+                ImGui::TextUnformatted(asset->name.c_str());
+                ImGui::EndDragDropSource();
+            }
+        }
 
         ImGui::TableSetColumnIndex(2);
         ImGui::TextUnformatted(GetAssetTypeName(asset->type));
@@ -1121,20 +1402,24 @@ namespace SF::Engine
         ImGui::SameLine();
         if (ImGui::SmallButton(ICON_MD_SAVE "##save"))
             asset->Save();
+        ImGui::SameLine();
+        if (ImGui::SmallButton(ICON_MD_DELETE "##delete"))
+            RequestDeleteAsset(asset);
 
         ImGui::PopID();
     }
 
-    void AssetBrowser::DrawSmallPreview(const std::shared_ptr<AssetBase> &asset)
+    void AssetBrowser::DrawSmallPreview(const shared_ptr<AssetBase> &asset)
     {
-        const Vec2 size(kListPreviewSize, kListPreviewSize);
+        constexpr Vec2 size(kListPreviewSize, kListPreviewSize);
+        if (asset->type == AssetType::Audio && m_icons.audio)
+        {
+            ImGui::Image(m_icons.audio->GetTexID(), size);
+            return;
+        }
         if (!TryDrawThumbnail(asset, size))
             DrawPlaceholder(asset, "##preview", size, Vec4(0.2f, 0.2f, 0.2f, 0.5f));
     }
-
-    // ======================================================================
-    //  Details panel
-    // ======================================================================
 
     void AssetBrowser::DrawDetailsPanel()
     {
@@ -1150,7 +1435,7 @@ namespace SF::Engine
     }
 
     template<typename TImage>
-    void AssetBrowser::DrawImageDetails(const std::shared_ptr<ImageAsset<TImage>> &asset)
+    void AssetBrowser::DrawImageDetails(const shared_ptr<ImageAsset<TImage>> &asset)
     {
         ImGui::BeginGroup();
 
@@ -1161,8 +1446,8 @@ namespace SF::Engine
 
         if (tex)
         {
-            const TexturePreview &preview = GetOrCreatePreview(asset->uuid, tex);
-            if (preview.isValid && preview.textureID)
+            if (const TexturePreview &preview = GetOrCreatePreview(asset->uuid, tex);
+                preview.isValid && preview.textureID)
             {
                 ImGui::TextUnformatted(ICON_MD_VISIBILITY " Preview:");
 
@@ -1183,14 +1468,14 @@ namespace SF::Engine
                 const auto extent = tex->GetExtent();
 
                 PropertyRow(ICON_MD_CROP_ORIGINAL " Dimensions",
-                            std::to_string(extent.x) + "x" + std::to_string(extent.y) + "x" + std::to_string(extent.z));
+                            to_string(extent.x) + "x" + to_string(extent.y) + "x" + to_string(extent.z));
                 PropertyRow(ICON_MD_FORMAT_COLOR_FILL " Format", GetFormatName(tex->GetFormat()));
-                PropertyRow(ICON_MD_LAYERS " Mip Levels", std::to_string(tex->GetMipLevels()));
-                PropertyRow(ICON_MD_VIEW_COLUMN " Array Layers", std::to_string(tex->GetArrayLevels()));
+                PropertyRow(ICON_MD_LAYERS " Mip Levels", to_string(tex->GetMipLevels()));
+                PropertyRow(ICON_MD_VIEW_COLUMN " Array Layers", to_string(tex->GetArrayLevels()));
                 PropertyRow(ICON_MD_FILTER " Filter", GetFilterName(tex->GetFilter()));
                 PropertyRow(ICON_MD_BORDER_ALL " Address Mode", GetAddressModeName(tex->GetAddressMode()));
-                PropertyRow(ICON_MD_LABEL " Samples", std::to_string(tex->GetSamples()));
-                PropertyRow(ICON_MD_SETTINGS " Usage", ToHex(static_cast<std::uint32_t>(tex->GetUsage())));
+                PropertyRow(ICON_MD_LABEL " Samples", to_string(tex->GetSamples()));
+                PropertyRow(ICON_MD_SETTINGS " Usage", ToHex(static_cast<uint32_t>(tex->GetUsage())));
             }
 
             ImGui::EndTable();
@@ -1202,7 +1487,7 @@ namespace SF::Engine
         ImGui::EndGroup();
     }
 
-    void AssetBrowser::DrawGenericAssetDetails(const std::shared_ptr<AssetBase> &asset)
+    void AssetBrowser::DrawGenericAssetDetails(const shared_ptr<AssetBase> &asset)
     {
         ImGui::BeginGroup();
 
@@ -1213,6 +1498,41 @@ namespace SF::Engine
         {
             PropertyRow(ICON_MD_TITLE " Name", asset->name);
             PropertyRow(ICON_MD_CATEGORY " Type", GetAssetTypeName(asset->type));
+            PropertyRow(ICON_MD_TAG " UUID", asset->uuid.ToString());
+            if (!asset->assetPath.empty())
+                PropertyRow(ICON_MD_INSERT_DRIVE_FILE " Source", asset->assetPath.filename().string());
+
+            if (const auto model = ::SF::RTTI::rtti_pointer_cast<MeshAsset>(asset))
+            {
+                if (model->IsLoaded())
+                {
+                    uint32_t verts = 0, tris = 0;
+                    for (const auto &p: model->parts)
+                    {
+                        verts += p.vertexCount;
+                        tris += p.triangleCount;
+                    }
+                    const Vec3 size = model->boundsMax - model->boundsMin;
+                    char dims[96];
+                    snprintf(dims, sizeof(dims), "%.2f x %.2f x %.2f", size.x, size.y, size.z);
+                    PropertyRow(ICON_MD_VIEW_IN_AR " Parts", to_string(model->parts.size()));
+                    PropertyRow(ICON_MD_SCATTER_PLOT " Vertices", to_string(verts));
+                    PropertyRow(ICON_MD_CHANGE_HISTORY " Triangles", to_string(tris));
+                    PropertyRow(ICON_MD_STRAIGHTEN " Size", dims);
+                    if (model->animationCount > 0)
+                        PropertyRow(ICON_MD_WARNING " Animations", to_string(model->animationCount) + " (ignored)");
+                }
+            } else if (const auto audio = ::SF::RTTI::rtti_pointer_cast<AudioAsset>(asset))
+            {
+                if (audio->buffer)
+                {
+                    char dur[32];
+                    snprintf(dur, sizeof(dur), "%.2f s", audio->durationSeconds);
+                    PropertyRow(ICON_MD_TIMER " Duration", dur);
+                    PropertyRow(ICON_MD_SPEAKER " Channels", to_string(audio->channels));
+                    PropertyRow(ICON_MD_GRAPHIC_EQ " Sample Rate", to_string(audio->sampleRate) + " Hz");
+                }
+            }
             ImGui::EndTable();
         }
 
@@ -1223,31 +1543,28 @@ namespace SF::Engine
     }
 
     template<typename T>
-    void AssetBrowser::DrawActionButtons(const std::shared_ptr<T> &asset)
+    void AssetBrowser::DrawActionButtons(const shared_ptr<T> &asset)
     {
         Heading(ICON_MD_SETTINGS " Actions");
 
         if (ImGui::Button(ICON_MD_SAVE " Save", Vec2(100, 0)))
             asset->Save();
         ImGui::SameLine();
-        ImGui::Button(ICON_MD_DELETE " Delete", Vec2(100, 0)); // TODO: asset deletion
+        if (ImGui::Button(ICON_MD_DELETE " Delete", Vec2(100, 0)))
+            RequestDeleteAsset(asset);
     }
-
-    // ======================================================================
-    //  Asset creation + previews
-    // ======================================================================
 
     // TODO: AssetWizard class
     template<typename TImage>
     void AssetBrowser::CreateImageAsset()
     {
-        static_assert(std::is_base_of_v<Image, TImage>, "TImage must derive from Image");
+        static_assert(is_base_of_v<Image, TImage>, "TImage must derive from Image");
 
         auto asset = AssetController::Get()->RegisterAsset<ImageAsset<TImage>>(
-                "New" + std::string(GetAssetTypeName(AssetType::Texture)));
+                "New" + string(GetAssetTypeName(AssetType::Texture)));
 
         // Only 3D images take a 3D extent. Cubemap uses 2D dimensions (square face size).
-        if constexpr (std::is_same_v<TImage, Image3d>)
+        if constexpr (is_same_v<TImage, Image3d>)
             asset->Create(UVec3(kDefaultImageSize, kDefaultImageSize, kDefaultImageSize), kDefaultImageFormat);
         else
             asset->Create(UVec2(kDefaultImageSize, kDefaultImageSize), kDefaultImageFormat);
@@ -1261,7 +1578,7 @@ namespace SF::Engine
     // NOTE: once real GPU upload exists and previews can become valid later, re-try invalid entries here.
     template<typename TImage>
     const AssetBrowser::TexturePreview &AssetBrowser::GetOrCreatePreview(const UUID &guid,
-                                                                         const std::shared_ptr<TImage> &texture)
+                                                                         const shared_ptr<TImage> &texture)
     {
         if (const auto it = m_previewCache.find(guid); it != m_previewCache.end())
             return it->second;
@@ -1270,21 +1587,18 @@ namespace SF::Engine
         preview.isValid = false;
         preview.size    = texture->GetExtent();
 
-        // TODO: create an ImGui texture ID from the Vulkan image (integrate with the rendering system),
-        // then set preview.textureID and preview.isValid.
+        // Image2d etc. create their ImGui descriptor when they upload (GetTexID()); 0 means "none yet".
+        preview.textureID = texture->GetTexID();
+        preview.isValid   = preview.textureID != 0;
 
         return m_previewCache.emplace(guid, preview).first->second;
     }
 
-    // ======================================================================
-    //  Inline edit (rename folder / rename scene / new scene)
-    // ======================================================================
-
-    void AssetBrowser::BeginInlineEdit(InlineEditMode mode, const std::filesystem::path &path, const std::string &text)
+    void AssetBrowser::BeginInlineEdit(const InlineEditMode mode, const filesystem::path &path, const string &text)
     {
         m_inlineEditMode = mode;
         m_inlineEditPath = path;
-        std::snprintf(m_inlineEditBuffer, sizeof(m_inlineEditBuffer), "%s", text.c_str());
+        snprintf(m_inlineEditBuffer, sizeof(m_inlineEditBuffer), "%s", text.c_str());
         m_inlineEditFocusPending = true;
     }
 
@@ -1294,7 +1608,7 @@ namespace SF::Engine
         m_inlineEditPath.clear();
     }
 
-    bool AssetBrowser::IsEditing(InlineEditMode mode, const std::filesystem::path &path) const
+    bool AssetBrowser::IsEditing(const InlineEditMode mode, const filesystem::path &path) const
     {
         return m_inlineEditMode == mode && m_inlineEditPath == path;
     }
@@ -1304,7 +1618,7 @@ namespace SF::Engine
         return m_inlineEditMode == InlineEditMode::NewScene && m_inlineEditPath == m_currentPath;
     }
 
-    void AssetBrowser::DrawInlineEditField(float width)
+    void AssetBrowser::DrawInlineEditField(const float width)
     {
         ImGui::SetNextItemWidth(width);
 
@@ -1338,6 +1652,9 @@ namespace SF::Engine
             case InlineEditMode::RenameScene:
                 CommitSceneRename();
                 break;
+            case InlineEditMode::RenameAsset:
+                CommitAssetRename();
+                break;
             default:
                 break;
         }
@@ -1352,9 +1669,8 @@ namespace SF::Engine
 
     void AssetBrowser::CommitNewScene()
     {
-        const std::string name = CleanFileName(m_inlineEditBuffer);
 
-        if (!name.empty()) // empty name = treat as cancel
+        if (const string name = CleanFileName(m_inlineEditBuffer); !name.empty()) // empty name = treat as cancel
         {
             if (CreateDefaultScene(m_inlineEditPath, name).empty())
                 Log::Error("Failed to create scene in {}", m_inlineEditPath.string());
@@ -1365,7 +1681,7 @@ namespace SF::Engine
         EndInlineEdit();
     }
 
-    void AssetBrowser::BeginRenameFolder(const std::filesystem::path &path)
+    void AssetBrowser::BeginRenameFolder(const filesystem::path &path)
     {
         BeginInlineEdit(InlineEditMode::RenameFolder, path, path.filename().string());
     }
@@ -1373,12 +1689,12 @@ namespace SF::Engine
     void AssetBrowser::CommitFolderRename()
     {
         // CleanFileName also strips path separators, so "a/b" can no longer move the folder somewhere else.
-        const std::string newName = CleanFileName(m_inlineEditBuffer);
 
-        if (!newName.empty() && newName != m_inlineEditPath.filename().string())
+        if (const string newName = CleanFileName(m_inlineEditBuffer);
+            !newName.empty() && newName != m_inlineEditPath.filename().string())
         {
-            const std::filesystem::path newPath = m_inlineEditPath.parent_path() / newName;
-            if (!File::Exists(newPath.string()) && File::Rename(m_inlineEditPath.string(), newPath.string()))
+            if (const filesystem::path newPath = m_inlineEditPath.parent_path() / newName;
+                !File::Exists(newPath.string()) && File::Rename(m_inlineEditPath.string(), newPath.string()))
             {
                 if (m_currentPath == m_inlineEditPath)
                     NavigateTo(newPath);
@@ -1389,21 +1705,19 @@ namespace SF::Engine
         EndInlineEdit();
     }
 
-    void AssetBrowser::BeginRenameScene(const std::filesystem::path &file)
+    void AssetBrowser::BeginRenameScene(const filesystem::path &file)
     {
         BeginInlineEdit(InlineEditMode::RenameScene, file, SceneDisplayName(file));
     }
 
     void AssetBrowser::CommitSceneRename()
     {
-        namespace fs           = std::filesystem;
-        const std::string name = CleanFileName(m_inlineEditBuffer);
+        namespace fs = filesystem;
 
-        if (!name.empty())
+        if (const string name = CleanFileName(m_inlineEditBuffer); !name.empty())
         {
-            const fs::path dst = m_inlineEditPath.parent_path() / (name + std::string(SceneFileExtension));
-            std::error_code ec;
-            if (dst != m_inlineEditPath && !fs::exists(dst, ec))
+            const fs::path dst = m_inlineEditPath.parent_path() / (name + string(SceneFileExtension));
+            if (error_code ec; dst != m_inlineEditPath && !fs::exists(dst, ec))
             {
                 fs::rename(m_inlineEditPath, dst, ec);
                 if (ec)
@@ -1420,14 +1734,480 @@ namespace SF::Engine
         EndInlineEdit();
     }
 
+    namespace
+    {
+        // Dropped folders are expanded recursively (flattened into the destination folder).
+        // Files the importer doesn't understand are only counted.
+        vector<filesystem::path> CollectImportable(const vector<filesystem::path> &dropped, size_t &unsupported)
+        {
+            namespace fs = filesystem;
+            vector<fs::path> out;
+            error_code ec;
+
+            const auto consider = [&](const fs::path &p)
+            {
+                if (AssetImporter::IsSupported(p))
+                    out.push_back(p);
+                else
+                    ++unsupported;
+            };
+
+            for (const fs::path &p: dropped)
+            {
+                if (fs::is_directory(p, ec))
+                {
+                    for (fs::recursive_directory_iterator it(p, fs::directory_options::skip_permission_denied, ec), end;
+                         !ec && it != end; it.increment(ec))
+                    {
+                        if (error_code fileEc; it->is_regular_file(fileEc))
+                            consider(it->path());
+                    }
+                } else
+                    consider(p);
+            }
+            return out;
+        }
+
+        // Is the mouse over any ImGui window? (false = it is over the bare 3D view.)
+        bool IsOverAnyImGuiWindow()
+        {
+            const ImGuiContext *ctx = ImGui::GetCurrentContext();
+            return ctx && ctx->HoveredWindow != nullptr;
+        }
+    } // namespace
+
+    // The Window's GLFW drop callback fires in the middle of glfwPollEvents(), outside any ImGui frame, so we
+    // only queue the paths there. They are handled on the next Draw(), when ImGui knows what the mouse is over.
+    // (GLFW/Win32 updates the cursor position to the drop point just before the callback.)
+    void AssetBrowser::EnsureDropSubscribed()
+    {
+        if (m_dropSubscribed)
+            return;
+
+        auto *windows  = WindowManager::Get();
+        Window *window = windows ? windows->GetWindow(0) : nullptr;
+        if (!window)
+            return;
+
+        m_dropConnection = window->OnDrop().connect(
+                [this](const vector<string> &paths)
+                {
+                    if (!ProjectManager::Get()->IsAProjectLoaded())
+                    {
+                        Log::Warning("Dropped files ignored: no project is loaded.");
+                        return;
+                    }
+                    for (const string &p: paths)
+                    {
+                        // GLFW hands out UTF-8.
+                        const u8string u8(reinterpret_cast<const char8_t *>(p.data()), p.size());
+                        m_pendingDrops.emplace_back(u8);
+                    }
+                });
+        m_dropSubscribed = true;
+    }
+
+    void AssetBrowser::ProcessPendingDrops()
+    {
+        if (m_pendingDrops.empty())
+            return;
+
+        const vector<filesystem::path> dropped = std::move(m_pendingDrops);
+        m_pendingDrops.clear();
+
+        const Vec2 mouse       = ImGui::GetIO().MousePos;
+        const bool overPanel   = IsOverAnyImGuiWindow();
+        const bool overBrowser = overPanel && m_windowRectValid && mouse.x >= m_windowMin.x &&
+                                 mouse.x <= m_windowMax.x && mouse.y >= m_windowMin.y && mouse.y <= m_windowMax.y;
+        const bool overScene = !overPanel;
+
+        if (!overBrowser && !overScene)
+        {
+            SetStatus("Drop files on the Asset Browser (import) or on the scene view (import + place).", true);
+            return;
+        }
+
+        size_t unsupported = 0;
+        const auto files   = CollectImportable(dropped, unsupported);
+        if (files.empty())
+        {
+            SetStatus("Nothing imported: supported types are models, images and audio.", true);
+            return;
+        }
+        if (unsupported > 0)
+            Log::Info("Import: ignored {} unsupported file(s) in the drop.", unsupported);
+
+        ImportFiles(files, /*placeInScene=*/overScene);
+    }
+
+    void AssetBrowser::ImportFiles(const vector<filesystem::path> &files, bool placeInScene)
+    {
+        const filesystem::path dest =
+                m_currentPath.empty() ? ProjectManager::Get()->GetProjectAssetPath() : m_currentPath;
+
+        const auto results = AssetImporter::ImportMany(files, dest);
+
+        Scene *scene = SceneManager::Get()->GetScene();
+        Vec3 point(0.0f);
+        const bool canPlace = placeInScene && scene && GroundPointUnderCursor(point);
+
+        int imported = 0, placed = 0, failed = 0;
+        string firstError;
+
+        for (const ImportResult &r: results)
+        {
+            if (!r.Ok())
+            {
+                ++failed;
+                if (firstError.empty())
+                    firstError = r.source.filename().string() + ": " + r.error;
+                continue;
+            }
+
+            if (!r.alreadyImported)
+                ++imported;
+            m_selectedAsset = r.asset->uuid;
+
+            if (canPlace)
+            {
+                if (const Vec3 where = point + Vec3(2.0f * static_cast<float>(placed), 0.0f, 0.0f);
+                    scene->InstantiateAsset(r.asset, where))
+                    ++placed;
+            }
+        }
+
+        m_dirDirty = true;
+
+        string text = "Imported " + to_string(imported) + " asset(s)";
+        if (canPlace)
+            text += ", placed " + to_string(placed);
+        if (failed > 0)
+            text += "; " + to_string(failed) + " failed (" + firstError + ")";
+        SetStatus(std::move(text), failed > 0);
+    }
+
+    // An asset tile dragged out of this panel and released over the bare 3D view places the asset there.
+    // ImGui keeps the payload alive for a frame or two after release, so we track the drag ourselves and
+    // fire exactly once, on the first frame the mouse is up.
+    void AssetBrowser::ProcessSceneAssetDrag()
+    {
+        const ImGuiPayload *payload = ImGui::GetDragDropPayload();
+        const bool mine = payload && payload->IsDataType(kAssetPayload) && payload->DataSize == sizeof(UUID);
+
+        if (!mine)
+            m_dragConsumed = false;
+        if (mine && !m_dragConsumed)
+            m_dragAsset = *static_cast<const UUID *>(payload->Data);
+
+        if (!m_dragAsset)
+            return;
+
+        if (ImGui::IsMouseDown(ImGuiMouseButton_Left))
+        {
+            if (!mine)
+                m_dragAsset.reset(); // cancelled (Esc) or the source vanished
+            return;
+        }
+
+        // Released.
+        const UUID id = *m_dragAsset;
+        m_dragAsset.reset();
+        m_dragConsumed = mine;
+
+        if (IsOverAnyImGuiWindow())
+            return; // dropped on a panel, not the scene
+
+        Scene *scene     = SceneManager::Get()->GetScene();
+        const auto asset = AssetController::Get()->FindByUUID(id);
+        Vec3 point(0.0f);
+        if (!scene || !asset || !GroundPointUnderCursor(point))
+            return;
+
+        if (scene->InstantiateAsset(asset, point))
+            SetStatus("Placed '" + asset->name + "'", false);
+        else
+            SetStatus("Could not place '" + asset->name + "' (see log)", true);
+    }
+
+    // Ray through the mouse position (ImGui screen coordinates == window logical pixels) against y = kGroundY.
+    // Falls back to a point 10 units in front of the cursor when the ray doesn't hit the plane.
+    bool AssetBrowser::GroundPointUnderCursor(Vec3 &out) const
+    {
+        const Camera *cam = CameraController::Get().GetActive();
+        if (!cam)
+            return false;
+
+        const ImGuiIO &io = ImGui::GetIO();
+        if (io.DisplaySize.x <= 0.0f || io.DisplaySize.y <= 0.0f)
+            return false;
+
+        const float ndcX = 2.0f * io.MousePos.x / io.DisplaySize.x - 1.0f;
+        const float ndcY =
+                2.0f * io.MousePos.y / io.DisplaySize.y - 1.0f; // the projection already carries the Vulkan Y flip
+        // Near plane is depth 1 only for the infinite-far inverse-Z projection; depth 0 otherwise.
+        const float ndcZ = (cam->IsFarPlaneInfinite() && cam->IsInverseZ()) ? 1.0f : 0.0f;
+
+        const Mat4 invViewProj = glm::inverse(cam->GetProjection(io.DisplaySize.x / io.DisplaySize.y) * cam->GetView());
+        const Vec4 h           = invViewProj * Vec4(ndcX, ndcY, ndcZ, 1.0f);
+        if (abs(h.w) < 1e-8f)
+            return false;
+
+        const Vec3 origin = cam->GetPosition();
+        const Vec3 dir    = glm::normalize(Vec3(h) / h.w - origin);
+
+        if (dir.y < -1e-4f)
+        {
+            const float t = (kGroundY - origin.y) / dir.y;
+            if (t > 0.0f && t <= kMaxPlaceDist)
+            {
+                out = origin + dir * t;
+                return true;
+            }
+        }
+
+        out = origin + dir * 10.0f;
+        return true;
+    }
+
     // ======================================================================
-    //  Delete confirmation
+    //  Rename asset / move by drag-and-drop
     // ======================================================================
 
-    void AssetBrowser::RequestDelete(const std::filesystem::path &path, bool isScene)
+    void AssetBrowser::BeginRenameAsset(const shared_ptr<AssetBase> &asset)
     {
+        if (asset && !asset->assetPath.empty())
+            BeginInlineEdit(InlineEditMode::RenameAsset, asset->assetPath, asset->assetPath.stem().string());
+    }
+
+    void AssetBrowser::CommitAssetRename()
+    {
+        namespace fs      = filesystem;
+        const string name = CleanFileName(m_inlineEditBuffer);
+        const auto asset  = AssetController::Get()->FindByPath(m_inlineEditPath);
+
+        if (asset && !name.empty() && name != asset->assetPath.stem().string())
+        {
+            const fs::path src = asset->assetPath;
+            const fs::path dst = src.parent_path() / (name + src.extension().string());
+            fs::path srcMeta   = src;
+            srcMeta += ".meta";
+            fs::path dstMeta = dst;
+            dstMeta += ".meta";
+
+            if (error_code ec; fs::exists(dst, ec) || fs::exists(dstMeta, ec))
+            {
+                SetStatus("'" + dst.filename().string() + "' already exists", true);
+            } else
+            {
+                fs::rename(src, dst, ec);
+                if (!ec)
+                {
+                    fs::rename(srcMeta, dstMeta, ec);
+                    if (ec)
+                    {
+                        error_code undo;
+                        fs::rename(dst, src, undo); // keep file and .meta together
+                    }
+                }
+
+                if (ec)
+                {
+                    SetStatus("Could not rename: " + ec.message(), true);
+                } else
+                {
+                    asset->assetPath = dst;
+                    asset->name      = name;
+                    asset->SaveMeta(); // the .meta stores the display name
+                    m_dirDirty = true;
+                }
+            }
+        }
+
+        EndInlineEdit();
+    }
+
+    // Call right after an item that should accept drops into `destFolder` (folder tiles/rows, the Up button).
+    void AssetBrowser::AcceptBrowserDrop(const filesystem::path &destFolder)
+    {
+        if (!ImGui::BeginDragDropTarget())
+            return;
+
+        if (const ImGuiPayload *p = ImGui::AcceptDragDropPayload(kAssetPayload))
+        {
+            if (p->DataSize == sizeof(UUID))
+                MoveAssetTo(*static_cast<const UUID *>(p->Data), destFolder);
+        } else if (const ImGuiPayload *f = ImGui::AcceptDragDropPayload(kFolderPayload))
+        {
+            MoveFolderTo(PathFromPayload(f), destFolder);
+        } else if (const ImGuiPayload *s = ImGui::AcceptDragDropPayload(kScenePayload))
+        {
+            MoveSceneTo(PathFromPayload(s), destFolder);
+        }
+
+        ImGui::EndDragDropTarget();
+    }
+
+    bool AssetBrowser::MoveAssetTo(const UUID &id, const filesystem::path &folder)
+    {
+        namespace fs           = filesystem;
+        const auto *controller = AssetController::Get();
+        const auto asset       = controller ? controller->FindByUUID(id) : nullptr;
+        if (!asset || asset->assetPath.empty())
+            return false; // procedural assets have no file to move
+
+        const fs::path src = asset->assetPath;
+        if (src.parent_path() == folder)
+            return false;
+
+        const fs::path dst = folder / src.filename();
+        fs::path srcMeta   = src;
+        srcMeta += ".meta";
+        fs::path dstMeta = dst;
+        dstMeta += ".meta";
+
+        error_code ec;
+        if (fs::exists(dst, ec) || fs::exists(dstMeta, ec))
+        {
+            SetStatus("'" + dst.filename().string() + "' already exists in that folder", true);
+            return false;
+        }
+
+        fs::rename(src, dst, ec);
+        if (!ec)
+        {
+            fs::rename(srcMeta, dstMeta, ec);
+            if (ec)
+            {
+                error_code undo;
+                fs::rename(dst, src, undo);
+            }
+        }
+        if (ec)
+        {
+            SetStatus("Could not move '" + asset->name + "': " + ec.message(), true);
+            return false;
+        }
+
+        asset->assetPath = dst; // scenes reference the asset by UUID, so nothing else needs to change
+        m_dirDirty       = true;
+        SetStatus("Moved '" + asset->name + "' to " + folder.filename().string(), false);
+        return true;
+    }
+
+    bool AssetBrowser::MoveSceneTo(const filesystem::path &file, const filesystem::path &folder)
+    {
+        namespace fs = filesystem;
+        if (file.parent_path() == folder)
+            return false;
+
+        const fs::path dst = folder / file.filename();
+        error_code ec;
+        if (fs::exists(dst, ec))
+        {
+            SetStatus("'" + dst.filename().string() + "' already exists in that folder", true);
+            return false;
+        }
+
+        fs::rename(file, dst, ec);
+        if (ec)
+        {
+            SetStatus("Could not move scene: " + ec.message(), true);
+            return false;
+        }
+
+        NotifyMovedScene(file, dst);
+        m_dirDirty = true;
+        SetStatus("Moved scene to " + folder.filename().string(), false);
+        return true;
+    }
+
+    bool AssetBrowser::MoveFolderTo(const filesystem::path &folder, const filesystem::path &destFolder)
+    {
+        namespace fs = filesystem;
+        if (folder.parent_path() == destFolder)
+            return false;
+        if (IsSameOrInside(destFolder, folder))
+        {
+            SetStatus("A folder can't be moved into itself", true);
+            return false;
+        }
+
+        const fs::path dst = destFolder / folder.filename();
+        error_code ec;
+        if (fs::exists(dst, ec))
+        {
+            SetStatus("'" + dst.filename().string() + "' already exists in that folder", true);
+            return false;
+        }
+
+        // Scenes below the folder, so the scene system can be told where they went.
+        vector<pair<fs::path, fs::path>> movedScenes;
+        for (fs::recursive_directory_iterator it(folder, fs::directory_options::skip_permission_denied, ec), end;
+             !ec && it != end; it.increment(ec))
+        {
+            if (error_code fileEc; it->is_regular_file(fileEc) && IsSceneFile(it->path()))
+                movedScenes.emplace_back(it->path(), dst / it->path().lexically_relative(folder));
+        }
+
+        ec.clear();
+        fs::rename(folder, dst, ec);
+        if (ec)
+        {
+            SetStatus("Could not move folder: " + ec.message(), true);
+            return false;
+        }
+
+        if (const auto *controller = AssetController::Get())
+        {
+            for (const auto &asset: controller->assets_)
+                if (asset && !asset->assetPath.empty() && IsSameOrInside(asset->assetPath, folder))
+                    asset->assetPath = dst / asset->assetPath.lexically_relative(folder);
+        }
+        for (const auto &[from, to]: movedScenes)
+            NotifyMovedScene(from, to);
+
+        if (IsSameOrInside(m_currentPath, folder))
+            NavigateTo(dst / m_currentPath.lexically_relative(folder));
+
+        m_dirDirty = true;
+        SetStatus("Moved folder '" + folder.filename().string() + "' to " + destFolder.filename().string(), false);
+        return true;
+    }
+
+    void AssetBrowser::SetStatus(string text, bool isError)
+    {
+        m_status        = std::move(text);
+        m_statusIsError = isError;
+        m_statusUntil   = ImGui::GetTime() + (isError ? 12.0 : 6.0);
+    }
+
+    void AssetBrowser::DrawStatus()
+    {
+        if (m_status.empty())
+            return;
+        if (ImGui::GetTime() > m_statusUntil)
+        {
+            m_status.clear();
+            return;
+        }
+        ImGui::TextColored(m_statusIsError ? kErrorColor : kHeadingColor, "%s", m_status.c_str());
+    }
+
+    void AssetBrowser::RequestDelete(const filesystem::path &path, bool isScene)
+    {
+        m_deleteTargetAsset.reset();
         m_deleteTargetPath       = path;
         m_deleteTargetIsScene    = isScene; // previously never reset when deleting a folder after a scene
+        m_showDeleteConfirmPopup = true;
+    }
+
+    void AssetBrowser::RequestDeleteAsset(const shared_ptr<AssetBase> &asset)
+    {
+        if (!asset)
+            return;
+        m_deleteTargetAsset      = asset->uuid;
+        m_deleteTargetIsScene    = false;
+        m_deleteTargetPath       = asset->assetPath.empty() ? filesystem::path(asset->name) : asset->assetPath;
         m_showDeleteConfirmPopup = true;
     }
 
@@ -1444,8 +2224,9 @@ namespace SF::Engine
             return;
 
         ImGui::TextColored(kWarningColor, "%s",
-                           m_deleteTargetIsScene ? ICON_MD_WARNING " Delete this scene file?"
-                                                 : ICON_MD_WARNING " Delete this folder and all its contents?");
+                           m_deleteTargetAsset     ? ICON_MD_WARNING " Delete this asset and its files?"
+                           : m_deleteTargetIsScene ? ICON_MD_WARNING " Delete this scene file?"
+                                                   : ICON_MD_WARNING " Delete this folder and all its contents?");
         ImGui::TextWrapped("%s", m_deleteTargetPath.string().c_str());
         ImGui::Separator();
 
@@ -1463,10 +2244,51 @@ namespace SF::Engine
 
     void AssetBrowser::ExecuteDelete()
     {
+        auto *controller = AssetController::Get();
+
+        if (m_deleteTargetAsset)
+        {
+            const UUID id = *m_deleteTargetAsset;
+            m_deleteTargetAsset.reset();
+
+            const auto asset = controller ? controller->FindByUUID(id) : nullptr;
+            if (asset)
+            {
+                bool filesGone = true; // procedural assets have no files
+                if (!asset->assetPath.empty())
+                {
+                    error_code ec, metaEc;
+                    filesystem::remove(asset->assetPath, ec);
+                    filesystem::path meta = asset->assetPath;
+                    meta += ".meta";
+                    filesystem::remove(meta, metaEc);
+
+                    if (ec || metaEc)
+                    {
+                        // Keep the asset listed; dropping it now would only make it reappear on the next scan.
+                        filesGone = false;
+                        Log::Error("Failed to delete asset '{}': {}", asset->name, (ec ? ec : metaEc).message());
+                        SetStatus("Could not delete '" + asset->name + "': " + (ec ? ec : metaEc).message(), true);
+                    }
+                }
+
+                if (filesGone)
+                {
+                    controller->RemoveAsset(id);
+                    m_previewCache.erase(id);
+                    if (m_selectedAsset && *m_selectedAsset == id)
+                        m_selectedAsset.reset();
+                    SetStatus("Deleted '" + asset->name + "'", false);
+                }
+            }
+            m_dirDirty = true;
+            return;
+        }
+
         if (m_deleteTargetIsScene)
         {
-            std::error_code ec;
-            std::filesystem::remove(m_deleteTargetPath, ec);
+            error_code ec;
+            filesystem::remove(m_deleteTargetPath, ec);
             if (ec)
                 Log::Error("Failed to delete {}: {}", m_deleteTargetPath.string(), ec.message());
             else
@@ -1477,6 +2299,15 @@ namespace SF::Engine
             const bool viewingDeletedFolder = IsSameOrInside(m_currentPath, m_deleteTargetPath);
 
             File::DeleteDirectory(m_deleteTargetPath.string(), true);
+
+            // Everything imported below the folder is gone from disk; drop it from the live list too.
+            if (controller)
+            {
+                controller->RemoveAssetsUnder(m_deleteTargetPath);
+                if (m_selectedAsset && !controller->FindByUUID(*m_selectedAsset))
+                    m_selectedAsset.reset();
+                erase_if(m_previewCache, [&](const auto &entry) { return !controller->FindByUUID(entry.first); });
+            }
 
             if (viewingDeletedFolder && m_deleteTargetPath.has_parent_path())
                 NavigateTo(m_deleteTargetPath.parent_path());
