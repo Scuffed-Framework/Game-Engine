@@ -16,7 +16,7 @@ namespace SF::Engine
 
     Mat4 Transform::GetWorldMatrix() const
     {
-        Transform world = GetWorldTransform();
+        const Transform world = GetWorldTransform();
 
         Mat4 matrix(1.0f);
         matrix = translate(matrix, world.position);
@@ -33,7 +33,7 @@ namespace SF::Engine
         const Entity *owner = GetOwner();
         for (const Entity *p = owner ? owner->GetParent() : nullptr; p; p = p->GetParent())
         {
-            if (const Transform *t = p->GetComponent<Transform>())
+            if (const auto *t = p->GetComponent<Transform>())
                 m = t->ToMatrix() * m;
         }
         return m;
@@ -52,8 +52,8 @@ namespace SF::Engine
 
     Transform operator*(const Transform &lhs, const Transform &rhs)
     {
-        Mat4 lhsMatrix      = lhs.GetWorldMatrix();
-        Vec3 transformedPos = Vec3(lhsMatrix * Vec4(rhs.position, 1.0f));
+        const Mat4 lhsMatrix      = lhs.GetWorldMatrix();
+        auto transformedPos = Vec3(lhsMatrix * Vec4(rhs.position, 1.0f));
 
         return {transformedPos, lhs.rotation + rhs.rotation, lhs.scale * rhs.scale};
     }
@@ -64,11 +64,11 @@ namespace SF::Engine
     {
         Transform local(position, rotation, scale);
 
-        if (Entity *owner = GetOwner())
+        if (const Entity *owner = GetOwner())
         {
             if (Entity *parent = owner->GetParent())
             {
-                if (Transform *parentTransform = parent->GetComponent<Transform>())
+                if (const auto *parentTransform = parent->GetComponent<Transform>())
                 {
                     return (*parentTransform) * local; // recurse up the chain
                 }

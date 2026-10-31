@@ -42,3 +42,10 @@ API Notes:
 Render() called on already active renderpass, PreRender() before active.
 
 todo maybe: before feature-ssr merge, rename every SF:: to ScuffedFramework::
+
+
+
+PROJECTS:
+
+assets
+EngineSettings.config.xml

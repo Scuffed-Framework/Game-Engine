@@ -26,7 +26,7 @@ include(FetchContent)
 
 #
 # Dependencies (Conan)
-#
+# sort these like in conanfile.py
 find_package(OpenAL CONFIG REQUIRED)
 find_package(assimp CONFIG REQUIRED)
 find_package(freetype CONFIG REQUIRED)
@@ -57,6 +57,10 @@ find_package(fastgltf REQUIRED)
 find_package(libsvtav1 REQUIRED)
 find_package(dav1d REQUIRED)
 find_package(libvpx REQUIRED)
+find_package(webm REQUIRED)
+find_package(OpenAPV REQUIRED)
+find_package(openh264 REQUIRED)
+find_package(TIFF REQUIRED)
 
 #
 # Sources
@@ -238,6 +242,10 @@ target_link_libraries(SF_Engine PUBLIC
         libsvtav1::encoder
         libvpx::libvpx
         dav1d::dav1d
+        webm::webm
+        openapv::openapv
+        openh264::openh264
+        TIFF::TIFF
 )
 
 if (TARGET utf8cpp::utf8cpp)

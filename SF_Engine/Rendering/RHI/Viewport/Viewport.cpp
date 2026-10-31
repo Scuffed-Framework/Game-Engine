@@ -2,7 +2,7 @@
 
 namespace SF::Engine
 {
-    SceneViewport::SceneViewport(UVec2 extent) :
+    SceneViewport::SceneViewport(const UVec2 extent) :
         pendingFree(kFramesInFlight), retired(kFramesInFlight), desiredExtent(extent)
     {
         CreateImages(extent);
@@ -30,9 +30,6 @@ namespace SF::Engine
 
         depth = std::make_unique<ImageDepth>(extent, VK_SAMPLE_COUNT_1_BIT);
 
-        // ImGui descriptor NOT created here anymore -- deferred to
-        // GetImGuiTexture(), since ImGui_ImplVulkan_Init() may not have run yet
-        // when this fires from the Application constructor.
         imguiDescriptor = VK_NULL_HANDLE;
         currentLayout   = VK_IMAGE_LAYOUT_UNDEFINED;
     }
@@ -46,7 +43,7 @@ namespace SF::Engine
         return imguiDescriptor;
     }
 
-    void SceneViewport::SetDesiredExtent(UVec2 extent)
+    void SceneViewport::SetDesiredExtent(const UVec2 extent)
     {
         if (extent.x == 0 || extent.y == 0)
             return;
@@ -56,13 +53,13 @@ namespace SF::Engine
         resizePending = true;
     }
 
-    void SceneViewport::Tick(std::size_t frameIndex)
+    void SceneViewport::Tick(const std::size_t frameIndex)
     {
         if (!resizePending)
             return;
         resizePending = false;
 
-        std::size_t safeIndex = frameIndex % kFramesInFlight;
+        const std::size_t safeIndex = frameIndex % kFramesInFlight;
 
         if (auto &pending = pendingFree[safeIndex])
         {
@@ -87,7 +84,7 @@ namespace SF::Engine
         if (currentLayout == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)
             return;
 
-        VkImageLayout old = currentLayout;
+        const VkImageLayout old = currentLayout;
         VkImageMemoryBarrier barrier{};
         barrier.sType               = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
         barrier.pNext               = nullptr;
@@ -96,19 +93,24 @@ namespace SF::Engine
         barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
         barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
         barrier.image               = color->GetImage();
-        barrier.subresourceRange    = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
+        barrier.subresourceRange    = {.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT,
+                                       .baseMipLevel   = 0,
+                                       .levelCount     = 1,
+                                       .baseArrayLayer = 0,
+                                       .layerCount     = 1};
         barrier.srcAccessMask       = (old == VK_IMAGE_LAYOUT_UNDEFINED) ? 0 : VK_ACCESS_SHADER_READ_BIT;
         barrier.dstAccessMask       = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
 
-        VkPipelineStageFlags srcStage = (old == VK_IMAGE_LAYOUT_UNDEFINED) ? VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT
-                                                                           : VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+        const VkPipelineStageFlags srcStage = (old == VK_IMAGE_LAYOUT_UNDEFINED)
+                                                      ? VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT
+                                                      : VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
 
         vkCmdPipelineBarrier(cmd, srcStage, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, 0, 0, nullptr, 0, nullptr, 1,
                              &barrier);
         currentLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
     }
 
-    void SceneViewport::BeginRendering(VkCommandBuffer cmd, VkClearColorValue clear)
+    void SceneViewport::BeginRendering(VkCommandBuffer cmd, VkClearColorValue clear) const
     {
         VkRenderingAttachmentInfo colorAttachment{};
         colorAttachment.sType            = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO;
@@ -126,7 +128,7 @@ namespace SF::Engine
         depthAttachment.imageLayout             = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
         depthAttachment.loadOp                  = VK_ATTACHMENT_LOAD_OP_CLEAR;
         depthAttachment.storeOp                 = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-        depthAttachment.clearValue.depthStencil = {1.0f, 0};
+        depthAttachment.clearValue.depthStencil = {.depth = 1.0f, .stencil = 0};
         depthAttachment.pNext                   = nullptr;
 
         const VkExtent2D extent{.width = currentExtent.x, .height = currentExtent.y};

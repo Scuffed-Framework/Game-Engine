@@ -23,7 +23,8 @@ namespace SF::Engine
     {
         auto *logDevice = RenderSystem::Get()->GetLogicalDevice();
 
-        VkDescriptorPoolSize poolSize{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1000};
+        constexpr VkDescriptorPoolSize poolSize{.type            = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                                                .descriptorCount = 1000};
 
         VkDescriptorPoolCreateInfo poolInfo{};
         poolInfo.sType         = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
@@ -145,8 +146,7 @@ namespace SF::Engine
         BuildUI();
 
         ImGui::Render();
-        ImDrawData *drawData = ImGui::GetDrawData();
-        if (drawData && drawData->TotalVtxCount > 0)
+        if (ImDrawData *drawData = ImGui::GetDrawData(); drawData && drawData->TotalVtxCount > 0)
             ImGui_ImplVulkan_RenderDrawData(drawData, commandBuffer);
     }
 } // namespace SF::Engine
