@@ -222,10 +222,10 @@ namespace SF::Engine
          * @return The final random number
          */
         template<typename T>
-        static T Rand(T Min, T Max)
+            requires(is_integral_v<T> || is_floating_point_v<T>)
+        [[nodiscard]] static T Rand(T Min, T Max)
         {
-            static random_device Device;
-            static mt19937 Generator(Device());
+            thread_local mt19937_64 Generator(random_device{}());
 
             if constexpr (is_integral_v<T>)
             {

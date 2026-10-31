@@ -17,8 +17,12 @@ namespace SF::Engine
         virtual ~SplashScreenRenderer() = default;
         void Init()
         {
+            if (IsEditor)
+                SplashScreenWindow->SetSize(WindowManager::Get()->GetPrimaryMonitor()->GetSize() / 2);
+
             const uint8_t rand  = Mathematics::Rand(static_cast<size_t>(0), Quotes.size());
             const Ui32Vec2 size = SplashScreenWindow->GetSize();
+
             Images.emplace_back(SplashScreenInternal::Construct(size, size), 5.0f, Quotes[rand]);
         }
 
@@ -33,6 +37,7 @@ namespace SF::Engine
         }
 
         string Quote;
+        bool IsEditor = false;
         vector<tuple<shared_ptr<Image2d> /*img*/, float /*time*/, string /*Quote*/>> Images;
         unique_ptr<Window> SplashScreenWindow;
     };
