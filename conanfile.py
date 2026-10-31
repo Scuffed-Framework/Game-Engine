@@ -36,6 +36,9 @@ class SfEngineConan(ConanFile):
         self.requires("dav1d/1.5.4")
         self.requires("libsvtav1/2.2.1")
         self.requires("libvpx/1.16.0")
+        self.requires("libwebm/1.0.0.32")
+        self.requires("openapv/0.2.1.3")
+        self.requires("openh264/2.6.0")
 
         # 3D Model Loading
         self.requires("assimp/5.3.1")
@@ -77,6 +80,7 @@ class SfEngineConan(ConanFile):
         self.requires("plutosvg/0.0.8")
         self.requires("tinyexr/1.0.7")
         self.requires("libwebp/1.6.0")
+        self.requires("libtiff/4.7.0")
 
         # Compression
         self.requires("zlib/1.3.1")

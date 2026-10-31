@@ -3,6 +3,7 @@
 #include <Engine/Application/Application.hpp>
 #include "Panels/AssetsWindow.hpp"
 #include "Panels/BarPanels.hpp"
+#include "Panels/GizmoManagement.hpp"
 #include "Panels/HierarchyPanel.hpp"
 #include "Panels/InspectorPanel.hpp"
 
@@ -20,24 +21,37 @@ namespace SF::Engine
         EditorApplication() :
             Application(std::make_unique<EditorInfo>()), hierarchy(std::make_unique<HierarchyPanel>()),
             inspector(std::make_unique<InspectorPanel>()), panels(std::make_unique<BarPanels>()),
-            assetBrowser(std::make_unique<AssetBrowser>()), cmdWindow(std::make_unique<CommandWindow>())
+            assetBrowser(std::make_unique<AssetBrowser>()), cmdWindow(std::make_unique<CommandWindow>()),
+            gizmos(std::make_unique<GizmoManagement>())
         {
         }
 
         InitializationReturn Init() override
         {
-
-            if (const auto result = Application::Init(); result != InitializationReturn::Success)
+            if (const auto result = Application::Init(); result != Success)
                 return result;
-            SetOnSceneReplaced([this] { inspector->SetEntity(nullptr); });
+            SetOnSceneReplaced(
+                    [this]
+                    {
+                        inspector->SetEntity(nullptr);
+                        gizmos->SetTarget(nullptr);
+                    });
             hierarchy->SetOnEntitySelected(
                     [this](Entity *entity)
                     {
                         inspector->SetEntity(entity);
+                        gizmos->SetTarget(entity);
                         hierarchy->SetSelectedEntity(nullptr);
                     });
 
-            return InitializationReturn::Success;
+            gizmos->SetViewportProvider(
+                    []
+                    {
+                        const ImGuiViewport *vp = ImGui::GetMainViewport();
+                        return Vec4{vp->Pos.x, vp->Pos.y, vp->Size.x, vp->Size.y};
+                    });
+
+            return Success;
         }
 
         void Update() override { Application::Update(); }
@@ -48,5 +62,6 @@ namespace SF::Engine
         std::unique_ptr<BarPanels> panels;
         std::unique_ptr<AssetBrowser> assetBrowser;
         std::unique_ptr<CommandWindow> cmdWindow;
+        std::unique_ptr<GizmoManagement> gizmos;
     };
 } // namespace SF::Engine
