@@ -108,6 +108,31 @@ namespace SF::Engine
             os << "/>\n";
         }
 
+        void WriteEscaped(ostream &os, const string &text)
+        {
+            for (const char c: text)
+            {
+                switch (c)
+                {
+                    case '&':
+                        os << "&amp;";
+                        break;
+                    case '<':
+                        os << "&lt;";
+                        break;
+                    case '>':
+                        os << "&gt;";
+                        break;
+                    case '"':
+                        os << "&quot;";
+                        break;
+                    default:
+                        os << c;
+                        break;
+                }
+            }
+        }
+
         void WritePoints(ostream &os, const vector<Vec2> &points)
         {
             os << R"( points=")";
@@ -256,29 +281,46 @@ namespace SF::Engine
         using SurfacePtr = unique_ptr<plutovg_surface_t, SurfaceDeleter>;
     } // namespace
 
-    void SvgDocument::Write(const filesystem::path &filename) const
+    void SvgDocument::Write(ostream &os) const
     {
-        ofstream file(filename, ios::out | ios::trunc);
-        if (!file)
-            throw runtime_error("SvgDocument::Write: failed to open " + filename.string());
+        os.imbue(locale::classic()); // '.' decimal separator regardless of the global locale
 
-        file << R"(<?xml version="1.0" encoding="UTF-8"?>)" << '\n';
-        file << std::format(R"(<svg xmlns="http://www.w3.org/2000/svg" width="{}" height="{}")", width, height);
+        os << "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"" << width << "\" height=\"" << height << '"';
         if (viewBox)
         {
-            const auto &[minX, minY, w, h] = *viewBox;
-            file << std::format(R"( viewBox="{} {} {} {}")", minX, minY, w, h);
+            const auto &vb = *viewBox;
+            os << " viewBox=\"" << vb[0] << ' ' << vb[1] << ' ' << vb[2] << ' ' << vb[3] << '"';
         }
-        file << ">\n";
+        os << ">\n";
 
         if (!title.empty())
-            file << "<title>" << title << "</title>\n";
+        {
+            os << "<title>";
+            WriteEscaped(os, title);
+            os << "</title>\n";
+        }
 
         for (const SvgElement &element: elements)
-            WriteElement(file, element);
+            WriteElement(os, element);
 
-        file << "</svg>\n";
+        os << "</svg>\n";
     }
+
+    void SvgDocument::Write(const filesystem::path &filename) const
+    {
+        ofstream file(filename);
+        if (!file)
+            throw runtime_error("Failed to open " + filename.string());
+        Write(file);
+    }
+
+    string SvgDocument::ToString() const
+    {
+        ostringstream stream;
+        Write(stream);
+        return stream.str();
+    }
+
 
     namespace
     {

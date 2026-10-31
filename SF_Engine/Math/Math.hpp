@@ -222,7 +222,7 @@ namespace SF::Engine
          * @return The final random number
          */
         template<typename T>
-        T Rand(T Min, T Max)
+        static T Rand(T Min, T Max)
         {
             static random_device Device;
             static mt19937 Generator(Device());

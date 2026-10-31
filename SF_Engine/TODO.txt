@@ -49,3 +49,6 @@ PROJECTS:
 
 assets
 EngineSettings.config.xml
+
+
+ideas for scene logo: world made of led dots, like the dot matrix splash screen

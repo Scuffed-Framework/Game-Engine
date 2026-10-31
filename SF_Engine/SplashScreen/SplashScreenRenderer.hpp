@@ -2,33 +2,32 @@
 #include <Assets/Video/Video.hpp>
 #include <Platform/Windowing/WindowManager.hpp>
 #include <Rendering/RHI/Images/Image.hpp>
-#include "EngineSplashScreen.hpp"
+#include "SplashScreenImage.hpp"
 #include "SplashScreenQuotes.hpp"
 
 namespace SF::Engine
 {
-    namespace Internal
-    {
-        /*create image2d from bitmap
-        Bitmap(std::unique_ptr<uint8_t[]> &&data, const UVec2 &size,
-               uint32_t bytesPerPixel = 4);
-
-        embed image data from SF::Engine::Internal::MagickImage (uint8[])
-        */
-
-    }
+    using namespace std;
     // Editor & Engine have their splashscreens, Editor is outside of a window as a floating image, like Unreal or Unity
     // Engine is in the window, a video/gif, and more images, credits
 
     class SplashScreenRenderer
     {
     public:
-        void Init();
+        virtual ~SplashScreenRenderer() = default;
+        void Init()
+        {
+            const uint8_t rand  = Mathematics::Rand(static_cast<size_t>(0), Quotes.size());
+            const Ui32Vec2 size = SplashScreenWindow->GetSize();
+            Images.emplace_back(SplashScreenInternal::Construct(size, size), 5.0f, Quotes[rand]);
+        }
+
         virtual void Show();
         void Stop();
         void AddImage(Image2d, float);
 
-        vector<pair<Image2d /*img*/, float /*time*/>> Images_;
-        Window SplashScreenWindow_;
+        string Quote;
+        vector<tuple<shared_ptr<Image2d> /*img*/, float /*time*/, string /*Quote*/>> Images;
+        unique_ptr<Window> SplashScreenWindow;
     };
 } // namespace SF::Engine

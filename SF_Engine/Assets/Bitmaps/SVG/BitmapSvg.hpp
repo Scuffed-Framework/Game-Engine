@@ -152,7 +152,9 @@ namespace SF::Engine
     class SvgDocument
     {
     public:
+        void Write(ostream &os) const;
         void Write(const filesystem::path &filename) const;
+        [[nodiscard]] string ToString() const;
 
         float width  = 100.0f;
         float height = 100.0f;
