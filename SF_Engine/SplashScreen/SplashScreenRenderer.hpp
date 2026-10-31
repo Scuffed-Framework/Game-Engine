@@ -23,8 +23,14 @@ namespace SF::Engine
         }
 
         virtual void Show();
+
         void Stop();
-        void AddImage(Image2d, float);
+
+        void AddImage(const shared_ptr<Image2d> &img, float time)
+        {
+            const uint8_t rand = Mathematics::Rand(static_cast<size_t>(0), Quotes.size());
+            Images.emplace_back(img, time, Quotes[rand]);
+        }
 
         string Quote;
         vector<tuple<shared_ptr<Image2d> /*img*/, float /*time*/, string /*Quote*/>> Images;
