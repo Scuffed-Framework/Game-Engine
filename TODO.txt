@@ -32,10 +32,10 @@ LAST Web build support
 #QOL
 
 #Editor:
-finish panels, cmd, explorer, black profiler bar, profiler
+finish panels, cmd (add python), explorer, black profiler bar, profiler
 fix duplication and reparenting, add **FOLDERS and their color / icon menus**
 asset importers (sponza, Amazon Lumberyard café)
-finish shader wizard
+undo redo
 
 
 API Notes:
