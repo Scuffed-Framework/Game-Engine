@@ -25,7 +25,7 @@ NOW: RTGI, fix viewports
 23. multi API RHI
 24. Render Graph
 
-LAST Web build support
+Android, Apple OS, and web support
 
 1000. SPLASH SCREEN
 
