@@ -52,7 +52,7 @@ namespace SF::Engine
     struct Av1Packet
     {
         vector<uint8_t> Data;
-        int64_t Pts   = 0; // in `VideoInfo::TimebaseNum/Den` ticks
+        int64_t Pts   = 0; // in VideoInfo::TimebaseNum/Den ticks
         bool KeyFrame = false;
     };
 
@@ -76,8 +76,9 @@ namespace SF::Engine
         using TLoadMethod = function<void(Base &, const File &)>;
         /// Writes the buffer's AV1 stream to a container.
         using TWriteMethod = function<void(const Base &, const File &)>;
-        /// Foreign format -> AV1 MKV file on disk (transcode).
-        using TImport      = function<void(const File &, const File &outMkv)>;
+        /// Foreign format = transcode. Returns false if src is already AV1 MKV and nothing was written (the caller then
+        /// uses src directly), true once outMkv has been written.
+        using TImport      = function<bool(const File &, const File &outMkv)>;
         using TRegistryMap = unordered_map<string, tuple<TLoadMethod, TWriteMethod, TImport>>;
 
         static TRegistryMap &Registry()
@@ -91,9 +92,9 @@ namespace SF::Engine
         {
         protected:
             // T provides (all optional except Write/Load for native formats):
-            //   static void Load(Base&, const File&)          - native AV1 container
+            //   static void Load(Base&, const File&)          native AV1 container
             //   static void Write(const Base&, const File&)
-            //   static void Import(const File&, const File&)  - foreign -> AV1 MKV
+            //   static bool Import(const File&, const File&)  foreign -> AV1 MKV (false = src already native)
             template<typename... Args>
             static bool Register(Args &&...names)
             {

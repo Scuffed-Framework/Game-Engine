@@ -1,5 +1,9 @@
 #include "VideoBuffer.hpp"
 
+// Pulled in here (not just where they're used) so their static Register() calls live in a TU that is always linked.
+#include "Importers/ForeignVideo.hpp"
+#include "Matroska/MkvVideoBuffer.hpp"
+
 #include <dav1d/common.h>
 #include <dav1d/dav1d.h>
 
@@ -96,9 +100,12 @@ namespace SF::Engine
         fs::path out = path;
         out.replace_extension(".av1.mkv"); // TODO: replace imported media with mkv :) :) trolling
         error_code ec;
-        if (const bool fresh = fs::exists(out, ec) && fs::last_write_time(out, ec) >= fs::last_write_time(path, ec);
-            !fresh)
-            importFn(File(src), File(out));
+        if (fs::exists(out, ec) && fs::last_write_time(out, ec) >= fs::last_write_time(path, ec))
+            return {out};
+
+        // false = src is already AV1 MKV (.mkv probe), nothing was written.
+        if (!importFn(File(src), File(out)))
+            return src;
 
         return {out};
     }
