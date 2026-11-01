@@ -98,11 +98,11 @@ namespace SF::Engine
 
     void RhiRenderStage::Rebuild(const RhiSwapchain &swapchain)
     {
-        auto physicalDevice = RenderSystem::Get()->GetPhysicalDevice();
-        auto logicalDevice  = RenderSystem::Get()->GetLogicalDevice();
-        auto surface        = RenderSystem::Get()->GetSurface(0);
+        const auto physicalDevice = RenderSystem::Get()->GetPhysicalDevice();
+        const auto logicalDevice  = RenderSystem::Get()->GetLogicalDevice();
+        const auto surface        = RenderSystem::Get()->GetSurface(0);
 
-        auto msaaSamples = physicalDevice->GetMsaaSamples();
+        auto msaaSamples     = physicalDevice->GetMsaaSamples();
         const UVec2 fbExtent = GetEffectiveExtent(swapchain);
         Log::Info("RenderStage::Rebuild extent={}x{}", fbExtent.x, fbExtent.y);
 
@@ -121,7 +121,7 @@ namespace SF::Engine
 
         framebuffer = std::make_unique<Framebuffer>(*logicalDevice, swapchain, *this, *renderpass, depthStencil.get(),
                                                     fbExtent, msaaSamples);
-        outOfDate = false;
+        outOfDate   = false;
 
         descriptors.clear();
         auto where = descriptors.end();

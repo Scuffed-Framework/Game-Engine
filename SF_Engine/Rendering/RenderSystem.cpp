@@ -214,7 +214,7 @@ namespace SF::Engine
 
             for (auto &renderStage: renderer->renderStages)
             {
-                auto &commandBuffer = perSurfaceBuffer->commandBuffers[swapchain->GetActiveImageIndex()];
+                auto &commandBuffer = perSurfaceBuffer->commandBuffers[perSurfaceBuffer->currentFrame];
 
                 if (!commandBuffer->IsRunning())
                     commandBuffer->Begin(VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT);
@@ -258,6 +258,7 @@ namespace SF::Engine
 
             if (wentStale)
             {
+                perSurfaceBuffer->framebufferResized = true;
                 RecreatePass();
                 return;
             }
@@ -567,7 +568,7 @@ namespace SF::Engine
 
         auto &swapchain           = swapchains[surfaceId];
         auto &perSurfaceBuffer    = perSurfaceBuffers[surfaceId];
-        const auto &commandBuffer = perSurfaceBuffer->commandBuffers[swapchain->GetActiveImageIndex()];
+        const auto &commandBuffer = perSurfaceBuffer->commandBuffers[perSurfaceBuffer->currentFrame];
 
         if (!commandBuffer->IsRunning())
             commandBuffer->Begin(VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT);
@@ -614,21 +615,23 @@ namespace SF::Engine
         const auto presentQueue      = logicalDevice->GetPresentQueue();
         const auto &swapchain        = swapchains[surfaceId];
         const auto &perSurfaceBuffer = perSurfaceBuffers[surfaceId];
-        const auto &commandBuffer    = perSurfaceBuffer->commandBuffers[swapchain->GetActiveImageIndex()];
+        const auto &commandBuffer    = perSurfaceBuffer->commandBuffers[perSurfaceBuffer->currentFrame];
 
         vkCmdEndRenderPass(*commandBuffer);
 
         if (!renderStage.HasSwapchain())
             return;
 
+        const uint32_t imageIndex = swapchain->GetActiveImageIndex();
+
         commandBuffer->End();
         commandBuffer->Submit(perSurfaceBuffer->presentCompletes[perSurfaceBuffer->currentFrame],
-                              perSurfaceBuffer->renderCompletes[perSurfaceBuffer->currentFrame],
+                              perSurfaceBuffer->renderCompletes[imageIndex],
                               perSurfaceBuffer->flightFences[perSurfaceBuffer->currentFrame]);
 
-        const auto presentResult = swapchain->QueuePresent(
-                presentQueue, perSurfaceBuffer->renderCompletes[perSurfaceBuffer->currentFrame]);
-        if (presentResult == VK_ERROR_OUT_OF_DATE_KHR || presentResult == VK_SUBOPTIMAL_KHR ||
+        if (const auto presentResult =
+                    swapchain->QueuePresent(presentQueue, perSurfaceBuffer->renderCompletes[imageIndex]);
+            presentResult == VK_ERROR_OUT_OF_DATE_KHR || presentResult == VK_SUBOPTIMAL_KHR ||
             presentResult == VK_ERROR_SURFACE_LOST_KHR)
         {
             perSurfaceBuffer->framebufferResized = true;

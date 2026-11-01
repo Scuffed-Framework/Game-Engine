@@ -305,43 +305,42 @@ namespace SF::Engine
         }
 
         std::lock_guard<std::mutex> lock(m_lockCount);
-        m_pendingFrees.push_back({EBindingType::BindlessUniformBuffer, index.key, m_currentFrame});
+        m_pendingFrees.push_back(
+                {.type = EBindingType::BindlessUniformBuffer, .index = index.key, .freedOnFrame = m_currentFrame});
         index = {};
     }
 
     uint32_t BindlessManager::RequireIndex(EBindingType type)
     {
-        std::lock_guard<std::mutex> lock(m_lockCount);
+        std::lock_guard lock(m_lockCount);
 
-        const auto &typeIndex = static_cast<uint32_t>(type);
-        const auto &config    = m_bindingConfigs[typeIndex];
+        const auto typeIndex = static_cast<uint32_t>(type);
+        const auto &config   = m_bindingConfigs[typeIndex];
+        auto &freeCounts     = m_freeCount[typeIndex];
+        auto &usedCount      = m_usedCount[typeIndex];
 
-        uint32_t index   = 0;
-        auto &freeCounts = m_freeCount[typeIndex];
-        auto &usedCount  = m_usedCount[typeIndex];
-        if (freeCounts.empty())
+        // Reuse a freed slot first.
+        if (!freeCounts.empty())
         {
-            index = usedCount;
-            usedCount++;
-            if (usedCount >= config.count)
-            {
-                Log::Error("Too many items used in this set. Current bindless count: {}, "
-                           "configured maximum: {}, device limit: {}.",
-                           usedCount, config.count, config.limit);
-                Log::Error("Bindless set count has been reset to 0. This may cause rendering errors.");
-
-                usedCount = 0;
-            }
-        } else
-        {
-            index = freeCounts.front();
+            const uint32_t index = freeCounts.front();
             freeCounts.pop();
+            return index;
         }
 
-        return index;
+        // Check BEFORE handing out a slot, so every index in [0, count) is usable and nothing is ever overwritten.
+        if (usedCount >= config.count)
+        {
+            Log::Error(
+                    "Bindless set exhausted for binding type {}. Used: {}, configured maximum: {}, device limit: {}.",
+                    typeIndex, usedCount, config.count, config.limit);
+            throw std::runtime_error("Bindless descriptor array exhausted (binding type " + std::to_string(typeIndex) +
+                                     ")");
+        }
+
+        return usedCount++;
     }
 
-    void BindlessManager::FreeIndexImmediate(EBindingType type, uint32_t index)
+    void BindlessManager::FreeIndexImmediate(EBindingType type, const uint32_t index)
     {
         // Caller must already hold m_lockCount.
         m_freeCount[static_cast<uint32_t>(type)].push(index);
@@ -357,15 +356,15 @@ namespace SF::Engine
 
         const uint64_t cutoff = m_currentFrame - kFramesInFlight;
 
-        auto it = ranges::remove_if(m_pendingFrees,
-                                    [&](const PendingFree &pf)
-                                    {
-                                        if (pf.freedOnFrame > cutoff)
-                                            return false;
-                                        FreeIndexImmediate(pf.type, pf.index);
-                                        return true;
-                                    })
-                          .begin();
+        const auto it = ranges::remove_if(m_pendingFrees,
+                                          [&](const PendingFree &pf)
+                                          {
+                                              if (pf.freedOnFrame > cutoff)
+                                                  return false;
+                                              FreeIndexImmediate(pf.type, pf.index);
+                                              return true;
+                                          })
+                                .begin();
         m_pendingFrees.erase(it, m_pendingFrees.end());
     }
 

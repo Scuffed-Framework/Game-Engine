@@ -81,10 +81,10 @@ namespace SF::Engine
             uint32_t count;
             uint32_t limit;
         };
-        BindingConfig m_bindingConfigs[kBindingCount];
+        BindingConfig m_bindingConfigs[kBindingCount]{};
         std::mutex m_lockCount;
         std::queue<uint32_t> m_freeCount[kBindingCount];
-        uint32_t m_usedCount[kBindingCount];
+        uint32_t m_usedCount[kBindingCount]{};
 
         std::vector<PendingFree> m_pendingFrees;
         uint64_t m_currentFrame = 0;

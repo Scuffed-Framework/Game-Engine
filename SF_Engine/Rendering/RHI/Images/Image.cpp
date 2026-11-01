@@ -316,6 +316,7 @@ namespace SF::Engine
                                       uint32_t layerCount, uint32_t baseArrayLayer)
     {
         CommandBuffer commandBuffer(true); // must begin before recording
+        VkPipelineStageFlags srcStage = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
 
         VkImageMemoryBarrier imageMemoryBarrier            = {};
         imageMemoryBarrier.sType                           = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
@@ -339,6 +340,7 @@ namespace SF::Engine
                 break;
             case VK_IMAGE_LAYOUT_PREINITIALIZED:
                 imageMemoryBarrier.srcAccessMask = VK_ACCESS_HOST_WRITE_BIT;
+                srcStage |= VK_PIPELINE_STAGE_HOST_BIT; // HOST_WRITE is only valid with the host stage
                 break;
             case VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL:
                 imageMemoryBarrier.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
@@ -383,9 +385,7 @@ namespace SF::Engine
                 break;
             case VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL:
                 if (imageMemoryBarrier.srcAccessMask == 0)
-                {
-                    imageMemoryBarrier.srcAccessMask = VK_ACCESS_HOST_WRITE_BIT | VK_ACCESS_TRANSFER_WRITE_BIT;
-                }
+                    imageMemoryBarrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
 
                 imageMemoryBarrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
                 break;
@@ -397,9 +397,9 @@ namespace SF::Engine
                 break;
         }
 
-        vkCmdPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, 0,
-                             0, nullptr, 0, nullptr, 1, &imageMemoryBarrier);
-
+        vkCmdPipelineBarrier(commandBuffer, srcStage, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, 0, 0, nullptr, 0, nullptr, 1,
+                             &imageMemoryBarrier);
+        
         commandBuffer.SubmitIdle();
     }
 
