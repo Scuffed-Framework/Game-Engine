@@ -46,10 +46,10 @@ namespace SF::Engine
         UUID uuid = UUID::Generate(); // stable asset ID: scenes reference assets by this, never by path
 
         int schemaVersion   = kSchemaVersion;
-        int importerVersion = 0;  // bumped when an importer changes what it produces; lets us detect stale imports
-        string sourceHash;        // BLAKE2b-256 (hex) of the source bytes at import time
-        string packageId;         // filled in by the RSC build step; empty in the editor
-        string recordLocator;     // ditto
+        int importerVersion = 0;   // bumped when an importer changes what it produces; lets us detect stale imports
+        string sourceHash;         // BLAKE2b-256 (hex) of the source bytes at import time
+        string packageId;          // filled in by the RSC build step; empty in the editor
+        string recordLocator;      // ditto
         vector<UUID> dependencies; // assets this one needs (e.g. a model's textures)
 
         virtual ~AssetBase() = default;
@@ -96,7 +96,7 @@ namespace SF::Engine
 
         void Deserialize(const XMLNode &node) override
         {
-            XMLNode asset = node.GetChild("Asset");
+            const XMLNode asset = node.GetChild("Asset");
             asset.GetAttribute("Name", name);
             int rawType{};
             asset.GetAttribute("Type", rawType);
@@ -111,7 +111,7 @@ namespace SF::Engine
             asset.GetAttribute("RecordLocator", recordLocator);
 
             dependencies.clear();
-            if (XMLNode deps = asset.GetChild("Dependencies"); deps.IsValid())
+            if (const XMLNode deps = asset.GetChild("Dependencies"); deps.IsValid())
             {
                 for (const XMLNode &d: deps.GetChildren("Dependency"))
                 {
@@ -128,7 +128,7 @@ namespace SF::Engine
                 }
             }
 
-            if (XMLNode settings = asset.GetChild("ImportSettings"); settings.IsValid())
+            if (const XMLNode settings = asset.GetChild("ImportSettings"); settings.IsValid())
                 DeserializeImportSettings(settings);
         }
 
@@ -197,6 +197,14 @@ namespace SF::Engine
         // Adds an already-constructed asset (e.g. freshly imported) to the live asset list.
         void AddAsset(shared_ptr<AssetBase> asset);
 
+        // Removes the file as well since we aren't going to use it
+        bool RemoveAsset(const UUID &guid);
+        // Removes every disk-backed asset whose source lives at or below the folder. Returns how many.
+        size_t RemoveAssetsUnder(const filesystem::path &folder);
+
+        // Returns true if the list changed.
+        bool SyncWithDisk(bool scanForNew);
+
         template<typename T>
         shared_ptr<Asset<T>> GetAsset(const UUID &guid) const
         {
@@ -217,6 +225,7 @@ namespace SF::Engine
         }
 
     private:
+        bool LoadMetaFile(const filesystem::path &metaPath);
         static unordered_map<string, AssetFactoryFn> &Factories();
     };
 

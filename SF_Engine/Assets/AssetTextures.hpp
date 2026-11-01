@@ -120,6 +120,29 @@ namespace SF::Engine
 )svg");
         }
 
+        // Audio icon: two beamed eighth notes in yellow-orange, the first (left) note higher than the second.
+        inline std::string AudioSvg()
+        {
+            return Svg(R"svg(
+<defs>
+  <linearGradient id="note" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0" stop-color="#FFD23F"/>
+    <stop offset="1" stop-color="#FF8C1A"/>
+  </linearGradient>
+</defs>
+<g fill="url(#note)">
+  <!-- stems (left note is 26 units higher than the right) -->
+  <rect x="99"  y="70" width="10" height="94" rx="3"/>
+  <rect x="191" y="96" width="10" height="94" rx="3"/>
+  <!-- beam, sloping down to the right with the notes -->
+  <path d="M99 70L201 96V122L99 96Z"/>
+  <!-- note heads -->
+  <ellipse cx="82"  cy="164" rx="26" ry="19" transform="rotate(-20 82 164)"/>
+  <ellipse cx="174" cy="190" rx="26" ry="19" transform="rotate(-20 174 190)"/>
+</g>
+)svg");
+        }
+
         // Rasterizes the SVG at size x size (default 256) and uploads it as an Image2d.
         inline std::shared_ptr<Image2d> Construct(const std::string &svg, uint32_t size = 256)
         {
@@ -127,6 +150,7 @@ namespace SF::Engine
             BitmapSvg::LoadFromMemory(*bitmap, svg, {size, size});
             return std::make_shared<Image2d>(std::move(bitmap));
         }
+
         inline std::string LogoBody()
         {
             return R"svg(
@@ -215,6 +239,10 @@ namespace SF::Engine
     inline std::shared_ptr<Image2d> GetCppLogo(uint32_t size = 256)
     {
         return EmbeddedIcons::Construct(EmbeddedIcons::CppSvg(), size);
+    }
+    inline std::shared_ptr<Image2d> GetAudioLogo(uint32_t size = 256)
+    {
+        return EmbeddedIcons::Construct(EmbeddedIcons::AudioSvg(), size);
     }
     inline std::shared_ptr<Image2d> GetSceneLogo(uint32_t size = 256)
     {
