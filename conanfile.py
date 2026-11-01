@@ -55,6 +55,7 @@ class SfEngineConan(ConanFile):
 
         # Window and Input
         self.requires("glfw/3.4")
+        self.requires("sdl/3.4.18")
 
         # Math Library
         self.requires("glm/cci.20230113")

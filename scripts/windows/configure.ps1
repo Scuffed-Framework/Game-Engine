@@ -9,6 +9,26 @@ if ($r) { $buildType = "Release" }
 $root = Split-Path $PSScriptRoot -Parent
 Push-Location $root
 
+# TODO: no msvc, use mingw or gcc or clang
+
+function CreateConanPackage {
+    param (
+        [string]$path,
+        [string]$version
+    )
+
+    conan install "./scripts/conan-ext/$path/conanfile.py"
+
+    # In PowerShell, backtick (`) is used for line continuation, NOT backslash (\)
+    conan create "./scripts/conan-ext/$path/" `
+      --version="$version" `
+      -s build_type=$buildType `
+      -s arch=x86_64 `
+      -s compiler=gcc `
+      -s compiler.version=16 `
+      -s compiler.libcxx=libstdc++11
+}
+
 $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
 if (-not (Test-Path $vswhere)) {
     Write-Host "vswhere not found - is Visual Studio installed?" -ForegroundColor Red
@@ -78,14 +98,9 @@ Write-Host "Using compiler: $($cl.Source)" -ForegroundColor DarkGray
 
 Write-Host "==> Running conan install..." -ForegroundColor Cyan
 conan install . --profile=./profiles/windows-x64-$buildType.txt --build=missing
-conan install ./scripts/conan-ext/openapv/all/conanfile.py
-conan create ./scripts/conan-ext/openapv/all/ \
-    --version=1.1.3.0 \
-    -s build_type=$BUILD_TYPE \
-    -s arch=x86_64 \
-    -s compiler=gcc \
-    -s compiler.version=16 \
-    -s compiler.libcxx=libstdc++11
+
+CreateConanPackage -path "openapv/all" -version "1.1.3.0"
+
 if ($LASTEXITCODE -ne 0) { Write-Host "conan install failed" -ForegroundColor Red; Pop-Location; exit 1 }
 
 Write-Host "==> Running cmake configure..." -ForegroundColor Cyan

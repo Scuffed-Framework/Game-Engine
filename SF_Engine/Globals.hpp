@@ -5,7 +5,9 @@ namespace SF::Engine
 {
     using namespace std;
 
-    constexpr string EngineCVarNamespace = "SFE";
+    constexpr string EngineCVarNamespace       = "SFE";
+    constexpr string RenderSystemCVarNamespace = "RS";
+
 } // namespace SF::Engine
 #if not defined NODISCARD
     #define NODISCARD [[nodiscard]]
