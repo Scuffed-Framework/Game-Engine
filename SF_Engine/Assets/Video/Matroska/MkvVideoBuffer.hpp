@@ -193,7 +193,9 @@ namespace SF::Engine
                 mkv.end_cluster();
             mkv.finalize(); // Cues + trailing SeekHead, closes Segment
         }
-        // No Import: .mkv is already the native format.
+        /// Non-AV1 Matroska (H.264 / VP8 / VP9 in .mkv) -> AV1 MKV. Returns false, writing nothing, when the file
+        /// already holds AV1 (native). Defined in Importers/ForeignVideoImport.cpp.
+        static bool Import(const File &src, const File &outMkv);
     };
 
     struct Av1EncodeSettings
@@ -253,7 +255,7 @@ namespace SF::Engine
             }
 
             // Encode into a VideoBuffer, then reuse the single MKV write path.
-            VideoBuffer out(outMkv);
+            VideoBuffer out(outMkv, false); // false: outMkv doesn't exist yet, don't try to load it
             out.SetInfo(info);
 
             auto drain = [&](bool final)
