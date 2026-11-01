@@ -96,10 +96,6 @@ target_compile_definitions(SF_Engine PUBLIC
         VK_NO_PROTOTYPES
 )
 
-if (CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
-    target_compile_options(SF_Engine PRIVATE -Wno-c++26-extensions)
-endif ()
-
 #
 # Platform selection (console builds first, they may also set UNIX)
 #
