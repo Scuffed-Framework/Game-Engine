@@ -37,7 +37,7 @@ class SfEngineConan(ConanFile):
         self.requires("libsvtav1/2.2.1")
         self.requires("libvpx/1.16.0")
         self.requires("libwebm/1.0.0.32")
-        # self.requires("openapv/1.1.3.0") /scripts/conan-ext/openapv
+        self.requires("openapv/1.1.3.0")
         self.requires("openh264/2.6.0")
 
         # 3D Model Loading

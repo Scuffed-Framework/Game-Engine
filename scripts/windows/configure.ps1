@@ -79,6 +79,13 @@ Write-Host "Using compiler: $($cl.Source)" -ForegroundColor DarkGray
 Write-Host "==> Running conan install..." -ForegroundColor Cyan
 conan install . --profile=./profiles/windows-x64-$buildType.txt --build=missing
 conan install ./scripts/conan-ext/openapv/all/conanfile.py
+conan create ./scripts/conan-ext/openapv/all/ \
+    --version=1.1.3.0 \
+    -s build_type=$BUILD_TYPE \
+    -s arch=x86_64 \
+    -s compiler=gcc \
+    -s compiler.version=16 \
+    -s compiler.libcxx=libstdc++11
 if ($LASTEXITCODE -ne 0) { Write-Host "conan install failed" -ForegroundColor Red; Pop-Location; exit 1 }
 
 Write-Host "==> Running cmake configure..." -ForegroundColor Cyan

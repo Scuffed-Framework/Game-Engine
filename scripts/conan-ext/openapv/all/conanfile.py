@@ -9,6 +9,7 @@ required_conan_version = ">=2.0.0"
 
 class OpenAPVConan(ConanFile):
     name = "openapv"
+    version = "1.1.3.0"
     description = "Open Advanced Professional Video Codec reference implementation."
     license = "BSD-3-Clause"
     url = "https://github.com/conan-io/conan-center-index"
@@ -68,10 +69,8 @@ class OpenAPVConan(ConanFile):
         self.cpp_info.set_property("pkg_config_name", "OpenAPV")
 
         self.cpp_info.libs = ["oapv"]
-        if self.settings.os == "Windows" and self.options.shared:
-            self.cpp_info.libdirs = ["lib/oapv/import"]
-        elif not self.options.shared:
-            self.cpp_info.libdirs = ["lib/oapv"]
+        self.cpp_info.libdirs = ["lib"]
+        self.cpp_info.includedirs = ["include"]
 
         if not self.options.shared:
             self.cpp_info.defines.append("OAPV_STATIC_DEFINE")
