@@ -16,16 +16,15 @@ namespace SF::Engine
 
     WindowManager::WindowManager()
     {
-        if (!SDL_Init(SDL_INIT_VIDEO
+        Uint32 initFlags = SDL_INIT_VIDEO;
 #ifdef SF_INPUT_ADDONS
-                      | SDL_INIT_HAPTIC | SDL_INIT_GAMEPAD | SDL_INIT_JOYSTICK
-#elif SF_GAME_REQUIRES_CAMERA_AND_SENSOR_ACCESS
-                      | SDL_INIT_CAMERA | SDL_INIT_SENSOR
+        initFlags |= SDL_INIT_HAPTIC | SDL_INIT_GAMEPAD | SDL_INIT_JOYSTICK;
 #endif
-                      ))
-        {
+#ifdef SF_GAME_REQUIRES_CAMERA_AND_SENSOR_ACCESS
+        initFlags |= SDL_INIT_CAMERA | SDL_INIT_SENSOR;
+#endif
+        if (!SDL_Init(initFlags))
             throw runtime_error(string("SDL failed to initialize: ") + SDL_GetError());
-        }
 
         if (!SDL_Vulkan_LoadLibrary(nullptr))
             throw runtime_error(string("SDL failed to find Vulkan support: ") + SDL_GetError());
@@ -44,10 +43,10 @@ namespace SF::Engine
 
     WindowManager::~WindowManager()
     {
+        SDL_RemoveEventWatch(&WindowManager::EventWatch, this);
         windows.clear();
         monitors.clear();
 
-        SDL_RemoveEventWatch(&WindowManager::EventWatch, this);
         SDL_Vulkan_UnloadLibrary();
         SDL_Quit();
     }
@@ -66,7 +65,7 @@ namespace SF::Engine
             DispatchEvent(event);
     }
 
-    void WindowManager::WaitEvents(int32_t timeoutMs)
+    void WindowManager::WaitEvents(const int32_t timeoutMs)
     {
         SDL_Event event;
         if (SDL_WaitEventTimeout(&event, timeoutMs))
