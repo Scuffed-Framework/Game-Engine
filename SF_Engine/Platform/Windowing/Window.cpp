@@ -1,192 +1,412 @@
 #include <Rendering/Material/Color/Color.hpp>
 #include "WindowManager.hpp"
 
-#define GLFW_EXPOSE_NATIVE_WIN32
-#include <GLFW/glfw3.h>
+#include <SDL3/SDL.h>
+#include <SDL3/SDL_vulkan.h>
 #if _PLATFORM_WINDOWS
     #pragma comment(lib, "dwmapi.lib")
-    #include <GLFW/glfw3native.h>
     #include <dwmapi.h>
 #endif
 
 #include <Gui/ImGui/ocornut/imgui.h>
-#include <Gui/ImGui/ocornut/imgui_impl_glfw.h>
+#include <Gui/ImGui/ocornut/imgui_impl_sdl3.h>
 #include <Rendering/RenderSystem.hpp>
 #include <algorithm>
+#include <array>
+#include <memory>
+#include <unordered_map>
 
 namespace SF::Engine
 {
-    static_assert(GLFW_KEY_LAST == static_cast<int16_t>(Key::Menu),
-                  "GLFW keys count does not match our keys enum count.");
-    static_assert(GLFW_MOUSE_BUTTON_LAST == static_cast<int16_t>(MouseButton::_8),
-                  "GLFW mouse button count does not match our mouse button enum count.");
-
-    void CallbackWindowPosition(GLFWwindow *glfwWindow, int32_t xpos, int32_t ypos)
+    namespace
     {
-        auto window = static_cast<Window *>(glfwGetWindowUserPointer(glfwWindow));
-        if (window->fullscreen)
-            return;
+        constexpr auto kWindowProperty = "SFE.Window";
 
-        window->position = {xpos, ypos};
-        window->onPosition(window->position);
-    }
+        inline bool ImGuiReady() { return ImGui::GetCurrentContext() != nullptr; }
 
-    void CallbackWindowSize(GLFWwindow *glfwWindow, int32_t width, int32_t height)
-    {
-        if (width <= 0 || height <= 0)
-            return;
-        auto window = static_cast<Window *>(glfwGetWindowUserPointer(glfwWindow));
-
-        if (window->fullscreen)
+        struct KeyMapping
         {
-            window->fullscreenSize = {width, height};
-            window->onSize(window->fullscreenSize);
-        } else
+            SDL_Scancode scancode;
+            Key key;
+        };
+
+        constexpr KeyMapping kKeyMap[] = {
+                {SDL_SCANCODE_SPACE, Key::Space},
+                {SDL_SCANCODE_APOSTROPHE, Key::Apostrophe},
+                {SDL_SCANCODE_COMMA, Key::Comma},
+                {SDL_SCANCODE_MINUS, Key::Minus},
+                {SDL_SCANCODE_PERIOD, Key::Period},
+                {SDL_SCANCODE_SLASH, Key::Slash},
+                {SDL_SCANCODE_0, Key::_0},
+                {SDL_SCANCODE_1, Key::_1},
+                {SDL_SCANCODE_2, Key::_2},
+                {SDL_SCANCODE_3, Key::_3},
+                {SDL_SCANCODE_4, Key::_4},
+                {SDL_SCANCODE_5, Key::_5},
+                {SDL_SCANCODE_6, Key::_6},
+                {SDL_SCANCODE_7, Key::_7},
+                {SDL_SCANCODE_8, Key::_8},
+                {SDL_SCANCODE_9, Key::_9},
+                {SDL_SCANCODE_SEMICOLON, Key::Semicolon},
+                {SDL_SCANCODE_EQUALS, Key::Equal},
+                {SDL_SCANCODE_A, Key::A},
+                {SDL_SCANCODE_B, Key::B},
+                {SDL_SCANCODE_C, Key::C},
+                {SDL_SCANCODE_D, Key::D},
+                {SDL_SCANCODE_E, Key::E},
+                {SDL_SCANCODE_F, Key::F},
+                {SDL_SCANCODE_G, Key::G},
+                {SDL_SCANCODE_H, Key::H},
+                {SDL_SCANCODE_I, Key::I},
+                {SDL_SCANCODE_J, Key::J},
+                {SDL_SCANCODE_K, Key::K},
+                {SDL_SCANCODE_L, Key::L},
+                {SDL_SCANCODE_M, Key::M},
+                {SDL_SCANCODE_N, Key::N},
+                {SDL_SCANCODE_O, Key::O},
+                {SDL_SCANCODE_P, Key::P},
+                {SDL_SCANCODE_Q, Key::Q},
+                {SDL_SCANCODE_R, Key::R},
+                {SDL_SCANCODE_S, Key::S},
+                {SDL_SCANCODE_T, Key::T},
+                {SDL_SCANCODE_U, Key::U},
+                {SDL_SCANCODE_V, Key::V},
+                {SDL_SCANCODE_W, Key::W},
+                {SDL_SCANCODE_X, Key::X},
+                {SDL_SCANCODE_Y, Key::Y},
+                {SDL_SCANCODE_Z, Key::Z},
+                {SDL_SCANCODE_LEFTBRACKET, Key::LeftBracket},
+                {SDL_SCANCODE_BACKSLASH, Key::Backslash},
+                {SDL_SCANCODE_RIGHTBRACKET, Key::RightBracket},
+                {SDL_SCANCODE_GRAVE, Key::GraveAccent},
+                {SDL_SCANCODE_NONUSBACKSLASH, Key::World1},
+                {SDL_SCANCODE_NONUSHASH, Key::World2},
+                {SDL_SCANCODE_ESCAPE, Key::Escape},
+                {SDL_SCANCODE_RETURN, Key::Enter},
+                {SDL_SCANCODE_TAB, Key::Tab},
+                {SDL_SCANCODE_BACKSPACE, Key::Backspace},
+                {SDL_SCANCODE_INSERT, Key::Insert},
+                {SDL_SCANCODE_DELETE, Key::Delete},
+                {SDL_SCANCODE_RIGHT, Key::Right},
+                {SDL_SCANCODE_LEFT, Key::Left},
+                {SDL_SCANCODE_DOWN, Key::Down},
+                {SDL_SCANCODE_UP, Key::Up},
+                {SDL_SCANCODE_PAGEUP, Key::PageUp},
+                {SDL_SCANCODE_PAGEDOWN, Key::PageDown},
+                {SDL_SCANCODE_HOME, Key::Home},
+                {SDL_SCANCODE_END, Key::End},
+                {SDL_SCANCODE_CAPSLOCK, Key::CapsLock},
+                {SDL_SCANCODE_SCROLLLOCK, Key::ScrollLock},
+                {SDL_SCANCODE_NUMLOCKCLEAR, Key::NumLock},
+                {SDL_SCANCODE_PRINTSCREEN, Key::PrintScreen},
+                {SDL_SCANCODE_PAUSE, Key::Pause},
+                {SDL_SCANCODE_F1, Key::F1},
+                {SDL_SCANCODE_F2, Key::F2},
+                {SDL_SCANCODE_F3, Key::F3},
+                {SDL_SCANCODE_F4, Key::F4},
+                {SDL_SCANCODE_F5, Key::F5},
+                {SDL_SCANCODE_F6, Key::F6},
+                {SDL_SCANCODE_F7, Key::F7},
+                {SDL_SCANCODE_F8, Key::F8},
+                {SDL_SCANCODE_F9, Key::F9},
+                {SDL_SCANCODE_F10, Key::F10},
+                {SDL_SCANCODE_F11, Key::F11},
+                {SDL_SCANCODE_F12, Key::F12},
+                {SDL_SCANCODE_F13, Key::F13},
+                {SDL_SCANCODE_F14, Key::F14},
+                {SDL_SCANCODE_F15, Key::F15},
+                {SDL_SCANCODE_F16, Key::F16},
+                {SDL_SCANCODE_F17, Key::F17},
+                {SDL_SCANCODE_F18, Key::F18},
+                {SDL_SCANCODE_F19, Key::F19},
+                {SDL_SCANCODE_F20, Key::F20},
+                {SDL_SCANCODE_F21, Key::F21},
+                {SDL_SCANCODE_F22, Key::F22},
+                {SDL_SCANCODE_F23, Key::F23},
+                {SDL_SCANCODE_F24, Key::F24},
+                // Key::F25 has no SDL equivalent.
+                {SDL_SCANCODE_KP_0, Key::Numpad0},
+                {SDL_SCANCODE_KP_1, Key::Numpad1},
+                {SDL_SCANCODE_KP_2, Key::Numpad2},
+                {SDL_SCANCODE_KP_3, Key::Numpad3},
+                {SDL_SCANCODE_KP_4, Key::Numpad4},
+                {SDL_SCANCODE_KP_5, Key::Numpad5},
+                {SDL_SCANCODE_KP_6, Key::Numpad6},
+                {SDL_SCANCODE_KP_7, Key::Numpad7},
+                {SDL_SCANCODE_KP_8, Key::Numpad8},
+                {SDL_SCANCODE_KP_9, Key::Numpad9},
+                {SDL_SCANCODE_KP_PERIOD, Key::NumpadDecimal},
+                {SDL_SCANCODE_KP_DIVIDE, Key::NumpadDivide},
+                {SDL_SCANCODE_KP_MULTIPLY, Key::NumpadMultiply},
+                {SDL_SCANCODE_KP_MINUS, Key::NumpadSubtract},
+                {SDL_SCANCODE_KP_PLUS, Key::NumpadAdd},
+                {SDL_SCANCODE_KP_ENTER, Key::NumpadEnter},
+                {SDL_SCANCODE_KP_EQUALS, Key::NumpadEqual},
+                {SDL_SCANCODE_LSHIFT, Key::ShiftLeft},
+                {SDL_SCANCODE_LCTRL, Key::ControlLeft},
+                {SDL_SCANCODE_LALT, Key::AltLeft},
+                {SDL_SCANCODE_LGUI, Key::SuperLeft},
+                {SDL_SCANCODE_RSHIFT, Key::ShiftRight},
+                {SDL_SCANCODE_RCTRL, Key::ControlRight},
+                {SDL_SCANCODE_RALT, Key::AltRight},
+                {SDL_SCANCODE_RGUI, Key::SuperRight},
+                {SDL_SCANCODE_APPLICATION, Key::Menu},
+        };
+
+        constexpr Key kUnknownKey = static_cast<Key>(-1);
+
+        Key ToKey(SDL_Scancode scancode)
         {
-            window->size = {width, height};
-            window->onSize(window->size);
+            static constexpr array<Key, SDL_SCANCODE_COUNT> table = []
+            {
+                array<Key, SDL_SCANCODE_COUNT> t{};
+                t.fill(kUnknownKey);
+                for (const auto &[code, key]: kKeyMap)
+                    t[static_cast<size_t>(code)] = key;
+                return t;
+            }();
+            return (scancode > 0 && scancode < SDL_SCANCODE_COUNT) ? table[static_cast<size_t>(scancode)] : kUnknownKey;
         }
-    }
 
-    void CallbackWindowClose(GLFWwindow *glfwWindow)
-    {
-        auto window    = static_cast<Window *>(glfwGetWindowUserPointer(glfwWindow));
-        window->closed = true;
-        Engine::Get()->RequestClose();
-        window->onClose();
-    }
-
-    // Forward an input event to ImGui only when a context exists and is initialized.
-    // Between window creation and SceneRenderer::Start(), ImGui isn't ready yet.
-    static inline bool ImGuiReady() { return ImGui::GetCurrentContext() != nullptr; }
-
-    void CallbackWindowFocus(GLFWwindow *glfwWindow, int32_t focused)
-    {
-        if (ImGuiReady())
-            ImGui_ImplGlfw_WindowFocusCallback(glfwWindow, focused);
-        auto window     = static_cast<Window *>(glfwGetWindowUserPointer(glfwWindow));
-        window->focused = static_cast<bool>(focused);
-        window->onFocus(focused == GLFW_TRUE);
-    }
-
-    void CallbackWindowIconify(GLFWwindow *glfwWindow, int32_t iconified)
-    {
-        auto window       = static_cast<Window *>(glfwGetWindowUserPointer(glfwWindow));
-        window->iconified = iconified;
-        window->onIconify(iconified);
-    }
-
-    void CallbackWindowRefresh(GLFWwindow *glfwWindow)
-    {
-        // Guard against reentrance: Win32 can fire WM_PAINT/WM_NCPAINT during
-        // Vulkan allocations (vmaCreateImage etc.) which re-enters this callback
-        // before the first frame is even complete, causing an infinite rebuild loop.
-        static bool s_inRefresh = false;
-        if (s_inRefresh)
-            return;
-        s_inRefresh = true;
-
-        auto *rs = RenderSystem::Get();
-
-        // Only run during resize/move modal loops once the renderer is actually
-        // started. Before that, there is nothing to present and ResetRenderStages
-        // would be called recursively.
-        if (rs && rs->GetRenderer() && rs->GetRenderer()->IsStarted())
+        SDL_Scancode ToScancode(Key key)
         {
-            auto *win = static_cast<Window *>(glfwGetWindowUserPointer(glfwWindow));
-            if (win)
-                win->Update();
-            rs->Update();
+            static const unordered_map<int32_t, SDL_Scancode> table = []
+            {
+                unordered_map<int32_t, SDL_Scancode> t;
+                for (const auto &m: kKeyMap)
+                    t[static_cast<int32_t>(m.key)] = m.scancode;
+                return t;
+            }();
+            const auto it = table.find(static_cast<int32_t>(key));
+            return it != table.end() ? it->second : SDL_SCANCODE_UNKNOWN;
         }
 
-        s_inRefresh = false;
-    }
+        int32_t FromSdlButton(uint8_t button)
+        {
+            switch (button)
+            {
+                case SDL_BUTTON_LEFT:
+                    return 0;
+                case SDL_BUTTON_RIGHT:
+                    return 1;
+                case SDL_BUTTON_MIDDLE:
+                    return 2;
+                case SDL_BUTTON_X1:
+                    return 3;
+                case SDL_BUTTON_X2:
+                    return 4;
+                default:
+                    return -1;
+            }
+        }
 
-    void CallbackFramebufferSize(GLFWwindow *glfwWindow, int32_t width, int32_t height)
+        int32_t ToSdlButton(int32_t button)
+        {
+            switch (button)
+            {
+                case 0:
+                    return SDL_BUTTON_LEFT;
+                case 1:
+                    return SDL_BUTTON_RIGHT;
+                case 2:
+                    return SDL_BUTTON_MIDDLE;
+                case 3:
+                    return SDL_BUTTON_X1;
+                case 4:
+                    return SDL_BUTTON_X2;
+                default:
+                    return 0;
+            }
+        }
+
+        Bitmask::Bitmask<InputMod> ToMods(SDL_Keymod mod)
+        {
+            int32_t mods = 0;
+            if (mod & SDL_KMOD_SHIFT)
+                mods |= 0x0001;
+            if (mod & SDL_KMOD_CTRL)
+                mods |= 0x0002;
+            if (mod & SDL_KMOD_ALT)
+                mods |= 0x0004;
+            if (mod & SDL_KMOD_GUI)
+                mods |= 0x0008;
+            if (mod & SDL_KMOD_CAPS)
+                mods |= 0x0010;
+            if (mod & SDL_KMOD_NUM)
+                mods |= 0x0020;
+            return Bitmask::Bitmask<InputMod>(mods);
+        }
+
+        InputAction ToAction(bool down, bool repeat)
+        {
+            return static_cast<InputAction>(down ? (repeat ? 2 : 1) : 0); // Release / Press / Repeat
+        }
+    } // namespace
+
+    Window *Window::FromId(SDL_WindowID id)
     {
-        if (width <= 0 || height <= 0)
-            return; // don't attempt swap chain recreation when the window is minimized.
-
-        auto window = static_cast<Window *>(glfwGetWindowUserPointer(glfwWindow));
-        // Physical pixels only. On HiDPI displays these differ from the
-        // logical size CallbackWindowSize reports, and every resize fires
-        // both callbacks - writing this into window->size/fullscreenSize
-        // (as before) raced with CallbackWindowSize and could leave
-        // GetScreenSize() holding the logical (smaller) value, silently
-        // under-sizing every screen-space GPU resource (SSR's images/UBO
-        // included) to a fraction of the real framebuffer.
-        window->framebufferSize = {width, height};
-
-        RenderSystem::Get()->SetFramebufferResized(window->id);
+        SDL_Window *sdlWindow = SDL_GetWindowFromID(id);
+        if (!sdlWindow)
+            return nullptr;
+        return static_cast<Window *>(
+                SDL_GetPointerProperty(SDL_GetWindowProperties(sdlWindow), kWindowProperty, nullptr));
     }
 
-    void CallbackCursorEnter(GLFWwindow *glfwWindow, int32_t entered)
-    {
-        if (ImGuiReady())
-            ImGui_ImplGlfw_CursorEnterCallback(glfwWindow, entered);
-        auto window            = static_cast<Window *>(glfwGetWindowUserPointer(glfwWindow));
-        window->windowSelected = entered == GLFW_TRUE;
-        window->onEnter(entered == GLFW_TRUE);
-    }
-
-    void CallbackDrop(GLFWwindow *glfwWindow, int32_t count, const char **paths)
-    {
-        auto window = static_cast<Window *>(glfwGetWindowUserPointer(glfwWindow));
-        std::vector<std::string> files(static_cast<uint32_t>(count));
-        for (uint32_t i = 0; i < static_cast<uint32_t>(count); i++)
-            files[i] = paths[i];
-
-        window->onDrop(files);
-    }
-
-    void CallbackKey(GLFWwindow *glfwWindow, int32_t key, int32_t scancode, int32_t action, int32_t mods)
-    {
-        if (ImGuiReady())
-            ImGui_ImplGlfw_KeyCallback(glfwWindow, key, scancode, action, mods);
-        auto window = static_cast<Window *>(glfwGetWindowUserPointer(glfwWindow));
-        window->onKey(static_cast<Key>(key), static_cast<InputAction>(action), Bitmask::Bitmask<InputMod>(mods));
-    }
-
-    void CallbackMouseButton(GLFWwindow *glfwWindow, int32_t button, int32_t action, int32_t mods)
-    {
-        if (ImGuiReady())
-            ImGui_ImplGlfw_MouseButtonCallback(glfwWindow, button, action, mods);
-        auto window = static_cast<Window *>(glfwGetWindowUserPointer(glfwWindow));
-        window->onMouseButton(static_cast<MouseButton>(button), static_cast<InputAction>(action),
-                              Bitmask::Bitmask<InputMod>(mods));
-    }
-
-    void CallbackChar(GLFWwindow *glfwWindow, uint32_t codepoint)
-    {
-        if (ImGuiReady())
-            ImGui_ImplGlfw_CharCallback(glfwWindow, codepoint);
-        auto window = static_cast<Window *>(glfwGetWindowUserPointer(glfwWindow));
-        window->onChar(static_cast<char>(codepoint));
-    }
-
-    void CallbackCursorPos(GLFWwindow *glfwWindow, double xpos, double ypos)
-    {
-        if (ImGuiReady())
-            ImGui_ImplGlfw_CursorPosCallback(glfwWindow, xpos, ypos);
-        auto window           = static_cast<Window *>(glfwGetWindowUserPointer(glfwWindow));
-        window->mousePosition = {xpos, ypos};
-        window->onMousePosition(window->mousePosition);
-    }
-
-    void CallbackScroll(GLFWwindow *glfwWindow, double xoffset, double yoffset)
+    void Window::HandleEvent(const SDL_Event &event)
     {
         if (ImGuiReady())
-            ImGui_ImplGlfw_ScrollCallback(glfwWindow, xoffset, yoffset);
-        auto window         = static_cast<Window *>(glfwGetWindowUserPointer(glfwWindow));
-        window->mouseScroll = {xoffset, yoffset};
-        window->onMouseScroll(window->mouseScroll);
+            ImGui_ImplSDL3_ProcessEvent(&event);
+
+        switch (event.type)
+        {
+            case SDL_EVENT_WINDOW_MOVED:
+            {
+                if (fullscreen)
+                    break;
+                position = {event.window.data1, event.window.data2};
+                onPosition(position);
+                break;
+            }
+            case SDL_EVENT_WINDOW_RESIZED:
+            { // logical (OS-scaled) size
+                const int32_t width  = event.window.data1;
+                const int32_t height = event.window.data2;
+                if (width <= 0 || height <= 0)
+                    break;
+                if (fullscreen)
+                {
+                    fullscreenSize = {width, height};
+                    onSize(fullscreenSize);
+                } else
+                {
+                    size = {width, height};
+                    onSize(size);
+                }
+                break;
+            }
+            case SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED:
+            { // physical framebuffer size
+                const int32_t width  = event.window.data1;
+                const int32_t height = event.window.data2;
+                if (width <= 0 || height <= 0)
+                    break; // minimized: don't recreate the swapchain
+                framebufferSize = {width, height};
+                RenderSystem::Get()->SetFramebufferResized(this->id);
+                break;
+            }
+            case SDL_EVENT_WINDOW_CLOSE_REQUESTED:
+                closed = true;
+                Engine::Get()->RequestClose();
+                onClose();
+                break;
+            case SDL_EVENT_WINDOW_FOCUS_GAINED:
+                focused = true;
+                onFocus(true);
+                break;
+            case SDL_EVENT_WINDOW_FOCUS_LOST:
+                focused = false;
+                onFocus(false);
+                break;
+            case SDL_EVENT_WINDOW_MINIMIZED:
+                iconified = true;
+                onIconify(true);
+                break;
+            case SDL_EVENT_WINDOW_RESTORED:
+                iconified = false;
+                onIconify(false);
+                break;
+            case SDL_EVENT_WINDOW_MOUSE_ENTER:
+                windowSelected = true;
+                onEnter(true);
+                break;
+            case SDL_EVENT_WINDOW_MOUSE_LEAVE:
+                windowSelected = false;
+                onEnter(false);
+                break;
+            case SDL_EVENT_WINDOW_EXPOSED:
+            {
+                // Guard against reentrance: OS paint messages can fire during Vulkan allocations (vmaCreateImage etc.),
+                // re-entering this path before the first frame completes.
+                static bool s_inRefresh = false;
+                if (s_inRefresh)
+                    break;
+                s_inRefresh = true;
+
+                if (auto *rs = RenderSystem::Get(); rs && rs->GetRenderer() && rs->GetRenderer()->IsStarted())
+                {
+                    Update();
+                    rs->Update();
+                }
+                s_inRefresh = false;
+                break;
+            }
+
+            case SDL_EVENT_DROP_BEGIN:
+                pendingDrops.clear();
+                break;
+            case SDL_EVENT_DROP_FILE:
+                if (event.drop.data)
+                    pendingDrops.emplace_back(event.drop.data);
+                break;
+            case SDL_EVENT_DROP_COMPLETE:
+                if (!pendingDrops.empty())
+                    onDrop(pendingDrops);
+                pendingDrops.clear();
+                break;
+
+            case SDL_EVENT_KEY_DOWN:
+            case SDL_EVENT_KEY_UP:
+                onKey(ToKey(event.key.scancode), ToAction(event.key.down, event.key.repeat), ToMods(event.key.mod));
+                break;
+            case SDL_EVENT_TEXT_INPUT:
+            {
+                const char *text = event.text.text;
+                while (text && *text)
+                {
+                    const uint32_t codepoint = SDL_StepUTF8(&text, nullptr);
+                    if (codepoint == 0)
+                        break;
+                    onChar(static_cast<char>(codepoint));
+                }
+                break;
+            }
+
+            case SDL_EVENT_MOUSE_BUTTON_DOWN:
+            case SDL_EVENT_MOUSE_BUTTON_UP:
+            {
+                const int32_t button = FromSdlButton(event.button.button);
+                if (button < 0)
+                    break;
+                onMouseButton(static_cast<MouseButton>(button), ToAction(event.button.down, false),
+                              ToMods(SDL_GetModState()));
+                break;
+            }
+            case SDL_EVENT_MOUSE_MOTION:
+                if (SDL_GetWindowRelativeMouseMode(window))
+                {
+                    mousePosition += DVec2(event.motion.xrel, event.motion.yrel);
+                } else
+                {
+                    mousePosition = {event.motion.x, event.motion.y};
+                }
+                onMousePosition(mousePosition);
+                break;
+            case SDL_EVENT_MOUSE_WHEEL:
+                // Accumulate so GetMouseScrollDelta() (= scroll - lastScroll) works across consecutive notches.
+                mouseScroll += DVec2(event.wheel.x, event.wheel.y);
+                onMouseScroll(DVec2(event.wheel.x, event.wheel.y));
+                break;
+
+            default:
+                break;
+        }
     }
 
     double Window::SmoothScrollWheel(double value, float delta)
     {
         if (value != 0.0)
         {
-            value -= static_cast<double>(delta) * std::copysign(3.0, value);
+            value -= static_cast<double>(delta) * copysign(3.0, value);
             value = Mathematics::Deadband(0.08, value);
             return value;
         }
@@ -194,89 +414,61 @@ namespace SF::Engine
         return 0.0;
     }
 
-    Window::Window(std::size_t id) :
-        id(id), window(nullptr), size(800, 600),                       // ← FIX: Set a default size!
-        fullscreenSize(0, 0), position(0, 0), title("Default Window"), // ← Also give it a default title
+    Window::Window(size_t id) :
+        id(id), window(nullptr), size(800, 600), fullscreenSize(0, 0), position(0, 0), title("Default Window"),
         borderless(false), resizable(false), floating(false), fullscreen(false), closed(false), focused(false),
         iconified(false), windowSelected(false), cursorHidden(false), mouseLastPosition(0.0, 0.0),
         mousePosition(0.0, 0.0), mousePositionDelta(0.0, 0.0), mouseLastScroll(0.0, 0.0), mouseScroll(0.0, 0.0),
         mouseScrollDelta(0.0, 0.0)
     {
-        // Clear any previous hints or set fresh ones
-        glfwDefaultWindowHints();
+        constexpr SDL_WindowFlags flags = SDL_WINDOW_VULKAN | SDL_WINDOW_HIDDEN | SDL_WINDOW_HIGH_PIXEL_DENSITY;
 
-        // Set hints for Vulkan
-        glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-        glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
-        glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
-
-        // Create a windowed mode window and its context.
-        window = glfwCreateWindow(size.x, size.y, title.c_str(), nullptr, nullptr);
-
-        // Gets any window errors.
+        window = SDL_CreateWindow(title.c_str(), static_cast<int>(size.x), static_cast<int>(size.y), flags);
         if (!window)
-        {
-            glfwTerminate();
-            throw std::runtime_error("GLFW failed to create the window");
-        }
+            throw runtime_error(string("SDL failed to create the window: ") + SDL_GetError());
 
-        int width, height;
-        glfwGetWindowSize(window, &width, &height);
+        SDL_SetPointerProperty(SDL_GetWindowProperties(window), kWindowProperty, this);
+
+        int width = 0, height = 0;
+        SDL_GetWindowSize(window, &width, &height);
         size = UVec2(width, height);
 
-        int fbWidth, fbHeight;
-        glfwGetFramebufferSize(window, &fbWidth, &fbHeight);
+        int fbWidth = 0, fbHeight = 0;
+        SDL_GetWindowSizeInPixels(window, &fbWidth, &fbHeight);
         framebufferSize = UVec2(fbWidth, fbHeight);
 
-        // Get window position
-        int xpos, ypos;
-        glfwGetWindowPos(window, &xpos, &ypos);
+        int xpos = 0, ypos = 0;
+        SDL_GetWindowPosition(window, &xpos, &ypos);
         position = UVec2(xpos, ypos);
 
-        // Sets the user pointer.
-        glfwSetWindowUserPointer(window, this);
-
         // Window attributes that can change later.
-        glfwSetWindowAttrib(window, GLFW_DECORATED, !borderless);
-        glfwSetWindowAttrib(window, GLFW_RESIZABLE, resizable);
-        glfwSetWindowAttrib(window, GLFW_FLOATING, floating);
+        SDL_SetWindowBordered(window, !borderless);
+        SDL_SetWindowResizable(window, resizable);
+        SDL_SetWindowAlwaysOnTop(window, floating);
 
-        // Sets fullscreen if enabled.
         if (fullscreen)
             SetFullscreen(true);
 
-        // Shows the glfw window.
-        glfwShowWindow(window);
+#if !defined(SDL_PLATFORM_ANDROID) && !defined(SDL_PLATFORM_IOS)
+        SDL_StartTextInput(window);
+#endif
 
-        // Sets the displays callbacks.
-        glfwSetWindowPosCallback(window, CallbackWindowPosition);
-        glfwSetWindowSizeCallback(window, CallbackWindowSize);
-        glfwSetWindowCloseCallback(window, CallbackWindowClose);
-        glfwSetWindowFocusCallback(window, CallbackWindowFocus);
-        glfwSetWindowIconifyCallback(window, CallbackWindowIconify);
-        glfwSetFramebufferSizeCallback(window, CallbackFramebufferSize);
-        glfwSetCursorEnterCallback(window, CallbackCursorEnter);
-        glfwSetDropCallback(window, CallbackDrop);
-        glfwSetKeyCallback(window, CallbackKey);
-        glfwSetCharCallback(window, CallbackChar);
-        glfwSetMouseButtonCallback(window, CallbackMouseButton);
-        glfwSetCursorPosCallback(window, CallbackCursorPos);
-        glfwSetScrollCallback(window, CallbackScroll);
-        glfwSetWindowRefreshCallback(window, CallbackWindowRefresh);
+        SDL_ShowWindow(window);
     }
 
     Window::~Window()
     {
-        // Free the window callbacks and destroy the window.
-        glfwDestroyWindow(window);
-
+        if (window)
+        {
+            SDL_ClearProperty(SDL_GetWindowProperties(window), kWindowProperty);
+            SDL_DestroyWindow(window);
+            window = nullptr;
+        }
         closed = true;
     }
 
     void Window::Update()
     {
-        // Raw pixel delta : do NOT scale by engine delta time.
-        // Consumers (e.g. EditorCamera) apply their own sensitivity and dt scaling.
         mousePositionDelta = mousePosition - mouseLastPosition;
         mouseLastPosition  = mousePosition;
 
@@ -290,110 +482,141 @@ namespace SF::Engine
             this->size.x = size.x;
         if (size.y != -1)
             this->size.y = size.y;
-        glfwSetWindowSize(window, size.x, size.y);
+        SDL_SetWindowSize(window, static_cast<int>(this->size.x), static_cast<int>(this->size.y));
     }
 
     void Window::SetPosition(const IVec2 &position)
     {
         if (position.x != -1)
             this->position.x = position.x;
-        if (position.x != -1)
+        if (position.y != -1) // was `position.x != -1` (copy/paste bug)
             this->position.y = position.y;
-        glfwSetWindowPos(window, position.x, position.y);
+        SDL_SetWindowPosition(window, static_cast<int>(this->position.x), static_cast<int>(this->position.y));
     }
 
-    void Window::SetTitle(const std::string &title)
+    void Window::SetTitle(const string &title)
     {
         this->title = title;
-        glfwSetWindowTitle(window, title.c_str());
+        SDL_SetWindowTitle(window, title.c_str());
         onTitle(title);
     }
 
-    void Window::SetIcons(const std::vector<std::filesystem::path> &filenames)
+    void Window::SetIcons(const vector<filesystem::path> &filenames) const
     {
-        std::vector<std::unique_ptr<Bitmap>> bitmaps;
-        std::vector<GLFWimage> icons;
+        vector<unique_ptr<Bitmap>> bitmaps;
+        vector<SDL_Surface *> surfaces;
 
         for (const auto &filename: filenames)
         {
-            auto bitmap = std::make_unique<Bitmap>(filename);
-
+            auto bitmap = make_unique<Bitmap>(filename);
             if (!bitmap)
                 continue;
 
-            GLFWimage icon = {};
-            icon.width     = bitmap->GetSize().x;
-            icon.height    = bitmap->GetSize().y;
-            icon.pixels    = bitmap->GetData().get();
-            icons.emplace_back(icon);
+            const int w = static_cast<int>(bitmap->GetSize().x);
+            const int h = static_cast<int>(bitmap->GetSize().y);
+
+            // Wraps the bitmap's RGBA8 pixels without copying; the bitmap must outlive the surface.
+            SDL_Surface *surface = SDL_CreateSurfaceFrom(w, h, SDL_PIXELFORMAT_RGBA32, bitmap->GetData().get(), w * 4);
+            if (!surface)
+                continue;
+
+            surfaces.push_back(surface);
             bitmaps.emplace_back(std::move(bitmap));
         }
 
-        glfwSetWindowIcon(window, static_cast<int32_t>(icons.size()), icons.data());
+        if (!surfaces.empty())
+        {
+            // SDL takes one icon plus "alternate images" for other resolutions.
+            for (size_t i = 1; i < surfaces.size(); ++i)
+                SDL_AddSurfaceAlternateImage(surfaces[0], surfaces[i]);
+            SDL_SetWindowIcon(window, surfaces[0]); // SDL copies the surface(s)
+        }
+
+        for (SDL_Surface *surface: surfaces)
+            SDL_DestroySurface(surface);
     }
 
     void Window::SetBorderless(bool borderless)
     {
         this->borderless = borderless;
-        glfwSetWindowAttrib(window, GLFW_DECORATED, !borderless);
+        SDL_SetWindowBordered(window, !borderless);
         onBorderless(borderless);
     }
 
     void Window::SetResizable(bool resizable)
     {
         this->resizable = resizable;
-        glfwSetWindowAttrib(window, GLFW_RESIZABLE, resizable);
+        SDL_SetWindowResizable(window, resizable);
         onResizable(resizable);
     }
 
     void Window::SetFloating(bool floating)
     {
         this->floating = floating;
-        glfwSetWindowAttrib(window, GLFW_FLOATING, floating);
+        SDL_SetWindowAlwaysOnTop(window, floating);
         onFloating(floating);
     }
 
     void Window::SetFullscreen(bool fullscreen, Monitor *monitor)
     {
-        auto selected  = monitor ? monitor : GetCurrentMonitor();
-        auto videoMode = selected->GetVideoMode();
+        const Monitor *selected = monitor ? monitor : GetCurrentMonitor();
 
         this->fullscreen = fullscreen;
 
         if (fullscreen)
         {
-            fullscreenSize = {videoMode.width, videoMode.height};
-            glfwSetWindowMonitor(window, selected->GetMonitor(), 0, 0, fullscreenSize.x, fullscreenSize.y,
-                                 GLFW_DONT_CARE);
+            if (selected)
+            {
+                const auto videoMode = selected->GetVideoMode();
+                fullscreenSize       = {videoMode.width, videoMode.height};
+
+                const int pos = SDL_WINDOWPOS_CENTERED_DISPLAY(selected->GetMonitor());
+                SDL_SetWindowPosition(window, pos, pos);
+            }
+            // nullptr mode = borderless fullscreen at the desktop resolution (the recommended default).
+            SDL_SetWindowFullscreenMode(window, nullptr);
+            SDL_SetWindowFullscreen(window, true);
         } else
         {
-            position = ((IVec2(videoMode.width, videoMode.height) - IVec2(size)) / 2) + selected->GetPosition();
-            glfwSetWindowMonitor(window, nullptr, position.x, position.y, size.x, size.y, GLFW_DONT_CARE);
+            SDL_SetWindowFullscreen(window, false);
+            SDL_SetWindowSize(window, static_cast<int>(size.x), static_cast<int>(size.y));
+            if (selected)
+            {
+                const int pos = SDL_WINDOWPOS_CENTERED_DISPLAY(selected->GetMonitor());
+                SDL_SetWindowPosition(window, pos, pos);
+            }
+            SDL_SyncWindow(window); // SDL window changes are async; wait so position is valid
+            int xpos = 0, ypos = 0;
+            SDL_GetWindowPosition(window, &xpos, &ypos);
+            position = UVec2(xpos, ypos);
         }
 
         onFullscreen(fullscreen);
     }
 
-    void Window::SetIconified(bool iconify)
+    void Window::SetIconified(bool iconify) const
     {
         if (!iconified && iconify)
-        {
-            glfwIconifyWindow(window);
-        } else if (iconified && !iconify)
-        {
-            glfwRestoreWindow(window);
-        }
+            SDL_MinimizeWindow(window);
+        else if (iconified && !iconify)
+            SDL_RestoreWindow(window);
     }
 
-    std::string Window::GetClipboard() const { return glfwGetClipboardString(window); }
+    string Window::GetClipboard() const
+    {
+        char *text    = SDL_GetClipboardText();
+        string result = text ? text : "";
+        SDL_free(text);
+        return result;
+    }
 
-    void Window::SetClipboard(const std::string &string) const { glfwSetClipboardString(window, string.c_str()); }
+    void Window::SetClipboard(const string &string) const { SDL_SetClipboardText(string.c_str()); }
 
     void Window::SetCursorHidden(bool hidden)
     {
         if (cursorHidden != hidden)
         {
-            glfwSetInputMode(window, GLFW_CURSOR, hidden ? GLFW_CURSOR_DISABLED : GLFW_CURSOR_NORMAL);
+            SDL_SetWindowRelativeMouseMode(window, hidden);
 
             if (!hidden && cursorHidden)
                 SetMousePosition(mousePosition);
@@ -402,25 +625,33 @@ namespace SF::Engine
         cursorHidden = hidden;
     }
 
-    void Window::SetCursor(const Cursor *cursor) { glfwSetCursor(window, cursor ? cursor->cursor : nullptr); }
+    void Window::SetCursor(const Cursor *cursor) { SDL_SetCursor(cursor ? cursor->cursor : SDL_GetDefaultCursor()); }
 
     InputAction Window::GetKey(Key key) const
     {
-        auto state = glfwGetKey(window, static_cast<int32_t>(key));
-        return static_cast<InputAction>(state);
+        const SDL_Scancode scancode = ToScancode(key);
+        if (scancode == SDL_SCANCODE_UNKNOWN)
+            return static_cast<InputAction>(0);
+
+        const bool *state = SDL_GetKeyboardState(nullptr);
+        return static_cast<InputAction>(state[scancode] ? 1 : 0);
     }
 
     InputAction Window::GetMouseButton(MouseButton mouseButton) const
     {
-        auto state = glfwGetMouseButton(window, static_cast<int32_t>(mouseButton));
-        return static_cast<InputAction>(state);
+        const int32_t sdlButton = ToSdlButton(static_cast<int32_t>(mouseButton));
+        if (sdlButton == 0)
+            return static_cast<InputAction>(0);
+
+        const SDL_MouseButtonFlags buttons = SDL_GetMouseState(nullptr, nullptr);
+        return static_cast<InputAction>((buttons & SDL_BUTTON_MASK(sdlButton)) ? 1 : 0);
     }
 
     void Window::SetMousePosition(const DVec2 &mousePosition)
     {
         this->mouseLastPosition = mousePosition;
         this->mousePosition     = mousePosition;
-        glfwSetCursorPos(window, mousePosition.x, mousePosition.y);
+        SDL_WarpMouseInWindow(window, static_cast<float>(mousePosition.x), static_cast<float>(mousePosition.y));
     }
 
     void Window::SetMouseScroll(const DVec2 &mouseScroll)
@@ -678,51 +909,23 @@ namespace SF::Engine
         }
     }
 
-    int32_t OverlappingArea(IVec2 l1, IVec2 r1, IVec2 l2, IVec2 r2)
-    {
-        int area1 = std::abs(l1.x - r1.x) * std::abs(l1.y - r1.y);
-
-        int area2 = std::abs(l2.x - r2.x) * std::abs(l2.y - r2.y);
-
-        int areaI = (std::min(r1.x, r2.x) - std::max(l1.x, l2.x)) * (std::min(r1.y, r2.y) - std::max(l1.y, l2.y));
-
-        return area1 + area2 - areaI;
-    }
-
     const Monitor *Window::GetCurrentMonitor() const
     {
-        if (fullscreen)
-        {
-            auto glfwMonitor = glfwGetWindowMonitor(window);
-            for (const auto &monitor: WindowManager::Get()->GetMonitors())
-            {
-                if (monitor->monitor == glfwMonitor)
-                    return monitor.get();
-            }
-            return nullptr;
-        }
-        std::multimap<int32_t, const Monitor *> rankedMonitor;
-        auto where = rankedMonitor.end();
+        const SDL_DisplayID display = SDL_GetDisplayForWindow(window);
 
         for (const auto &monitor: WindowManager::Get()->GetMonitors())
         {
-            where = rankedMonitor.insert(where,
-                                         {OverlappingArea(monitor->GetWorkareaPosition(),
-                                                          monitor->GetWorkareaPosition() + monitor->GetWorkareaSize(),
-                                                          position, position + size),
-                                          monitor.get()});
+            if (monitor->monitor == display)
+                return monitor.get();
         }
-
-        if (!rankedMonitor.empty() && rankedMonitor.begin()->first > 0)
-            return rankedMonitor.begin()->second;
-
         return nullptr;
     }
 
     VkResult Window::CreateSurface(const VkInstance &instance, const VkAllocationCallbacks *allocator,
                                    VkSurfaceKHR *surface) const
     {
-        return glfwCreateWindowSurface(instance, window, allocator, surface);
+        return SDL_Vulkan_CreateSurface(window, instance, allocator, surface) ? VK_SUCCESS
+                                                                              : VK_ERROR_INITIALIZATION_FAILED;
     }
 
 #pragma GCC diagnostic push
@@ -731,18 +934,26 @@ namespace SF::Engine
     void Window::SetTitleColor(Color col)
     {
 #if _PLATFORM_WINDOWS
-        HWND hwnd = glfwGetWin32Window(window);
+        auto hwnd = static_cast<HWND>(
+                SDL_GetPointerProperty(SDL_GetWindowProperties(window), SDL_PROP_WINDOW_WIN32_HWND_POINTER, nullptr));
+        if (!hwnd)
+            return;
 
         DWORD color = (DWORD(col.b * 255.0f) << 16) | (DWORD(col.g * 255.0f) << 8) | DWORD(col.r * 255.0f);
-
         DwmSetWindowAttribute(hwnd, DWMWA_CAPTION_COLOR, &color, sizeof(color));
 #endif
     }
+
     void Window::SetBorderColor(Color col)
     {
 #if _PLATFORM_WINDOWS
+        auto hwnd = static_cast<HWND>(
+                SDL_GetPointerProperty(SDL_GetWindowProperties(window), SDL_PROP_WINDOW_WIN32_HWND_POINTER, nullptr));
+        if (!hwnd)
+            return;
+
         DWORD color = (DWORD(col.b * 255.0f) << 16) | (DWORD(col.g * 255.0f) << 8) | DWORD(col.r * 255.0f);
-        DwmSetWindowAttribute(glfwGetWin32Window(window), DWMWA_BORDER_COLOR, &color, sizeof(color));
+        DwmSetWindowAttribute(hwnd, DWMWA_BORDER_COLOR, &color, sizeof(color));
 #endif
     }
 #pragma GCC diagnostic pop

@@ -7,7 +7,6 @@
 #include <cstring>
 
 #include <Platform/Windowing/WindowManager.hpp>
-#include "PipelineRenderer.hpp"
 #include "SharedSamplers.hpp"
 
 #include <Rendering/Camera/Camera.hpp>
@@ -36,8 +35,7 @@ namespace SF::Engine
         allocatorCreateInfo.pVulkanFunctions     = &vmaVulkanFunctions;
 
         Log::Info("Creating VMA allocator");
-        VkResult vmaResult = vmaCreateAllocator(&allocatorCreateInfo, &alloc);
-        if (vmaResult != VK_SUCCESS)
+        if (const VkResult vmaResult = vmaCreateAllocator(&allocatorCreateInfo, &alloc); vmaResult != VK_SUCCESS)
             throw runtime_error("Failed to create VMA allocator: " + StrVkResult(vmaResult));
         Log::Info("VMA allocator created");
 
@@ -68,7 +66,7 @@ namespace SF::Engine
     {
         if (logicalDevice && *logicalDevice != VK_NULL_HANDLE)
         {
-            if (VkResult res = vkDeviceWaitIdle(*logicalDevice); res == VK_ERROR_DEVICE_LOST)
+            if (const VkResult res = vkDeviceWaitIdle(*logicalDevice); res == VK_ERROR_DEVICE_LOST)
             {
                 Log::Critical("[RenderSystem] Device was lost prior to shutdown; exiting immediately, no cleanup.");
                 _Exit(EXIT_FAILURE);
@@ -81,7 +79,7 @@ namespace SF::Engine
         vkDestroyPipelineCache(*logicalDevice, pipelineCache, nullptr);
         vmaDestroyAllocator(alloc);
         commandPools.clear();
-        for (auto &perSurfaceBuffer: perSurfaceBuffers)
+        for (const auto &perSurfaceBuffer: perSurfaceBuffers)
         {
             for (size_t i = 0; i < perSurfaceBuffer->flightFences.size(); i++)
             {
@@ -95,7 +93,7 @@ namespace SF::Engine
 
     static void UpdateSharedCameraData()
     {
-        float raw_nano                = static_cast<float>(GetDeltaTime().count());
+        const float raw_nano          = static_cast<float>(GetDeltaTime().count());
         SharedCameraData.screenHeight = static_cast<int>(GetScreenSize().y);
         SharedCameraData.screenWidth  = static_cast<int>(GetScreenSize().x);
         SharedCameraData.aspectRatio =
@@ -118,7 +116,7 @@ namespace SF::Engine
         if (!renderer || !mainWindow || mainWindow->ShouldClose() || mainWindow->IsIconified())
             return;
 
-        if (auto windowSize = mainWindow->GetSize(); windowSize.x == 0 || windowSize.y == 0)
+        if (const auto windowSize = mainWindow->GetSize(); windowSize.x == 0 || windowSize.y == 0)
             return;
 
         if (!renderer->started)
@@ -160,7 +158,7 @@ namespace SF::Engine
 
         for (auto [id, swapchain]: Enumerate(swapchains))
         {
-            auto &perSurfaceBuffer = perSurfaceBuffers[id];
+            const auto &perSurfaceBuffer = perSurfaceBuffers[id];
 
             // NOTE: removed the standalone vkWaitForFences(..., UINT64_MAX) that used to
             // sit here. AcquireNextImage() already waits on this exact fence internally,
@@ -168,7 +166,7 @@ namespace SF::Engine
             // The UINT64_MAX wait here had no such escape hatch: if the fence's paired
             // Submit() was ever skipped (see the StartRenderpass failure case below,
             // pre-fix), this call would hang forever with the window fully frozen.
-            auto acquireResult =
+            const auto acquireResult =
                     swapchain->AcquireNextImage(perSurfaceBuffer->presentCompletes[perSurfaceBuffer->currentFrame],
                                                 perSurfaceBuffer->flightFences[perSurfaceBuffer->currentFrame]);
 
@@ -340,7 +338,7 @@ namespace SF::Engine
         }
     }
 
-    void RenderSystem::CheckVkResult(VkResult result)
+    void RenderSystem::CheckVkResult(const VkResult result)
     {
         if (result >= 0)
             return;
@@ -353,15 +351,16 @@ namespace SF::Engine
         throw runtime_error("Vulkan error: " + StrVkResult(result));
     }
 
-    void RenderSystem::CaptureScreenshot(const filesystem::path &filename, size_t id) const
+    void RenderSystem::CaptureScreenshot(const filesystem::path &filename, const size_t surfaceId) const
     {
         auto size = WindowManager::Get()->GetWindow(0)->GetSize();
 
         VkImage dstImage;
         VmaAllocation dstImageMemory;
 
-        Image::CopyImage(swapchains[id]->GetActiveImage(), dstImage, dstImageMemory, surfaces[id]->GetFormat().format,
-                         {size.x, size.y, 1}, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, 0, 0);
+        Image::CopyImage(swapchains[surfaceId]->GetActiveImage(), dstImage, dstImageMemory,
+                         surfaces[surfaceId]->GetFormat().format, {size.x, size.y, 1}, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+                         0, 0);
 
         VkImageSubresource imageSubresource{};
         imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
@@ -382,7 +381,7 @@ namespace SF::Engine
         bitmap.Write(filename);
     }
 
-    const RhiRenderStage *RenderSystem::GetRenderStage(uint32_t index) const
+    const RhiRenderStage *RenderSystem::GetRenderStage(const uint32_t index) const
     {
         if (renderer)
             return renderer->GetRenderStage(index);
@@ -398,7 +397,7 @@ namespace SF::Engine
 
     const shared_ptr<CommandPool> &RenderSystem::GetCommandPool(const thread::id &threadId)
     {
-        if (auto it = commandPools.find(threadId); it != commandPools.end())
+        if (const auto it = commandPools.find(threadId); it != commandPools.end())
             return it->second;
         return commandPools.emplace(threadId, make_shared<CommandPool>(threadId)).first->second;
     }
@@ -420,8 +419,8 @@ namespace SF::Engine
 
         for (const auto [id, swapchain]: Enumerate(swapchains))
         {
-            auto &perSurfaceBuffer = perSurfaceBuffers[id];
-            if (perSurfaceBuffer->flightFences.size() != swapchain->GetImageCount())
+            if (const auto &perSurfaceBuffer = perSurfaceBuffers[id];
+                perSurfaceBuffer->flightFences.size() != swapchain->GetImageCount())
                 RecreateCommandBuffers(id);
 
             for (const auto &renderStage: renderer->renderStages)
@@ -433,18 +432,17 @@ namespace SF::Engine
 
     void RenderSystem::RecreateSwapchain()
     {
-        // Wait until the window has a valid size (handles minimize/restore)
-        auto window = WindowManager::Get()->GetWindow(0);
-        while (window->GetSize().x == 0 || window->GetSize().y == 0)
-            glfwWaitEvents();
+        const auto window = WindowManager::Get()->GetWindow(0);
+        while (!window->ShouldClose() && (window->GetSize().x == 0 || window->GetSize().y == 0))
+            WindowManager::Get()->WaitEvents();
 
         if (window->ShouldClose())
             return;
 
-        RenderSystem::CheckVkResult(vkDeviceWaitIdle(*logicalDevice));
+        CheckVkResult(vkDeviceWaitIdle(*logicalDevice));
 
-        VkExtent2D displayExtent = {WindowManager::Get()->GetWindow(0)->GetSize().x,
-                                    WindowManager::Get()->GetWindow(0)->GetSize().y};
+        VkExtent2D displayExtent = {.width  = WindowManager::Get()->GetWindow(0)->GetSize().x,
+                                    .height = WindowManager::Get()->GetWindow(0)->GetSize().y};
         swapchains.resize(surfaces.size());
         perSurfaceBuffers.resize(surfaces.size());
         for (const auto [id, surface]: Enumerate(surfaces))
@@ -474,10 +472,10 @@ namespace SF::Engine
             RecreateCommandBuffers(id);
         }
 
-        RenderSystem::CheckVkResult(vkDeviceWaitIdle(*logicalDevice));
+        CheckVkResult(vkDeviceWaitIdle(*logicalDevice));
     }
 
-    void RenderSystem::RecreateCommandBuffers(size_t surfaceId) const
+    void RenderSystem::RecreateCommandBuffers(const size_t surfaceId) const
     {
         auto &swapchain        = swapchains[surfaceId];
         auto &perSurfaceBuffer = perSurfaceBuffers[surfaceId];
@@ -514,8 +512,8 @@ namespace SF::Engine
 
     void RenderSystem::RecreatePass()
     {
-        VkExtent2D displayExtent = {WindowManager::Get()->GetWindow(0)->GetSize().x,
-                                    WindowManager::Get()->GetWindow(0)->GetSize().y};
+        const VkExtent2D displayExtent = {.width  = WindowManager::Get()->GetWindow(0)->GetSize().x,
+                                          .height = WindowManager::Get()->GetWindow(0)->GetSize().y};
 
         CheckVkResult(vkQueueWaitIdle(logicalDevice->GetGraphicsQueue()));
 
@@ -559,7 +557,7 @@ namespace SF::Engine
             attachments.insert(renderStage->descriptors.begin(), renderStage->descriptors.end());
     }
 
-    bool RenderSystem::StartRenderpass(size_t surfaceId, const RhiRenderStage &renderStage) const
+    bool RenderSystem::StartRenderpass(const size_t surfaceId, const RhiRenderStage &renderStage) const
     {
         // Staleness is now handled up-front in Update(), so this should never
         // be true here. Kept as a safety net only; no RecreatePass call,
@@ -567,9 +565,9 @@ namespace SF::Engine
         if (renderStage.IsOutOfDate())
             return false;
 
-        auto &swapchain        = swapchains[surfaceId];
-        auto &perSurfaceBuffer = perSurfaceBuffers[surfaceId];
-        auto &commandBuffer    = perSurfaceBuffer->commandBuffers[swapchain->GetActiveImageIndex()];
+        auto &swapchain           = swapchains[surfaceId];
+        auto &perSurfaceBuffer    = perSurfaceBuffers[surfaceId];
+        const auto &commandBuffer = perSurfaceBuffer->commandBuffers[swapchain->GetActiveImageIndex()];
 
         if (!commandBuffer->IsRunning())
             commandBuffer->Begin(VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT);
@@ -578,9 +576,9 @@ namespace SF::Engine
         // NOT the raw swapchain extent: non-swapchain stages' attachments are sized from the
         // window, and a render area/viewport larger than the framebuffer is UB (GPU hang).
         const UVec2 stageExtent   = renderStage.GetEffectiveExtent(*swapchain);
-        const VkExtent2D scExtent = {stageExtent.x, stageExtent.y};
+        const VkExtent2D scExtent = {.width = stageExtent.x, .height = stageExtent.y};
         VkRect2D renderArea       = {};
-        renderArea.offset         = {0, 0};
+        renderArea.offset         = {.x = 0, .y = 0};
         renderArea.extent         = scExtent;
 
         VkViewport viewport = {};
@@ -628,8 +626,8 @@ namespace SF::Engine
                               perSurfaceBuffer->renderCompletes[perSurfaceBuffer->currentFrame],
                               perSurfaceBuffer->flightFences[perSurfaceBuffer->currentFrame]);
 
-        auto presentResult = swapchain->QueuePresent(presentQueue,
-                                                     perSurfaceBuffer->renderCompletes[perSurfaceBuffer->currentFrame]);
+        const auto presentResult = swapchain->QueuePresent(
+                presentQueue, perSurfaceBuffer->renderCompletes[perSurfaceBuffer->currentFrame]);
         if (presentResult == VK_ERROR_OUT_OF_DATE_KHR || presentResult == VK_SUBOPTIMAL_KHR ||
             presentResult == VK_ERROR_SURFACE_LOST_KHR)
         {
@@ -654,9 +652,9 @@ namespace SF::Engine
         // vkEnumerateInstanceVersion is available in Vulkan 1.1+
         if (vkEnumerateInstanceVersion(&apiVersion) == VK_SUCCESS)
         {
-            uint32_t major = VK_API_VERSION_MAJOR(apiVersion);
-            uint32_t minor = VK_API_VERSION_MINOR(apiVersion);
-            uint32_t patch = VK_API_VERSION_PATCH(apiVersion);
+            const uint32_t major = VK_API_VERSION_MAJOR(apiVersion);
+            const uint32_t minor = VK_API_VERSION_MINOR(apiVersion);
+            const uint32_t patch = VK_API_VERSION_PATCH(apiVersion);
 
             return VK_MAKE_VERSION(major, minor, patch);
         }

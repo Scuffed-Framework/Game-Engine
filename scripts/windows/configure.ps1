@@ -11,35 +11,43 @@ Push-Location $root
 
 # TODO: no msvc, use mingw or gcc or clang
 
+# Use the same profile for host and build so compiler/settings always match.
+# (Don't name this $profile - that's a PowerShell automatic variable.)
+$conanProfile = "./profiles/windows-x64-$buildType.txt"
+
+function Fail([string]$msg) {
+    Write-Host $msg -ForegroundColor Red
+    Pop-Location
+    exit 1
+}
+
 function CreateConanPackage {
     param (
         [string]$path,
         [string]$version
     )
 
-    conan install "./scripts/conan-ext/$path/conanfile.py"
+    Write-Host "==> Creating Conan package: $path" -ForegroundColor Cyan
 
-    # In PowerShell, backtick (`) is used for line continuation, NOT backslash (\)
+    # No separate `conan install` of the recipe: `conan create` resolves deps itself.
+    # -pr:h / -pr:b use the project profile so package IDs match the root install.
+    # -s:b build_type=Release keeps build-context tools (cmake, ninja, ...) at Release
+    # so they come from the cache instead of being rebuilt as Debug.
     conan create "./scripts/conan-ext/$path/" `
       --version="$version" `
-      -s build_type=$buildType `
-      -s arch=x86_64 `
-      -s compiler=gcc `
-      -s compiler.version=16 `
-      -s compiler.libcxx=libstdc++11
+      --build=missing `
+      -pr:h="$conanProfile" `
+      -pr:b="$conanProfile" `
+      -s:b build_type=Release
+
+    if ($LASTEXITCODE -ne 0) { Fail "conan create failed for $path" }
 }
 
 $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
-if (-not (Test-Path $vswhere)) {
-    Write-Host "vswhere not found - is Visual Studio installed?" -ForegroundColor Red
-    Pop-Location; exit 1
-}
+if (-not (Test-Path $vswhere)) { Fail "vswhere not found - is Visual Studio installed?" }
 
 $vsPath = & $vswhere -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
-if (-not $vsPath) {
-    Write-Host "No VS install with MSVC toolchain found" -ForegroundColor Red
-    Pop-Location; exit 1
-}
+if (-not $vsPath) { Fail "No VS install with MSVC toolchain found" }
 
 # --- find a real, complete MSVC toolset (has cl.exe) - no hardcoded version ---
 $msvcToolset = Get-ChildItem "$vsPath\VC\Tools\MSVC" -Directory -ErrorAction SilentlyContinue |
@@ -47,10 +55,7 @@ Where-Object { Test-Path (Join-Path $_.FullName "bin\Hostx64\x64\cl.exe") } |
 Sort-Object Name -Descending |
 Select-Object -First 1
 
-if (-not $msvcToolset) {
-    Write-Host "No MSVC toolset with cl.exe found under $vsPath\VC\Tools\MSVC" -ForegroundColor Red
-    Pop-Location; exit 1
-}
+if (-not $msvcToolset) { Fail "No MSVC toolset with cl.exe found under $vsPath\VC\Tools\MSVC" }
 $msvcRoot = $msvcToolset.FullName
 Write-Host "==> MSVC toolset: $($msvcToolset.Name)" -ForegroundColor Cyan
 
@@ -61,10 +66,7 @@ Where-Object { Test-Path (Join-Path $_.FullName "um\windows.h") } |
 Sort-Object Name -Descending |
 Select-Object -First 1
 
-if (-not $sdkVersion) {
-    Write-Host "No usable Windows SDK found under $sdkRoot\Include" -ForegroundColor Red
-    Pop-Location; exit 1
-}
+if (-not $sdkVersion) { Fail "No usable Windows SDK found under $sdkRoot\Include" }
 $sdkVer = $sdkVersion.Name
 Write-Host "==> Windows SDK: $sdkVer" -ForegroundColor Cyan
 
@@ -90,22 +92,20 @@ $env:LIB = ($libDirs -join ";")
 $env:LIBPATH = $env:LIB
 
 $cl = Get-Command cl.exe -ErrorAction SilentlyContinue
-if (-not $cl) {
-    Write-Host "cl.exe still not resolvable after manual env setup" -ForegroundColor Red
-    Pop-Location; exit 1
-}
+if (-not $cl) { Fail "cl.exe still not resolvable after manual env setup" }
 Write-Host "Using compiler: $($cl.Source)" -ForegroundColor DarkGray
 
-Write-Host "==> Running conan install..." -ForegroundColor Cyan
-conan install . --profile=./profiles/windows-x64-$buildType.txt --build=missing
-
+# Local packages first: the root conanfile requires them.
 CreateConanPackage -path "openapv/all" -version "1.1.3.0"
+CreateConanPackage -path "SDL/all"     -version "3.4.18"
 
-if ($LASTEXITCODE -ne 0) { Write-Host "conan install failed" -ForegroundColor Red; Pop-Location; exit 1 }
+Write-Host "==> Running conan install..." -ForegroundColor Cyan
+conan install . --profile=$conanProfile --build=missing
+if ($LASTEXITCODE -ne 0) { Fail "conan install failed" }
 
 Write-Host "==> Running cmake configure..." -ForegroundColor Cyan
 cmake --preset conan2-ninja
-if ($LASTEXITCODE -ne 0) { Write-Host "cmake configure failed" -ForegroundColor Red; Pop-Location; exit 1 }
+if ($LASTEXITCODE -ne 0) { Fail "cmake configure failed" }
 
 Write-Host "==> Done. Run: ./scripts/build.ps1" -ForegroundColor Green
 Pop-Location

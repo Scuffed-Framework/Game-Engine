@@ -8,11 +8,8 @@
 #include <Rendering/FrameGraph/EngineRenderpassManager.hpp>
 #include <Rendering/RHI/Commands/CommandBuffer.hpp>
 
-// Always use the GLFW backend : it auto-installs all input callbacks and works
-// on every platform (including Windows). The Win32 backend is only needed when
-// GLFW is not in use.
 #include <Gui/ImGui/ocornut/imgui.h>
-#include <Gui/ImGui/ocornut/imgui_impl_glfw.h>
+#include <Gui/ImGui/ocornut/imgui_impl_sdl3.h>
 #include <Gui/ImGui/ocornut/imgui_impl_vulkan.h>
 
 #include <functional>
@@ -54,7 +51,7 @@ namespace SF::Engine
     public:
         using DrawCallback = std::function<void()>;
 
-        explicit ImGuiSFERenderpass(Pipeline::Stage stage);
+        explicit ImGuiSFERenderpass(const Pipeline::Stage &stage);
         ~ImGuiSFERenderpass() override;
 
         ImGuiSFERenderpass(const ImGuiSFERenderpass &)            = delete;

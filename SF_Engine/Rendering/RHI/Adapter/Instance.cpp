@@ -126,9 +126,9 @@ namespace SF::Engine
     vector<const char *> Instance::GetExtensions() const
     {
         // Sets up the extensions.
-        auto [glfwExtensions, glfwExtensionsCount] = WindowManager::Get()->GetInstanceExtensions();
+        auto [Extensions, ExtensionsCount] = WindowManager::Get()->GetInstanceExtensions();
 
-        vector<const char *> extensions(glfwExtensions, glfwExtensions + glfwExtensionsCount);
+        vector<const char *> extensions(Extensions, Extensions + ExtensionsCount);
 
         if (validationLayersEnabled)
         {

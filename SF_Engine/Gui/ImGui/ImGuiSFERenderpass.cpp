@@ -6,7 +6,7 @@
 #include <Rendering/RHI/Renderpass/RhiRenderpass.hpp>
 #include <Rendering/RenderSystem.hpp>
 
-#include <GLFW/glfw3.h>
+#include <SDL3/SDL.h>
 
 #include <Configuration/Default/ImGuiDefault.hpp>
 #include <stdexcept>
@@ -15,7 +15,7 @@
 
 namespace SF::Engine
 {
-    ImGuiSFERenderpass::ImGuiSFERenderpass(Pipeline::Stage stage) : EngineRenderpass(stage) { Init(); }
+    ImGuiSFERenderpass::ImGuiSFERenderpass(const Pipeline::Stage &stage) : EngineRenderpass(stage) { Init(); }
 
     ImGuiSFERenderpass::~ImGuiSFERenderpass() { Shutdown(); }
 
@@ -46,25 +46,25 @@ namespace SF::Engine
             return;
         }
 
-        auto *renderSystem = RenderSystem::Get();
-        auto *physDevice   = renderSystem->GetPhysicalDevice();
-        auto *logDevice    = renderSystem->GetLogicalDevice();
-        auto *window       = WindowManager::Get()->GetWindow(0);
+        const auto *renderSystem = RenderSystem::Get();
+        auto *physDevice         = renderSystem->GetPhysicalDevice();
+        auto *logDevice          = renderSystem->GetLogicalDevice();
+        const auto *window       = WindowManager::Get()->GetWindow(0);
 
         if (!window)
             throw std::runtime_error("ImGuiSFERenderpass: no window available");
 
-        GLFWwindow *glfwWindow = window->GetWindow();
-        if (!glfwWindow)
-            throw std::runtime_error("ImGuiSFERenderpass: null GLFWwindow");
+        SDL_Window *wnd = window->GetWindow();
+        if (!wnd)
+            throw std::runtime_error("ImGuiSFERenderpass: null wnd");
 
         ImGui::CreateContext();
         ImGuiIO &io = ImGui::GetIO();
         io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard | ImGuiConfigFlags_DockingEnable;
         ImGui::StyleColorsDark();
 
-        if (!ImGui_ImplGlfw_InitForVulkan(glfwWindow, /*install_callbacks=*/false))
-            throw std::runtime_error("ImGuiSFERenderpass: ImGui_ImplGlfw_InitForVulkan failed");
+        if (!ImGui_ImplSDL3_InitForVulkan(wnd))
+            throw std::runtime_error("ImGuiSFERenderpass: ImGui_ImplSDL3_InitForVulkan failed");
 
         CreateDescriptorPool();
 
@@ -72,7 +72,7 @@ namespace SF::Engine
         if (!renderStage || !renderStage->GetRenderpass())
             throw std::runtime_error("ImGuiSFERenderpass: render stage / renderpass not ready");
 
-        const VkRenderPass vkRenderPass = renderStage->GetRenderpass()->GetRenderpass();
+        VkRenderPass vkRenderPass = renderStage->GetRenderpass()->GetRenderpass();
 
         ImGui_ImplVulkan_InitInfo initInfo{};
         initInfo.ApiVersion      = VK_API_VERSION_1_2;
@@ -86,7 +86,7 @@ namespace SF::Engine
         initInfo.MinImageCount   = 2;
         initInfo.ImageCount      = renderSystem->GetSwapchain(0)->GetImageCount();
         initInfo.Allocator       = nullptr;
-        initInfo.CheckVkResultFn = [](VkResult r) { RenderSystem::CheckVkResult(r); };
+        initInfo.CheckVkResultFn = [](const VkResult r) { RenderSystem::CheckVkResult(r); };
 
         initInfo.PipelineInfoMain.RenderPass = vkRenderPass;
         initInfo.PipelineInfoMain.Subpass    = GetStage().second;
@@ -113,7 +113,7 @@ namespace SF::Engine
         vkDeviceWaitIdle(*RenderSystem::Get()->GetLogicalDevice());
 
         ImGui_ImplVulkan_Shutdown();
-        ImGui_ImplGlfw_Shutdown();
+        ImGui_ImplSDL3_Shutdown();
         ImGui::DestroyContext();
 
         if (imguiPool_ != VK_NULL_HANDLE)
@@ -138,7 +138,7 @@ namespace SF::Engine
             return;
 
         ImGui_ImplVulkan_NewFrame();
-        ImGui_ImplGlfw_NewFrame();
+        ImGui_ImplSDL3_NewFrame();
         ImGui::NewFrame();
         ImGuizmo::BeginFrame();
 

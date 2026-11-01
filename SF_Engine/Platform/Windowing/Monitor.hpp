@@ -1,11 +1,16 @@
 #pragma once
 
 #include <Math/Vectors/Vector.hpp>
+#include <SDL3/SDL_video.h>
+#include <cstdint>
+#include <string>
 #include <vector>
-#include "Cursor.hpp" // This has glfw3.h
+#include "Cursor.hpp"
 
 namespace SF::Engine
 {
+    using namespace std;
+
     /**
      * @brief Class used to describe the video mode for a monitor.
      */
@@ -13,33 +18,19 @@ namespace SF::Engine
     {
     public:
         /// The width, in screen coordinates, of the video mode.
-        int32_t width;
+        int32_t width = 0;
         /// The height, in screen coordinates, of the video mode.
-        int32_t height;
+        int32_t height = 0;
         /// The bit depth of the red channel of the video mode.
-        int32_t redBits;
+        int32_t redBits = 0;
         /// The bit depth of the green channel of the video mode.
-        int32_t greenBits;
+        int32_t greenBits = 0;
         /// The bit depth of the blue channel of the video mode.
-        int32_t blueBits;
+        int32_t blueBits = 0;
         /// The refresh rate, in Hz, of the video mode.
-        int32_t refreshRate;
-    };
-
-    /**
-     * @brief Class used to describe the gamma ramp for a monitor.
-     */
-    class GammaRamp
-    {
-    public:
-        /// An array of value describing the response of the red channel.
-        uint16_t *red;
-        /// An array of value describing the response of the green channel.
-        uint16_t *green;
-        /// An array of value describing the response of the blue channel.
-        uint16_t *blue;
-        /// The number of elements in each array.
-        uint32_t size;
+        int32_t refreshRate = 0;
+        /// Ratio of pixels to screen coordinates (multiply width/height by this for the real pixel size).
+        float pixelDensity = 1.0f;
     };
 
     /**
@@ -50,73 +41,64 @@ namespace SF::Engine
         friend class Window;
 
     public:
-        explicit Monitor(GLFWmonitor *monitor = nullptr);
+        /// A default-constructed Monitor (ID 0) is invalid.
+        explicit Monitor(SDL_DisplayID monitor = 0);
 
-        GLFWmonitor *GetMonitor() const { return monitor; }
+        [[nodiscard]] SDL_DisplayID GetMonitor() const { return monitor; }
+        [[nodiscard]] bool IsValid() const { return monitor != 0; }
 
-        bool IsPrimary() const;
-
-        /**
-         * Gets the workarea size of the monitor.
-         * @return The size, in pixels, of the display area.
-         */
-        UVec2 GetWorkareaSize() const;
+        [[nodiscard]] bool IsPrimary() const;
 
         /**
-         * Gets the workarea size of the monitor.
-         * @return The size, in pixels, of the display area.
+         * Gets the size of the usable area of the monitor (excludes taskbars, docks, notches, etc.).
+         * @return The size, in screen coordinates, of the usable area.
          */
-        UVec2 GetWorkareaPosition() const;
+        [[nodiscard]] UVec2 GetWorkareaSize() const;
 
         /**
-         * Gets the physical size of the monitor.
-         * @return The size, in millimetres, of the display area.
+         * Gets the position of the usable area of the monitor.
+         * @return The position of the usable area on the virtual screen.
          */
-        UVec2 GetSize() const;
+        [[nodiscard]] UVec2 GetWorkareaPosition() const;
+
+        /**
+         * Gets the size of the monitor.
+         * @return The size, in screen coordinates, of the display.
+         * @note SDL does not expose the physical size in millimetres.
+         */
+        [[nodiscard]] UVec2 GetSize() const;
 
         /**
          * Gets the content scale of the monitor.
-         * @return The content scale, the ratio between the current DPI and the platform's default DPI.
+         * @return The content scale (SDL provides a single uniform value, so x == y).
          */
-        Vec2 GetContentScale() const;
+        [[nodiscard]] Vec2 GetContentScale() const;
 
         /**
          * Gets the position of the monitor's viewport on the virtual screen.
          * @return The position of the monitor's viewport.
          */
-        UVec2 GetPosition() const;
+        [[nodiscard]] UVec2 GetPosition() const;
 
         /**
          * Gets the name of this monitor.
          * @return The name of the monitor.
          */
-        std::string GetName() const;
+        [[nodiscard]] string GetName() const;
 
         /**
-         * Gets the available video modes for this monitor.
+         * Gets the available fullscreen video modes for this monitor.
          * @return The video modes supported by this monitor.
          */
-        std::vector<VideoMode> GetVideoModes() const;
+        [[nodiscard]] std::vector<VideoMode> GetVideoModes() const;
 
         /**
          * Gets the current mode of this monitor.
          * @return The current video mode of this monitor.
          */
-        VideoMode GetVideoMode() const;
-
-        /**
-         * Gets the current gamma ramp for this monitor.
-         * @return The current gamma ramp.
-         */
-        GammaRamp GetGammaRamp() const;
-
-        /**
-         * Sets the current gamma ramp for this monitor.
-         * @param gammaRamp The gamma ramp to use.
-         */
-        void SetGammaRamp(const GammaRamp &gammaRamp) const;
+        [[nodiscard]] VideoMode GetVideoMode() const;
 
     private:
-        GLFWmonitor *monitor;
+        SDL_DisplayID monitor;
     };
-}
+} // namespace SF::Engine

@@ -1,105 +1,192 @@
 #include "WindowManager.hpp"
 
+#include <Gui/ImGui/ocornut/imgui.h>
+#include <Gui/ImGui/ocornut/imgui_impl_sdl3.h>
+#include <SDL3/SDL_vulkan.h>
 #include <algorithm>
-#define GLFW_EXPOSE_NATIVE_WIN32
-#include <GLFW/glfw3.h>
 
 namespace SF::Engine
 {
-    void CallbackError(int32_t error, const char *description)
+    bool WindowManager::CheckSdl(const bool result)
     {
-        WindowManager::CheckGlfw(error);
-        Log::Error("GLFW Error ", error, ": ", description);
-    }
-
-    void CallbackMonitor(GLFWmonitor *glfwMonitor, int32_t event)
-    {
-        auto &monitors = WindowManager::Get()->monitors;
-
-        if (event == GLFW_CONNECTED)
-        {
-            auto monitor = monitors.emplace_back(std::make_unique<Monitor>(glfwMonitor)).get();
-            WindowManager::Get()->onMonitorConnect(monitor, true);
-        }
-        else if (event == GLFW_DISCONNECTED)
-        {
-            for (const auto &monitor : monitors)
-            {
-                if (monitor->GetMonitor() == glfwMonitor)
-                {
-                    WindowManager::Get()->onMonitorConnect(monitor.get(), false);
-                }
-            }
-
-            monitors.erase(std::remove_if(monitors.begin(), monitors.end(),
-                                          [glfwMonitor](const auto &monitor)
-                                          { return glfwMonitor == monitor->GetMonitor(); }));
-        }
+        if (!result)
+            Log::Error("SDL error: ", SDL_GetError());
+        return result;
     }
 
     WindowManager::WindowManager()
     {
-        // Set the error error callback
-        glfwSetErrorCallback(CallbackError);
+        if (!SDL_Init(SDL_INIT_VIDEO
+#ifdef SF_INPUT_ADDONS
+                      | SDL_INIT_HAPTIC | SDL_INIT_GAMEPAD | SDL_INIT_JOYSTICK
+#elif SF_GAME_REQUIRES_CAMERA_AND_SENSOR_ACCESS
+                      | SDL_INIT_CAMERA | SDL_INIT_SENSOR
+#endif
+                      ))
+        {
+            throw runtime_error(string("SDL failed to initialize: ") + SDL_GetError());
+        }
 
-        // Initialize the GLFW library.
-        if (glfwInit() == GLFW_FALSE)
-            throw std::runtime_error("GLFW failed to initialize");
+        if (!SDL_Vulkan_LoadLibrary(nullptr))
+            throw runtime_error(string("SDL failed to find Vulkan support: ") + SDL_GetError());
 
-        // Checks Vulkan support on GLFW.
-        if (glfwVulkanSupported() == GLFW_FALSE)
-            throw std::runtime_error("GLFW failed to find Vulkan support");
-
-        // Set the monitor callback
-        glfwSetMonitorCallback(CallbackMonitor);
-
-        // The window will stay hidden until after creation.
-        glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
-        // Disable context creation.
-        glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-        // Fixes 16 bit stencil bits in macOS.
-        glfwWindowHint(GLFW_STENCIL_BITS, 8);
-        // No stereo view!
-        glfwWindowHint(GLFW_STEREO, GLFW_FALSE);
+        SDL_AddEventWatch(&WindowManager::EventWatch, this);
 
         // Get connected monitors.
-        int32_t monitorCount;
-        auto monitors = glfwGetMonitors(&monitorCount);
-
-        for (uint32_t i = 0; i < static_cast<uint32_t>(monitorCount); i++)
-            this->monitors.emplace_back(std::make_unique<Monitor>(monitors[i]));
+        int32_t displayCount = 0;
+        if (SDL_DisplayID *displays = SDL_GetDisplays(&displayCount))
+        {
+            for (int32_t i = 0; i < displayCount; i++)
+                monitors.emplace_back(make_unique<Monitor>(displays[i]));
+            SDL_free(displays);
+        }
     }
 
     WindowManager::~WindowManager()
     {
-        // Destroy all windows BEFORE glfwTerminate : calling glfwDestroyWindow
-        // after glfwTerminate fires a GLFW error
         windows.clear();
-        glfwTerminate();
+        monitors.clear();
+
+        SDL_RemoveEventWatch(&WindowManager::EventWatch, this);
+        SDL_Vulkan_UnloadLibrary();
+        SDL_Quit();
     }
 
     void WindowManager::Update()
     {
-        glfwPollEvents();
-        for (auto &window : windows)
+        PollEvents();
+        for (const auto &window: windows)
             window->Update();
+    }
+
+    void WindowManager::PollEvents()
+    {
+        SDL_Event event;
+        while (SDL_PollEvent(&event))
+            DispatchEvent(event);
+    }
+
+    void WindowManager::WaitEvents(int32_t timeoutMs)
+    {
+        SDL_Event event;
+        if (SDL_WaitEventTimeout(&event, timeoutMs))
+        {
+            DispatchEvent(event);
+            PollEvents();
+        }
+    }
+
+    void WindowManager::DispatchEvent(const SDL_Event &event)
+    {
+        switch (event.type)
+        {
+            case SDL_EVENT_QUIT:
+                Engine::Get()->RequestClose();
+                return;
+
+            case SDL_EVENT_DISPLAY_ADDED:
+                AddMonitor(event.display.displayID);
+                return;
+
+            case SDL_EVENT_DISPLAY_REMOVED:
+                RemoveMonitor(event.display.displayID);
+                return;
+
+            case SDL_EVENT_WINDOW_EXPOSED: // handled immediately by EventWatch
+                return;
+
+            default:
+                break;
+        }
+
+        if (SDL_Window *sdlWindow = SDL_GetWindowFromEvent(&event))
+        {
+            if (Window *window = Window::FromId(SDL_GetWindowID(sdlWindow)))
+            {
+                window->HandleEvent(event); // also feeds ImGui
+                return;
+            }
+        }
+
+        if (ImGui::GetCurrentContext())
+            ImGui_ImplSDL3_ProcessEvent(&event);
+    }
+
+    bool WindowManager::EventWatch(void *userdata, SDL_Event *event)
+    {
+        auto *self = static_cast<WindowManager *>(userdata);
+
+        switch (event->type)
+        {
+            case SDL_EVENT_WINDOW_EXPOSED:
+                if (SDL_IsMainThread())
+                {
+                    if (Window *window = Window::FromId(event->window.windowID))
+                        window->HandleEvent(*event);
+                }
+                break;
+
+            case SDL_EVENT_WILL_ENTER_BACKGROUND:
+                self->inBackground.store(true);
+                self->onBackground(true);
+                break;
+
+            case SDL_EVENT_DID_ENTER_FOREGROUND:
+                self->inBackground.store(false);
+                self->onBackground(false);
+                break;
+
+            case SDL_EVENT_TERMINATING:
+                Engine::Get()->RequestClose();
+                break;
+
+            default:
+                break;
+        }
+        return true; // return value is ignored for watches
+    }
+
+    void WindowManager::AddMonitor(SDL_DisplayID display)
+    {
+        const bool known =
+                ranges::any_of(monitors, [display](const auto &monitor) { return monitor->GetMonitor() == display; });
+        if (known)
+            return;
+
+        auto *monitor = monitors.emplace_back(make_unique<Monitor>(display)).get();
+        onMonitorConnect(monitor, true);
+    }
+
+    void WindowManager::RemoveMonitor(SDL_DisplayID display)
+    {
+        // Notify first, while the Monitor object still exists.
+        for (const auto &monitor: monitors)
+        {
+            if (monitor->GetMonitor() == display)
+                onMonitorConnect(monitor.get(), false);
+        }
+
+        monitors.erase(
+                ranges::remove_if(monitors, [display](const auto &monitor) { return monitor->GetMonitor() == display; })
+                        .begin(),
+                monitors.end());
     }
 
     Window *WindowManager::AddWindow()
     {
-        auto window = windows.emplace_back(std::make_unique<Window>(windows.size())).get();
+        const auto window = windows.emplace_back(make_unique<Window>(windows.size())).get();
         onAddWindow(window, true);
         return window;
     }
 
-    const Window *WindowManager::GetWindow(WindowId id) const
+    const Window *WindowManager::GetWindow(const WindowId id) const
     {
         if (id >= windows.size())
             return nullptr;
         return windows.at(id).get();
     }
 
-    Window *WindowManager::GetWindow(WindowId id)
+    Window *WindowManager::GetWindow(const WindowId id)
     {
         if (id >= windows.size())
             return nullptr;
@@ -108,7 +195,7 @@ namespace SF::Engine
 
     const Monitor *WindowManager::GetPrimaryMonitor() const
     {
-        for (const auto &monitor : monitors)
+        for (const auto &monitor: monitors)
         {
             if (monitor->IsPrimary())
                 return monitor.get();
@@ -116,18 +203,15 @@ namespace SF::Engine
         return nullptr;
     }
 
-    void WindowManager::CheckGlfw(int32_t result)
+    pair<const char *const *, uint32_t> WindowManager::GetInstanceExtensions() const
     {
-        if (result)
-            return;
-
-        Log::Error("GLFW error:  ", result, '\n');
+        Uint32 count                  = 0;
+        const char *const *extensions = SDL_Vulkan_GetInstanceExtensions(&count);
+        if (!extensions)
+        {
+            CheckSdl(false);
+            return {nullptr, 0};
+        }
+        return {extensions, count};
     }
-
-    std::pair<const char **, uint32_t> WindowManager::GetInstanceExtensions() const
-    {
-        uint32_t glfwExtensionCount;
-        auto glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
-        return std::make_pair(glfwExtensions, glfwExtensionCount);
-    }
-}
+} // namespace SF::Engine

@@ -66,7 +66,7 @@ namespace SF::Engine
     {
         std::vector<char> buffer(4096);
 
-        ssize_t len = readlink("/proc/self/exe", buffer.data(), buffer.size());
+        const ssize_t len = readlink("/proc/self/exe", buffer.data(), buffer.size());
 
         if (len == -1)
             throw std::runtime_error("readlink failed");
@@ -138,8 +138,8 @@ namespace SF::Engine
         WindowsPlatform, // includes xbox
         Linux,
         MacIpadIPhoneOs,
-        Horizon,        // nintendo swich
+        Horizon, // nintendo swich
         Android,
-        Orbis // ps
+        Orbis, // ps
     };
 } // namespace SF::Engine

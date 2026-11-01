@@ -1,5 +1,8 @@
 #CORE
 NOW: RTGI, fix viewports
+Switch to SDL, redo Windowing and Input
+
+
 1. Improve renderer
 2. Shader hot-reloading (at some point)
 3. Finish AssetSystem

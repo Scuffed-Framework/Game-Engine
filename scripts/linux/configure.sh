@@ -14,18 +14,18 @@ while [[ "$#" -gt 0 ]]; do
 done
 
 function CreateConanPackage(){
-  # Strip any trailing slashes from the incoming argument $1
   local pkg_path="${1%/}"
 
   echo "==> Creating Conan package: $pkg_path"
-  conan install "./scripts/conan-ext/$pkg_path/conanfile.py"
   conan create "./scripts/conan-ext/$pkg_path/" \
       --version="$2" \
-      -s build_type=$BUILD_TYPE \
-      -s arch=x86_64 \
-      -s compiler=gcc \
-      -s compiler.version=16 \
-      -s compiler.libcxx=libstdc++11
+      --build=missing \
+      -s:h build_type=$BUILD_TYPE \
+      -s:h arch=x86_64 \
+      -s:h compiler=gcc \
+      -s:h compiler.version=16 \
+      -s:h compiler.libcxx=libstdc++11 \
+      -s:b build_type=Release
 }
 
 echo "==> Build type: $BUILD_TYPE"

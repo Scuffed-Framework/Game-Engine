@@ -1,12 +1,10 @@
 #pragma once
-
-#ifndef VK_NO_PROTOTYPES
-    #define VK_NO_PROTOTYPES
-#endif
+#define NO_SDL_VULKAN_TYPEDEFS // we use volk's Vulkan types
 
 #include <3rdPartyLibs/Rocket.hpp>
 #include <LowLevel/Bitmask.hpp>
 #include <Platform/Input/ButtonCodes.hpp>
+#include <SDL3/SDL.h>
 #include <volk.h>
 #include "Monitor.hpp"
 
@@ -83,7 +81,7 @@ namespace SF::Engine
          * Sets window icon images.
          * @param filenames The new icon files.
          */
-        void SetIcons(const std::vector<std::filesystem::path> &filenames);
+        void SetIcons(const std::vector<std::filesystem::path> &filenames) const;
 
         /**
          * Gets weather the window is borderless or not.
@@ -157,7 +155,7 @@ namespace SF::Engine
          * Sets the window to be iconified (minimized).
          * @param iconify If the window will be set as iconified.
          */
-        void SetIconified(bool iconify);
+        void SetIconified(bool iconify) const;
 
         void SetTitleColor(Color col);
         void SetBorderColor(Color col);
@@ -220,7 +218,7 @@ namespace SF::Engine
 
         /**
          * Sets the mouse position.
-         * @param position The new mouse position.
+         * @param mousePosition The new mouse position.
          */
         void SetMousePosition(const DVec2 &mousePosition);
 
@@ -250,7 +248,7 @@ namespace SF::Engine
 
         static std::string ToString(Key key);
 
-        GLFWwindow *GetWindow() const { return window; }
+        SDL_Window *GetWindow() const { return window; }
 
         const Monitor *GetCurrentMonitor() const;
 
@@ -362,27 +360,38 @@ namespace SF::Engine
          */
         rocket::signal<void(DVec2)> &OnMouseScroll() { return onMouseScroll; }
 
-        bool ShouldClose() const { return glfwWindowShouldClose(this->window); }
+        bool ShouldClose() const { return closed; }
+
+        /**
+         * Feeds one SDL event to this window. Called by WindowManager for every event
+         * that belongs to this window (see SDL_GetWindowFromEvent).
+         */
+        void HandleEvent(const SDL_Event &event);
+
+        /** Looks up the engine Window that owns an SDL window ID (nullptr if none). */
+        static Window *FromId(SDL_WindowID id);
 
     private:
-        friend void CallbackWindowPosition(GLFWwindow *glfwWindow, int32_t xpos, int32_t ypos);
-        friend void CallbackWindowSize(GLFWwindow *glfwWindow, int32_t width, int32_t height);
-        friend void CallbackWindowClose(GLFWwindow *glfwWindow);
-        friend void CallbackWindowFocus(GLFWwindow *glfwWindow, int32_t focused);
-        friend void CallbackWindowIconify(GLFWwindow *glfwWindow, int32_t iconified);
-        friend void CallbackFramebufferSize(GLFWwindow *glfwWindow, int32_t width, int32_t height);
-        friend void CallbackCursorEnter(GLFWwindow *glfwWindow, int32_t entered);
-        friend void CallbackDrop(GLFWwindow *glfwWindow, int32_t count, const char **paths);
-        friend void CallbackKey(GLFWwindow *glfwWindow, int32_t key, int32_t scancode, int32_t action, int32_t mods);
-        friend void CallbackChar(GLFWwindow *glfwWindow, uint32_t codepoint);
-        friend void CallbackMouseButton(GLFWwindow *glfwWindow, int32_t button, int32_t action, int32_t mods);
-        friend void CallbackCursorPos(GLFWwindow *glfwWindow, double xpos, double ypos);
-        friend void CallbackScroll(GLFWwindow *glfwWindow, double xoffset, double yoffset);
-
         static double SmoothScrollWheel(double value, float delta);
 
-        std::size_t id;
-        GLFWwindow *window = nullptr;
+        size_t id;
+        SDL_Window *window = nullptr;
+
+        vector<string> pendingDrops; // collected between DROP_BEGIN and DROP_COMPLETE
+
+        friend void CallbackWindowPosition(SDL_Window *SDL_Window, int32_t xpos, int32_t ypos);
+        friend void CallbackWindowSize(SDL_Window *SDL_Window, int32_t width, int32_t height);
+        friend void CallbackWindowClose(SDL_Window *SDL_Window);
+        friend void CallbackWindowFocus(SDL_Window *SDL_Window, int32_t focused);
+        friend void CallbackWindowIconify(SDL_Window *SDL_Window, int32_t iconified);
+        friend void CallbackFramebufferSize(SDL_Window *SDL_Window, int32_t width, int32_t height);
+        friend void CallbackCursorEnter(SDL_Window *SDL_Window, int32_t entered);
+        friend void CallbackDrop(SDL_Window *SDL_Window, int32_t count, const char **paths);
+        friend void CallbackKey(SDL_Window *SDL_Window, int32_t key, int32_t scancode, int32_t action, int32_t mods);
+        friend void CallbackChar(SDL_Window *SDL_Window, uint32_t codepoint);
+        friend void CallbackMouseButton(SDL_Window *SDL_Window, int32_t button, int32_t action, int32_t mods);
+        friend void CallbackCursorPos(SDL_Window *SDL_Window, double xpos, double ypos);
+        friend void CallbackScroll(SDL_Window *SDL_Window, double xoffset, double yoffset);
 
         UVec2 size;
         UVec2 fullscreenSize;
@@ -429,6 +438,6 @@ namespace SF::Engine
         rocket::signal<void(DVec2)> onMouseScroll;
 
     public:
-        WindowId GetId() { return id; }
+        WindowId GetId() const { return id; }
     };
 } // namespace SF::Engine

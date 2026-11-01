@@ -10,8 +10,12 @@ if (MSVC)
     set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL" CACHE STRING "MSVC runtime library")
 endif ()
 
+# NDA so like uhh figure it out
 option(OrbisOS_build "Playstation" OFF)
 option(HorizonOS_build "Nintendo Switch" OFF)
+
+option(SF_INPUT_ADDONS "Extra Input Methods" OFF)
+option(SF_GAME_REQUIRES_CAMERA_AND_SENSOR_ACCESS "Allow SDL to init Camera and Sensor" OFF)
 
 project(SF_Engine LANGUAGES CXX C)
 
@@ -30,7 +34,7 @@ include(FetchContent)
 find_package(OpenAL CONFIG REQUIRED)
 find_package(assimp CONFIG REQUIRED)
 find_package(freetype CONFIG REQUIRED)
-find_package(glfw3 CONFIG REQUIRED)
+find_package(SDL3 CONFIG REQUIRED)
 find_package(glm CONFIG REQUIRED)
 find_package(libxml2 CONFIG REQUIRED)
 find_package(libsodium CONFIG REQUIRED)
@@ -103,6 +107,10 @@ if (OrbisOS_build)
     target_compile_definitions(SF_Engine PUBLIC _PLATFORM_PLAYSTATION)
 elseif (HorizonOS_build)
     target_compile_definitions(SF_Engine PUBLIC _PLATFORM_NINTENDO_SWITCH)
+elseif (SF_GAME_REQUIRES_CAMERA_AND_SENSOR_ACCESS)
+    target_compile_definitions(SF_Engine PUBLIC SF_GAME_REQUIRES_CAMERA_AND_SENSOR_ACCESS)
+elseif (SF_INPUT_ADDONS)
+    target_compile_definitions(SF_Engine PUBLIC SF_INPUT_ADDONS)
 elseif (WIN32)
     target_compile_definitions(SF_Engine PUBLIC
             _PLATFORM_WINDOWS
@@ -215,7 +223,7 @@ target_link_libraries(SF_Engine PUBLIC
         OpenAL::OpenAL
         assimp::assimp
         Freetype::Freetype
-        glfw
+        SDL3::SDL3-static
         glm::glm
         LibXml2::LibXml2
         libsodium::libsodium
@@ -247,6 +255,16 @@ target_link_libraries(SF_Engine PUBLIC
         openh264::openh264
         TIFF::TIFF
 )
+
+# sudo apt install libdecor-0-dev      # Debian/Ubuntu
+# sudo pacman -S libdecor              # Arch
+# sudo dnf install libdecor-devel      # Fedora
+if (UNIX AND NOT APPLE AND NOT ANDROID)
+    find_package(PkgConfig REQUIRED)
+    pkg_check_modules(LIBDECOR REQUIRED IMPORTED_TARGET libdecor-0)
+    target_link_libraries(SF_Engine PUBLIC PkgConfig::LIBDECOR)
+endif ()
+
 
 if (TARGET utf8cpp::utf8cpp)
     target_link_libraries(SF_Engine PUBLIC utf8cpp::utf8cpp)
