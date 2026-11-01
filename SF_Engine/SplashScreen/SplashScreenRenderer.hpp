@@ -81,15 +81,13 @@ namespace SF::Engine
                         const float quoteSize = ImGui::GetFontSize();
                         const float titleSize = quoteSize * 1.8f;
 
-                        // Stack upward from the bar: bar, quote, title
                         const float quoteY = origin.y + extent.y - barHeight - margin - quoteSize;
                         const float titleY = quoteY - titleSize - 8.0f;
 
                         draw->AddText(font, titleSize, Vec2(origin.x + margin, titleY), IM_COL32(255, 255, 255, 255),
                                       "Scuffed Framework Game Engine");
                         draw->AddText(font, quoteSize, Vec2(origin.x + margin, quoteY), IM_COL32(255, 255, 255, 220),
-                                      quote.c_str(), nullptr,
-                                      extent.x - margin * 2.0f); // wrap width, see note below
+                                      quote.c_str(), nullptr, extent.x - margin * 2.0f);
 
                         ImGui::ProgressBar(-1.0f * static_cast<float>(ImGui::GetTime()), Vec2(-1.0f, barHeight),
                                            "Loading...");
