@@ -78,6 +78,7 @@ Write-Host "Using compiler: $($cl.Source)" -ForegroundColor DarkGray
 
 Write-Host "==> Running conan install..." -ForegroundColor Cyan
 conan install . --profile=./profiles/windows-x64-$buildType.txt --build=missing
+conan install ./scripts/conan-ext/openapv/all/conanfile.py
 if ($LASTEXITCODE -ne 0) { Write-Host "conan install failed" -ForegroundColor Red; Pop-Location; exit 1 }
 
 Write-Host "==> Running cmake configure..." -ForegroundColor Cyan

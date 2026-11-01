@@ -17,6 +17,7 @@ echo "==> Build type: $BUILD_TYPE"
 
 echo "==> Running Conan..."
 conan install . -s build_type=$BUILD_TYPE --build=missing
+conan install ./scripts/conan-ext/openapv/all/conanfile.py
 
 echo "==> Running CMake configure..."
 cmake -B "000-Build-$BUILD_TYPE-x64" -DCMAKE_BUILD_TYPE=$BUILD_TYPE -S .

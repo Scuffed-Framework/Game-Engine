@@ -50,3 +50,4 @@ Programs/
 Claude_EXAMPLES/
 .idea/
 /SF_Engine/RHI/RPI/
+/scripts/conan-ext/openapv/all/build/
