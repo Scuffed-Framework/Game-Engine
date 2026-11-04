@@ -47,10 +47,10 @@
 // This header used to mint its own type ids: a std::type_index -> a
 // sequentially-assigned std::size_t, in a map kept per-hierarchy (one map
 // per distinct T), guarded by a shared_mutex. That was a second, independent
-// identity scheme living alongside SF::RTTI::TypeId (this file even included
+// identity scheme living alongside SF::Reflection::TypeId (this file even included
 // RTTI's TypeId.hpp already, without using it). It has been merged away:
 // there is now exactly one type id in the engine, minted by
-// SF::RTTI::GetTypeId<T>() -- constexpr, no locking, and identical for a
+// SF::Reflection::GetTypeId<T>() -- constexpr, no locking, and identical for a
 // given type whether it's reached through SF_RTTI/SF_RTTI_BASE or only ever
 // seen generically through a template parameter, as below.
 //
@@ -63,16 +63,16 @@
 // was ever called.
 //
 // Breaking change from the old version: GetTypeId<K>() now returns
-// SF::RTTI::TypeId (a struct wrapping uint64_t), not a bare std::size_t.
+// SF::Reflection::TypeId (a struct wrapping uint64_t), not a bare std::size_t.
 // Code that did arithmetic or raw-integer comparisons on the old return
 // value needs to go through TypeId::value instead.
 namespace SF::Engine
 {
-    using TypeId = ::SF::RTTI::TypeId;
+    using TypeId = ::SF::Reflection::TypeId;
 
     /**
      * @brief Thread-safe, per-hierarchy convenience wrapper around
-     *        SF::RTTI's unified TypeId, plus an opt-in introspection
+     *        SF::Reflection's unified TypeId, plus an opt-in introspection
      *        registry.
      * @tparam T Base type for the type hierarchy
      */
@@ -97,13 +97,13 @@ namespace SF::Engine
          *         it explicitly at a call site where K is already complete
          *         (e.g. right after K's definition, or in a REGISTER_STREAM-
          *         style macro) with static_assert(std::is_convertible_v<K*, T*>).
-         * @return The same id SF::RTTI::GetTypeId<K>() returns -- constexpr,
+         * @return The same id SF::Reflection::GetTypeId<K>() returns -- constexpr,
          *         and independent of whether K was ever Register()ed.
          */
         template<typename K>
         [[nodiscard]] static constexpr TypeId GetTypeId() noexcept
         {
-            return ::SF::RTTI::GetTypeId<K>();
+            return ::SF::Reflection::GetTypeId<K>();
         }
 
         /**
@@ -119,7 +119,7 @@ namespace SF::Engine
         template<typename K>
         [[nodiscard]] static std::string_view GetTypeName() noexcept
         {
-            static const std::string name = ::SF::RTTI::GetTypeName<K>();
+            static const std::string name = ::SF::Reflection::GetTypeName<K>();
             return name;
         }
 
@@ -141,9 +141,9 @@ namespace SF::Engine
             requires std::is_convertible_v<K *, T *>
         static TypeId Register() noexcept
         {
-            const TypeId id = ::SF::RTTI::GetTypeId<K>();
+            const TypeId id = ::SF::Reflection::GetTypeId<K>();
             std::unique_lock lock(s_mutex);
-            s_registry.try_emplace(id, ::SF::RTTI::GetTypeName<K>());
+            s_registry.try_emplace(id, ::SF::Reflection::GetTypeName<K>());
             return id;
         }
 
@@ -168,7 +168,7 @@ namespace SF::Engine
         [[nodiscard]] static bool IsRegistered() noexcept
         {
             std::shared_lock lock(s_mutex);
-            return s_registry.contains(::SF::RTTI::GetTypeId<K>());
+            return s_registry.contains(::SF::Reflection::GetTypeId<K>());
         }
 
         /**
@@ -194,23 +194,23 @@ namespace SF::Engine
 } // namespace SF::Engine
 
 #define Define_TypeId_Function(base, cl)                                                                               \
-    [[nodiscard]] ::SF::RTTI::TypeId GetTypeId() const override { return ::SF::RTTI::GetTypeId<cl>(); }
+    [[nodiscard]] ::SF::Reflection::TypeId GetTypeId() const override { return ::SF::Reflection::GetTypeId<cl>(); }
 
 #define TypeId_Name_Function(cl)                                                                                       \
     [[nodiscard]] ::std::string_view GetTypeName() const override                                                      \
     {                                                                                                                  \
-        static const ::std::string name = ::SF::RTTI::GetTypeName<cl>();                                               \
+        static const ::std::string name = ::SF::Reflection::GetTypeName<cl>();                                         \
         return name;                                                                                                   \
     }
 
 
 template<>
-struct fmt::formatter<SF::RTTI::TypeId>
+struct fmt::formatter<SF::Reflection::TypeId>
 {
     constexpr auto parse(format_parse_context &ctx) { return ctx.begin(); }
 
     template<typename FormatContext>
-    auto format(const SF::RTTI::TypeId &typeId, FormatContext &ctx) const
+    auto format(const SF::Reflection::TypeId &typeId, FormatContext &ctx) const
     {
         return fmt::format_to(ctx.out(), "{}", typeId.value);
     }

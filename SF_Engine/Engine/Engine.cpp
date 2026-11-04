@@ -13,7 +13,7 @@ namespace SF::Engine
 {
     Engine *Engine::Instance = nullptr;
 
-    Engine::Engine(std::string argv0, ModuleFilter &&moduleFilter, const URL &startUpURL) :
+    Engine::Engine(std::string argv0, ModuleFilter &&moduleFilter) :
         argv0(std::move(argv0)), version{Engine_VERSION_MAJOR, Engine_VERSION_MINOR, Engine_VERSION_PATCH},
         fpsLimit(-1.0f), running(true), elapsedUpdate(15.77ms), elapsedRender(-1s)
     {
@@ -37,9 +37,54 @@ namespace SF::Engine
         // so we have to call this after the RenderSystem is fully initialized.
         RenderSystem::Get()->PostInit();
 
+        // Nothing game-specific happens here anymore: no GameInstance, no startup scene.
+        // The application attaches afterwards and decides (see LoadStartupScene).
+    }
+
+    Engine::~Engine()
+    {
+        // The application is owned elsewhere and must already be gone, but never call into it again.
+        app = nullptr;
+
+        // Clear layer stack before destroying modules
+        layerStack.Clear();
+
+        // Shutdown modules in reverse order
+        for (auto &[id, module]: std::views::reverse(modules))
+        {
+            if (module)
+                module->Shutdown();
+        }
+
+        // Destroy modules - collect keys first, since DestroyModule erases from the map
+        // and iterating + erasing simultaneously invalidates the reverse iterator
+        while (!modules.empty())
+        {
+            auto id = modules.rbegin()->first;
+            DestroyModule(id);
+        }
+
+        Log::Shutdown();
+        Instance = nullptr;
+    }
+
+    void Engine::SetApplication(Application *application)
+    {
+        app = application;
+        if (app)
+            app->started_ = true; // Engine is a friend of Application
+    }
+
+    void Engine::LoadStartupScene(const URL &startUpURL)
+    {
+        if (startupSceneLoaded)
+            return;
+        startupSceneLoaded = true;
+
         gameInstance = std::make_unique<GameInstance>();
+
         // Load the startup scene, falling back to DefaultScene on any failure.
-        // SceneManager::Update() will call Start() on the first frame  don't call it here.
+        // SceneManager::Update() will call Start() on the first frame - don't call it here.
         std::unique_ptr<Scene> startupScene;
 
         // Only attempt a network/file load if the URL isn't the placeholder default
@@ -72,44 +117,24 @@ namespace SF::Engine
         if (!startupScene)
             startupScene = std::make_unique<DefaultScene>();
 
-        // Hand the scene to SceneManager  it owns and updates it from here
+        // Hand the scene to SceneManager - it owns and updates it from here
         if (auto *sm = SceneManager::Get())
         {
             sm->SetScene(std::move(startupScene));
         }
     }
 
-    Engine::~Engine()
-    {
-        // Clear layer stack before destroying app
-        layerStack.Clear();
-
-        // Shutdown modules in reverse order
-        for (auto &[id, module]: std::views::reverse(modules))
-        {
-            if (module)
-                module->Shutdown();
-        }
-
-        // Destroy modules - collect keys first, since DestroyModule erases from the map
-        // and iterating + erasing simultaneously invalidates the reverse iterator
-        while (!modules.empty())
-        {
-            auto id = modules.rbegin()->first;
-            DestroyModule(id);
-        }
-
-        Log::Shutdown();
-        Instance = nullptr;
-    }
-
     int32_t Engine::Run()
     {
-        while (running)
+        // The application didn't ask for a specific scene: load the default one.
+        if (!startupSceneLoaded)
+            LoadStartupScene();
+
+        while (running && !(app && app->ShouldClose()))
         {
             elapsedRender.SetInterval(Milliseconds(1.0f / fpsLimit));
 
-            // Always-Update.
+            // Always-Update (window/event polling lives in here).
             UpdateStage(Module::Stage::Always);
 
             if (elapsedUpdate.GetElapsed() != 0)
@@ -121,7 +146,10 @@ namespace SF::Engine
 
                 layerStack.UpdateLayers();
 
-                UpdateStage(Module::Stage::Normal);
+                if (app)
+                    app->OnUpdate();
+
+                UpdateStage(Module::Stage::Normal); // SceneManager
                 UpdateStage(Module::Stage::Post);
 
                 deltaUpdate.Update();
@@ -132,16 +160,24 @@ namespace SF::Engine
             {
                 fps.Update(ClockNow());
 
-                UpdateStage(Module::Stage::Render);
+                UpdateStage(Module::Stage::Render); // RenderSystem
 
                 deltaRender.Update();
             }
         }
+
+        // Drain the GPU BEFORE anything is torn down. The loop exits with up to a few frames still
+        // in flight; destroying an image a pending command buffer still references
+        // (VUID-vkDestroyImage-image-01000) is what lost the device at shutdown before.
         if (VkResult r = vkDeviceWaitIdle(*RenderSystem::Get()->GetLogicalDevice()); r < 0)
         {
             Log::Critical("[Engine::Run] vkDeviceWaitIdle at loop exit failed: {}", RenderSystem::StrVkResult(r));
             RenderSystem::CheckVkResult(r);
         }
+
+        // Give the application its chance to release GPU resources while every module is alive.
+        if (app)
+            app->OnShutdown();
 
         return EXIT_SUCCESS;
     }

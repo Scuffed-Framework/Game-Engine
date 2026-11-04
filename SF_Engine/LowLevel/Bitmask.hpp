@@ -1,7 +1,6 @@
 #pragma once
 
-
-namespace SF::Engine::Bitmask
+namespace SF::Engine
 {
     using namespace std;
     // Wrapper type for enum Bitmasks
@@ -197,7 +196,7 @@ namespace SF::Engine::Bitmask
         ((result |= static_cast<underlying_type>(rest)), ...);
         return Bitmask<Enum>(result);
     }
-} // namespace SF::Engine::Bitmask
+} // namespace SF::Engine
 
 // Helper macro to enable Bitmask operations on an enum class
 #define ENABLE_BITMASK_OPERATORS(Enum)                                                                                 \

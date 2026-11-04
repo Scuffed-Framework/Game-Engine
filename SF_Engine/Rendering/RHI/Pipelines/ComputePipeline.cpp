@@ -105,6 +105,11 @@ namespace SF::Engine
         for (const auto &b: bindings)
             counts[b.descriptorType] += b.descriptorCount;
 
+        for (const VkDescriptorType type:
+             {VK_DESCRIPTOR_TYPE_SAMPLER, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+              VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER})
+            counts[type] = max(counts[type], 4u);
+
         vector<VkDescriptorPoolSize> sizes;
         for (const auto &[type, count]: counts)
             sizes.push_back({.type = type, .descriptorCount = count * 64});

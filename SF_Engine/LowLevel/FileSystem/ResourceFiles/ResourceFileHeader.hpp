@@ -1,5 +1,6 @@
 #pragma once
 
+#include <1stPartyLibs/EBML/Schema.hpp>
 #include <cstdint>
 
 namespace SF::Engine
@@ -27,7 +28,7 @@ namespace SF::Engine
     //    header.archiveSignature = BLAKE2b-128( header[0..47] || entry_table )
     //    Verified by MountedRscFile::Mount() before trusting any entry offsets.
 
-    static constexpr char RSC_MAGIC[4] = {'S', 'R', 'S', 'C'};
+    static constexpr char RSC_MAGIC[4]    = {'S', 'R', 'S', 'C'};
     static constexpr uint32_t RSC_VERSION = 2;
 
     //  Sanity caps applied when loading untrusted/possibly-corrupt archives.
@@ -36,25 +37,25 @@ namespace SF::Engine
     //  file-size validation has happened. Raise if legitimate content exceeds
     //  these, they are not a format limit, just a guard rail.
     static constexpr uint64_t RSC_MAX_ENTRY_COUNT = 1'000'000ull;
-    static constexpr uint64_t RSC_MAX_ASSET_SIZE = 4ull * 1024 * 1024 * 1024; // 4 GiB
+    static constexpr uint64_t RSC_MAX_ASSET_SIZE  = 4ull * 1024 * 1024 * 1024; // 4 GiB
 
     enum class RscCompression : uint8_t
     {
         None = 0,
-        LZ4 = 1,
+        LZ4  = 1,
         ZSTD = 2,
     };
 
     enum class RscAssetType : uint16_t
     {
-        Unknown = 0,
-        Texture = 1,
-        Mesh = 2,
-        Shader = 3,
-        Audio = 4,
+        Unknown  = 0,
+        Texture  = 1,
+        Mesh     = 2,
+        Shader   = 3,
+        Audio    = 4,
         Material = 5,
-        Script = 6,
-        Font = 7,
+        Script   = 6,
+        Font     = 7,
     };
 
 #pragma pack(push, 1)
@@ -93,5 +94,18 @@ namespace SF::Engine
 
     static_assert(sizeof(ResourceFileHeader) == 64, "Header size mismatch");
     static_assert(sizeof(ResourceEntryDescriptor) == 96, "Entry size mismatch");
+
+    // EBML Schema:
+
+    inline ::SF::EBML::Schema GenerateBuildSchema() { return {}; }
+
+    // maybe not?
+    namespace RscSchema
+    {
+        using namespace ::SF::EBML;
+        inline constexpr Identifier Root{0x512c};
+        inline constexpr Identifier Segment{0x512d};
+
+    } // namespace RscSchema
 
 } // namespace SF::Engine

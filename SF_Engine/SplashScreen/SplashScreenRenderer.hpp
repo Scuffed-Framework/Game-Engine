@@ -12,6 +12,7 @@ namespace SF::Engine
     // Editor & Engine have their splashscreens, Editor is outside of a window as a floating image, like Unreal or Unity
     // Engine is in the window, a video/gif, and more images, credits
 
+    // show whilst shaders compile?
     class SplashScreenRenderer
     {
         [[nodiscard]] string RandomQuote() const
@@ -21,7 +22,6 @@ namespace SF::Engine
 
     public:
         virtual ~SplashScreenRenderer() = default;
-
 
         /**
          * @breif call when we know
@@ -61,7 +61,7 @@ namespace SF::Engine
             if (CurrentImage < Images.size())
             {
                 auto &[img, sec, quote] = Images[CurrentImage];
-                
+
                 const bool isLast   = CurrentImage + 1 == Images.size();
                 const bool holdLast = IsEditor && isLast && !LoadingDone.load();
 

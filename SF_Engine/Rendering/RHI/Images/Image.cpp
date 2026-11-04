@@ -399,7 +399,7 @@ namespace SF::Engine
 
         vkCmdPipelineBarrier(commandBuffer, srcStage, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, 0, 0, nullptr, 0, nullptr, 1,
                              &imageMemoryBarrier);
-        
+
         commandBuffer.SubmitIdle();
     }
 
@@ -556,14 +556,14 @@ namespace SF::Engine
     {
         EnsureReflected();
         XmlNodeWriter writer(node);
-        ::SF::RTTI::SerializeContext::Instance().Save(*this, writer);
+        ::SF::Reflection::SerializeContext::Instance().Save(*this, writer);
     }
 
     void Image::Deserialize(const XMLNode &node)
     {
         EnsureReflected();
         XmlNodeReader reader(node);
-        ::SF::RTTI::SerializeContext::Instance().Load(*this, reader);
+        ::SF::Reflection::SerializeContext::Instance().Load(*this, reader);
     }
 
     inline void BindStorageImage(DescriptorSet &ds, Image *img)

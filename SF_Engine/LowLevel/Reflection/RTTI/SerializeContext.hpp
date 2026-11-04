@@ -12,9 +12,9 @@
 //       uint32 m_maxMipLevels = 4;
 //       ...
 //
-//       static void Reflect(SF::RTTI::ReflectContext* context)
+//       static void Reflect(SF::Reflection::ReflectContext* context)
 //       {
-//           if (auto* serializeContext = ::rtti_cast<SF::RTTI::SerializeContext>(context))
+//           if (auto* serializeContext = ::rtti_cast<SF::Reflection::SerializeContext>(context))
 //           {
 //               serializeContext->Class<CloudscapeShaderConstantData>()
 //                   ->Version(1)
@@ -39,7 +39,7 @@
 #include <vector>
 #include "ReflectContext.hpp"
 
-namespace SF::RTTI
+namespace SF::Reflection
 {
     template<typename T, typename = void>
     struct ReflectedTypeName
@@ -301,11 +301,11 @@ namespace SF::RTTI
         }
     }
 
-} // namespace SF::RTTI
+} // namespace SF::Reflection
 
 #define SF_REFLECT_EXTERNAL_TYPE(TypeName)                                                                             \
     template<>                                                                                                         \
-    struct SF::RTTI::ReflectedTypeName<TypeName>                                                                       \
+    struct SF::Reflection::ReflectedTypeName<TypeName>                                                                 \
     {                                                                                                                  \
         static const char *Get() { return #TypeName; }                                                                 \
     };

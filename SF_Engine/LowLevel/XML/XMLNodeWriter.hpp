@@ -1,19 +1,25 @@
 #pragma once
 #include <LowLevel/Reflection/RTTI/SerializeContext.hpp>
 #include <LowLevel/XML/XMLModule.hpp>
-#include <vector>
 #include <cstdint>
+#include <vector>
 
 namespace SF::Engine
 {
-    class XmlNodeWriter final : public SF::RTTI::IWriter
+    class XmlNodeWriter final : public SF::Reflection::IWriter
     {
     public:
         explicit XmlNodeWriter(XMLNode &root) { stack_.push_back(root); }
 
         void WriteFloat(const char *name, float v) override { stack_.back().SetAttribute(name, v); }
-        void WriteUInt32(const char *name, std::uint32_t v) override { stack_.back().SetAttribute(name, static_cast<int>(v)); }
-        void WriteInt32(const char *name, std::int32_t v) override { stack_.back().SetAttribute(name, static_cast<int>(v)); }
+        void WriteUInt32(const char *name, std::uint32_t v) override
+        {
+            stack_.back().SetAttribute(name, static_cast<int>(v));
+        }
+        void WriteInt32(const char *name, std::int32_t v) override
+        {
+            stack_.back().SetAttribute(name, static_cast<int>(v));
+        }
         void WriteBool(const char *name, bool v) override { stack_.back().SetAttribute(name, v); }
         void WriteString(const char *name, const std::string &v) override { stack_.back().SetAttribute(name, v); }
 
@@ -24,7 +30,7 @@ namespace SF::Engine
         std::vector<XMLNode> stack_;
     };
 
-    class XmlNodeReader final : public SF::RTTI::IReader
+    class XmlNodeReader final : public SF::Reflection::IReader
     {
     public:
         explicit XmlNodeReader(const XMLNode &root) { stack_.push_back(root); }

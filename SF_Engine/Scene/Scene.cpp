@@ -17,9 +17,9 @@
 #include <functional>
 #include <string>
 
-#include <Assets/Bitmaps/Bitmap.hpp>
 #include <Assets/Audio/AudioAsset.hpp>
 #include <Assets/Audio/AudioClip.hpp>
+#include <Assets/Bitmaps/Bitmap.hpp>
 #include <Assets/Models/MeshAsset.hpp>
 #include <Rendering/RenderSystem.hpp>
 
@@ -66,11 +66,11 @@ namespace SF::Engine
 
         if (!obj->mesh && !obj->meshAsset.IsNull())
         {
-            auto meshAsset = ::SF::RTTI::rtti_pointer_cast<MeshAsset>(assets->FindByUUID(obj->meshAsset));
+            auto meshAsset = ::SF::Reflection::rtti_pointer_cast<MeshAsset>(assets->FindByUUID(obj->meshAsset));
             if (!meshAsset)
             {
-                Log::Warning("Scene: object '{}' references mesh asset {} which is not in the project.",
-                             obj->GetName(), obj->meshAsset.ToString());
+                Log::Warning("Scene: object '{}' references mesh asset {} which is not in the project.", obj->GetName(),
+                             obj->meshAsset.ToString());
             } else if (meshAsset->EnsureLoaded() && obj->meshPart >= 0 &&
                        static_cast<size_t>(obj->meshPart) < meshAsset->parts.size())
             {
@@ -84,7 +84,7 @@ namespace SF::Engine
 
         if (!obj->albedoAsset.IsNull())
         {
-            auto image = ::SF::RTTI::rtti_pointer_cast<ImageAsset<Image2d>>(assets->FindByUUID(obj->albedoAsset));
+            auto image = ::SF::Reflection::rtti_pointer_cast<ImageAsset<Image2d>>(assets->FindByUUID(obj->albedoAsset));
             auto *mat  = obj->GetComponent<MeshMaterial>();
             if (image && mat && image->EnsureLoaded())
                 mat->albedo = image->texture; // replaces the unloaded placeholder MeshMaterial::Deserialize makes
@@ -95,7 +95,7 @@ namespace SF::Engine
 
         if (!obj->audioAsset.IsNull() && !obj->GetComponent<AudioClip>())
         {
-            auto audio = ::SF::RTTI::rtti_pointer_cast<AudioAsset>(assets->FindByUUID(obj->audioAsset));
+            auto audio = ::SF::Reflection::rtti_pointer_cast<AudioAsset>(assets->FindByUUID(obj->audioAsset));
             if (audio && audio->EnsureLoaded())
                 obj->AddComponent<AudioClip>(audio->buffer, static_cast<Audio::Type>(audio->settings.busType), false,
                                              obj->audioLoop, obj->audioGain, obj->audioPitch);
@@ -117,15 +117,15 @@ namespace SF::Engine
 
         SceneObject *root = nullptr;
 
-        if (auto model = ::SF::RTTI::rtti_pointer_cast<MeshAsset>(asset))
+        if (auto model = ::SF::Reflection::rtti_pointer_cast<MeshAsset>(asset))
         {
             const auto applyPart = [&](SceneObject *o, int index)
             {
-                const auto &part = model->parts[static_cast<size_t>(index)];
-                o->meshAsset      = model->uuid;
-                o->meshPart       = index;
-                o->meshSourcePath = model->assetPath.filename().string(); // informational; the UUID is authoritative
-                auto *mat         = o->GetComponent<MeshMaterial>();
+                const auto &part     = model->parts[static_cast<size_t>(index)];
+                o->meshAsset         = model->uuid;
+                o->meshPart          = index;
+                o->meshSourcePath    = model->assetPath.filename().string(); // informational; the UUID is authoritative
+                auto *mat            = o->GetComponent<MeshMaterial>();
                 mat->baseColor       = part.baseColor;
                 mat->metallicFactor  = part.metallic;
                 mat->roughnessFactor = part.roughness;
@@ -144,7 +144,7 @@ namespace SF::Engine
 
             // Rest the model's lowest point on `position` rather than burying its pivot in the ground.
             root->GetComponent<Transform>()->position = position - Vec3(0.0f, model->boundsMin.y, 0.0f);
-        } else if (auto image = ::SF::RTTI::rtti_pointer_cast<ImageAsset<Image2d>>(asset))
+        } else if (auto image = ::SF::Reflection::rtti_pointer_cast<ImageAsset<Image2d>>(asset))
         {
             const auto extent  = image->texture->GetExtent();
             const float aspect = extent.y > 0 ? static_cast<float>(extent.x) / static_cast<float>(extent.y) : 1.0f;
@@ -156,12 +156,12 @@ namespace SF::Engine
             auto *t     = root->GetComponent<Transform>();
             t->position = position + Vec3(0.0f, 0.5f, 0.0f);
             t->scale    = Vec3(aspect, 1.0f, 1.0f);
-        } else if (auto audio = ::SF::RTTI::rtti_pointer_cast<AudioAsset>(asset))
+        } else if (auto audio = ::SF::Reflection::rtti_pointer_cast<AudioAsset>(asset))
         {
-            root             = AddObject(audio->name, parent);
-            root->audioAsset = audio->uuid;
-            root->audioLoop  = audio->settings.defaultLoop;
-            root->audioGain  = audio->settings.defaultGain;
+            root                                      = AddObject(audio->name, parent);
+            root->audioAsset                          = audio->uuid;
+            root->audioLoop                           = audio->settings.defaultLoop;
+            root->audioGain                           = audio->settings.defaultGain;
             root->GetComponent<Transform>()->position = position;
         } else
         {

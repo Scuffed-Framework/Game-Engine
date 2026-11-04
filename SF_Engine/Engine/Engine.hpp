@@ -10,6 +10,7 @@
 #define NO_MANGLE_EXPORT __attribute__((visibility("default"))) __declspec(dllexport) extern "C"
 
 #include <LowLevel/LayerStack/LayerStack.hpp>
+#include "Application/Application.hpp"
 #include "Log/Log.hpp"
 #include "Module.hpp"
 
@@ -49,6 +50,8 @@
 
 namespace SF::Engine
 {
+    class Application;
+
     class Engine : NoCopy
     {
     public:
@@ -60,19 +63,40 @@ namespace SF::Engine
         static Engine *Get() { return Instance; }
 
         /**
-         * Carries out the setup for basic engine components and the engine. Call {@link Engine#Run @endlink}
-         * after creating a instance.
+         * Boots the engine on its own: creates and initializes every module (window manager,
+         * render system, scene manager, ...). It knows nothing about any game or editor yet.
+         * Afterwards attach an {@link Application} with SetApplication() and call
+         * {@link Engine#Run @endlink. Normally you don't do this by hand, RunEngine() does it.
          * @param argv0 The first argument passed to main.
          * @param moduleFilter A filter for blacklisting/whitelisting modules.
-         * @param startUpURL URL of a local map scene, or a server that will send one.
          */
-        explicit Engine(std::string argv0, ModuleFilter &&moduleFilter = {},
-                        const URL &startUpURL = URL("map://startup")); // TODO: Make startup look through scene metadata
-                                                                       // to find "<StartUpScene>true</StartupScene>"
+        explicit Engine(std::string argv0, ModuleFilter &&moduleFilter = {});
 
         ~Engine() override;
 
+        /**
+         * Runs the main loop until RequestClose() is called or the attached application asks to
+         * close. Drains the GPU and calls Application::OnShutdown() before returning.
+         */
         int32_t Run();
+
+        /**
+         * Attaches (or detaches with nullptr) the application the engine calls back into.
+         * The engine does NOT own it.
+         */
+        void SetApplication(Application *application);
+        [[nodiscard]] Application *GetApplication() const { return app; }
+
+        /**
+         * Creates the GameInstance and loads the startup scene, falling back to DefaultScene on
+         * any failure. Call it from Application::OnInit if you want a specific scene; if nobody
+         * did, Run() calls it with the default placeholder URL right before the loop starts.
+         * Calling it more than once is ignored.
+         * @param startUpURL URL of a local map scene, or a server that will send one.
+         */
+        void LoadStartupScene(const URL &startUpURL = URL("map://startup")); // TODO: Make startup look through scene
+                                                                             // metadata to find
+                                                                             // "<StartUpScene>true</StartupScene>"
 
         /**
          * Gets the first argument passed to main.
@@ -206,6 +230,10 @@ namespace SF::Engine
 
         float fpsLimit;
         bool running;
+
+        // The guest we call back into. Not owned.
+        Application *app        = nullptr;
+        bool startupSceneLoaded = false;
 
         DeltaTime deltaUpdate, deltaRender;
         ElapsedTime elapsedUpdate, elapsedRender;

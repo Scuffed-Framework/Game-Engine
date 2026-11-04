@@ -1,7 +1,7 @@
 #pragma once
 #include "RTTI.hpp"
 
-namespace SF::RTTI
+namespace SF::Reflection
 {
     template<typename T, typename U>
     T *rtti_cast(U *ptr)
@@ -59,4 +59,4 @@ namespace SF::RTTI
         }
         return nullptr;
     }
-} // namespace SF::RTTI
+} // namespace SF::Reflection

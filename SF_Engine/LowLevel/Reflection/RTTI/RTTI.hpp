@@ -39,19 +39,19 @@
 //
 #include "TypeId.hpp"
 
-namespace SF::RTTI::Detail
+namespace SF::Reflection::Detail
 {
     // Fold-expression OR across an arbitrary number of direct bases.
     // Empty pack case intentionally not supported here -- SF_RTTI always
     // requires >=1 base; use SF_RTTI_BASE for the hierarchy root instead.
     template<typename... Bases>
-    constexpr bool AnyBaseIsTypeOf(::SF::RTTI::TypeId id)
+    constexpr bool AnyBaseIsTypeOf(::SF::Reflection::TypeId id)
     {
         static_assert(sizeof...(Bases) > 0,
                       "SF_RTTI requires at least one base class. Use SF_RTTI_BASE for the hierarchy root.");
         return (Bases::RTTI_IsTypeOfStatic(id) || ...);
     }
-} // namespace SF::RTTI::Detail
+} // namespace SF::Reflection::Detail
 
 // Lightweight, non-virtual: just gives a plain struct a TypeId + name so it
 // can be registered with SerializeContext. Use this for data-only types that
@@ -61,7 +61,7 @@ namespace SF::RTTI::Detail
 #define SF_TYPE_INFO(ClassName)                                                                                        \
 public:                                                                                                                \
     using RTTI_ThisType = ClassName;                                                                                   \
-    static constexpr ::SF::RTTI::TypeId RTTI_Type() { return ::SF::RTTI::GetTypeId<ClassName>(); }                     \
+    static constexpr ::SF::Reflection::TypeId RTTI_Type() { return ::SF::Reflection::GetTypeId<ClassName>(); }         \
     static constexpr const char *RTTI_TypeName() { return #ClassName; }                                                \
                                                                                                                        \
 public:
@@ -70,12 +70,12 @@ public:
 #define SF_RTTI_BASE(ClassName)                                                                                        \
 public:                                                                                                                \
     using RTTI_ThisType = ClassName;                                                                                   \
-    static constexpr ::SF::RTTI::TypeId RTTI_Type() { return ::SF::RTTI::GetTypeId<ClassName>(); }                     \
+    static constexpr ::SF::Reflection::TypeId RTTI_Type() { return ::SF::Reflection::GetTypeId<ClassName>(); }         \
     static constexpr const char *RTTI_TypeName() { return #ClassName; }                                                \
-    static bool RTTI_IsTypeOfStatic(::SF::RTTI::TypeId id) { return id == RTTI_Type(); }                               \
-    virtual ::SF::RTTI::TypeId RTTI_GetType() const { return RTTI_Type(); }                                            \
+    static bool RTTI_IsTypeOfStatic(::SF::Reflection::TypeId id) { return id == RTTI_Type(); }                         \
+    virtual ::SF::Reflection::TypeId RTTI_GetType() const { return RTTI_Type(); }                                      \
     virtual const char *RTTI_GetTypeName() const { return RTTI_TypeName(); }                                           \
-    virtual bool RTTI_IsTypeOf(::SF::RTTI::TypeId id) const { return RTTI_IsTypeOfStatic(id); }                        \
+    virtual bool RTTI_IsTypeOf(::SF::Reflection::TypeId id) const { return RTTI_IsTypeOfStatic(id); }                  \
                                                                                                                        \
 private:
 
@@ -84,14 +84,14 @@ private:
 #define SF_RTTI(ClassName, ...)                                                                                        \
 public:                                                                                                                \
     using RTTI_ThisType = ClassName;                                                                                   \
-    static constexpr ::SF::RTTI::TypeId RTTI_Type() { return ::SF::RTTI::GetTypeId<ClassName>(); }                     \
+    static constexpr ::SF::Reflection::TypeId RTTI_Type() { return ::SF::Reflection::GetTypeId<ClassName>(); }         \
     static constexpr const char *RTTI_TypeName() { return #ClassName; }                                                \
-    static bool RTTI_IsTypeOfStatic(::SF::RTTI::TypeId id)                                                             \
+    static bool RTTI_IsTypeOfStatic(::SF::Reflection::TypeId id)                                                       \
     {                                                                                                                  \
-        return id == RTTI_Type() || ::SF::RTTI::Detail::AnyBaseIsTypeOf<__VA_ARGS__>(id);                              \
+        return id == RTTI_Type() || ::SF::Reflection::Detail::AnyBaseIsTypeOf<__VA_ARGS__>(id);                        \
     }                                                                                                                  \
-    ::SF::RTTI::TypeId RTTI_GetType() const override { return RTTI_Type(); }                                           \
+    ::SF::Reflection::TypeId RTTI_GetType() const override { return RTTI_Type(); }                                     \
     const char *RTTI_GetTypeName() const override { return RTTI_TypeName(); }                                          \
-    bool RTTI_IsTypeOf(::SF::RTTI::TypeId id) const override { return RTTI_IsTypeOfStatic(id); }                       \
+    bool RTTI_IsTypeOf(::SF::Reflection::TypeId id) const override { return RTTI_IsTypeOfStatic(id); }                 \
                                                                                                                        \
 private:

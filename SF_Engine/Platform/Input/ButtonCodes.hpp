@@ -1,5 +1,4 @@
 #pragma once
-#include <3rdPartyLibs/Rocket.hpp>
 #include <LowLevel/Bitmask.hpp>
 
 #ifdef None
@@ -166,7 +165,8 @@ namespace SF::Engine
         CapsLock = 16,
         NumLock = 32
     };
+
+    ENABLE_BITMASK_OPERATORS(InputAction)
+    ENABLE_BITMASK_OPERATORS(InputMod)
     
 }
-ENABLE_BITMASK_OPERATORS(SF::Engine::InputAction)
-ENABLE_BITMASK_OPERATORS(SF::Engine::InputMod)

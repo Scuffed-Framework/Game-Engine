@@ -23,7 +23,7 @@
 #endif
 
 // for some reason this engine had 2 typeid systems prior to this ????
-namespace SF::RTTI
+namespace SF::Reflection
 {
     using namespace std;
 
@@ -128,13 +128,16 @@ namespace SF::RTTI
 
     template<typename T>
     inline constexpr bool HasRtti = Detail::HasRttiImpl<T>::value;
-} // namespace SF::RTTI
+} // namespace SF::Reflection
 
 namespace std
 {
     template<>
-    struct hash<SF::RTTI::TypeId>
+    struct hash<SF::Reflection::TypeId>
     {
-        std::size_t operator()(const SF::RTTI::TypeId &id) const noexcept { return static_cast<std::size_t>(id.value); }
+        std::size_t operator()(const SF::Reflection::TypeId &id) const noexcept
+        {
+            return static_cast<std::size_t>(id.value);
+        }
     };
 } // namespace std

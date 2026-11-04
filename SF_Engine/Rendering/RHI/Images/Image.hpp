@@ -184,7 +184,7 @@ namespace SF::Engine
         {
             static bool reflected = []
             {
-                auto &ctx = ::SF::RTTI::SerializeContext::Instance();
+                auto &ctx = ::SF::Reflection::SerializeContext::Instance();
 
                 ctx.Class<VkExtent3D>()
                         ->Version(1)
@@ -667,7 +667,7 @@ namespace SF::Engine
                         return false;
 
                     // The upload path assumes tightly packed RGBA8 (or RGBA16F for HDR sources).
-                    const bool hdr          = bitmap->IsFloat();
+                    const bool hdr           = bitmap->IsFloat();
                     const PixelFormat wanted = hdr ? PixelFormat::RGBA16F : PixelFormat::RGBA8;
                     if (bitmap->GetFormat() != wanted)
                         bitmap = std::make_unique<Bitmap>(bitmap->Converted(wanted));

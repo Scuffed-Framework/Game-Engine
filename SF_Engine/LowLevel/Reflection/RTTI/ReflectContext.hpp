@@ -2,7 +2,7 @@
 
 #include "RTTI.hpp"
 
-namespace SF::RTTI
+namespace SF::Reflection
 {
     class ReflectContext
     {
@@ -10,4 +10,4 @@ namespace SF::RTTI
     public:
         virtual ~ReflectContext() = default;
     };
-}
+} // namespace SF::Reflection
