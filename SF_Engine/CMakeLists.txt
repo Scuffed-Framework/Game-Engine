@@ -5,7 +5,6 @@ if (NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
     set(CMAKE_BUILD_TYPE "Debug" CACHE STRING "Build type" FORCE)
 endif ()
 
-# CMP0091 is NEW by default on CMake 4.0, so no cmake_policy() call needed.
 if (MSVC)
     set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL" CACHE STRING "MSVC runtime library")
 endif ()
@@ -14,7 +13,6 @@ endif ()
 option(OrbisOS_build "Playstation" OFF)
 option(HorizonOS_build "Nintendo Switch" OFF)
 
-option(SF_INPUT_ADDONS "Extra Input Methods" OFF)
 option(SF_GAME_REQUIRES_CAMERA_AND_SENSOR_ACCESS "Allow SDL to init Camera and Sensor" OFF)
 
 project(SF_Engine LANGUAGES CXX C)
@@ -42,7 +40,6 @@ find_package(spirv-cross CONFIG REQUIRED)
 find_package(SPIRV-Tools CONFIG REQUIRED)
 find_package(volk CONFIG REQUIRED)
 find_package(VulkanHeaders CONFIG REQUIRED)
-find_package(VulkanLoader CONFIG REQUIRED)
 find_package(VulkanMemoryAllocator CONFIG REQUIRED)
 find_package(fmt CONFIG REQUIRED)
 find_package(PNG REQUIRED)
@@ -131,6 +128,12 @@ elseif (APPLE)
             _PLATFORM_MACOS
             VK_USE_PLATFORM_METAL_EXT
     )
+elseif (ANDROID)
+    target_compile_definitions(SF_Engine PUBLIC
+            _PLATFORM_ANDROID
+            VK_USE_PLATFORM_ANDROID_KHR
+    )
+    target_link_libraries(SF_Engine PUBLIC android log)
 elseif (UNIX)
     target_compile_definitions(SF_Engine PUBLIC
             _PLATFORM_LINUX
@@ -223,14 +226,12 @@ target_link_libraries(SF_Engine PUBLIC
         OpenAL::OpenAL
         assimp::assimp
         Freetype::Freetype
-        SDL3::SDL3-static
         glm::glm
         LibXml2::LibXml2
         libsodium::libsodium
         spirv-cross::spirv-cross
         SPIRV-Tools
         volk::volk
-        Vulkan::Loader
         GPUOpen::VulkanMemoryAllocator
         fmt::fmt
         PNG::PNG
@@ -256,6 +257,18 @@ target_link_libraries(SF_Engine PUBLIC
         TIFF::TIFF
 )
 
+if (TARGET SDL3::SDL3-shared)
+    set(SF_SDL_TARGET SDL3::SDL3-shared)
+elseif (TARGET SDL3::SDL3-static)
+    set(SF_SDL_TARGET SDL3::SDL3-static)
+else ()
+    set(SF_SDL_TARGET SDL3::SDL3)
+endif ()
+
+target_link_libraries(SF_Engine PUBLIC
+        ${SF_SDL_TARGET}
+)
+
 # sudo apt install libdecor-0-dev      # Debian/Ubuntu
 # sudo pacman -S libdecor              # Arch
 # sudo dnf install libdecor-devel      # Fedora
@@ -276,7 +289,7 @@ endif ()
 
 if (WIN32)
 
-elseif (UNIX AND NOT APPLE)
+elseif (UNIX AND NOT APPLE AND NOT ANDROID)
     target_link_libraries(SF_Engine PRIVATE evdev udev)
 endif ()
 

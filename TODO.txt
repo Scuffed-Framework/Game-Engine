@@ -2,7 +2,6 @@
 NOW: RTGI, fix viewports
 Switch to SDL, redo Windowing and Input
 
-
 1. Improve renderer
 2. Shader hot-reloading (at some point)
 3. Finish AssetSystem
@@ -28,30 +27,28 @@ Switch to SDL, redo Windowing and Input
 23. multi API RHI
 24. Render Graph
 
-Android, Apple OS, and web support
-
-1000. SPLASH SCREEN
-
 #QOL
 
 #Editor:
-finish panels, cmd (add python), explorer, black profiler bar, profiler
-fix duplication and reparenting, add **FOLDERS and their color / icon menus**
-asset importers (sponza, Amazon Lumberyard café)
-undo redo
+1. finish panels, cmd (add python), explorer, black profiler bar, profiler
+2. fix duplication and reparenting, add **FOLDERS and their color / icon menus**
+3. asset importers (sponza, Amazon Lumberyard café)
+4. undo redo
+5. ideas for scene logo: world made of led dots, like the dot matrix splash screen
 
 
-API Notes:
+
+#API Notes:
 Render() called on already active renderpass, PreRender() before active.
+Todo maybe: before feature-ssr merge, rename every SF:: to ScuffedFramework::
 
-todo maybe: before feature-ssr merge, rename every SF:: to ScuffedFramework::
+#PROJECTS:
+1. assets
+2. EngineSettings.config.xml
 
+#Build:
+1. Android, Apple OS, and web support
+2. Fake environments to build for other CPU architectures and platforms
+3. Get GitHub to build binaries automagically
 
-
-PROJECTS:
-
-assets
-EngineSettings.config.xml
-
-
-ideas for scene logo: world made of led dots, like the dot matrix splash screen
+C++ private module file defining constexpr build steps that gets compiled into the parser or something

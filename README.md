@@ -14,9 +14,8 @@ Repository of the game engine.
 
 1. Make sure you have Conan installed
 2. Open a terminal in the root of the project
-3. Run ./scripts/external/export
-4. Run ./scripts/configure
-5. Run ./scripts/build
+3. Run ./scripts/configure
+4. Run ./scripts/build
 
 ## Star History
 

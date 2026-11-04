@@ -5,7 +5,7 @@
 #include <cstdint>
 #include <string>
 #include <vector>
-#include "Cursor.hpp"
+#include "../Input/Cursor.hpp"
 
 namespace SF::Engine
 {

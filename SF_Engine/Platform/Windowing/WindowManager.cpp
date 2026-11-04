@@ -17,9 +17,6 @@ namespace SF::Engine
     WindowManager::WindowManager()
     {
         Uint32 initFlags = SDL_INIT_VIDEO;
-#ifdef SF_INPUT_ADDONS
-        initFlags |= SDL_INIT_HAPTIC | SDL_INIT_GAMEPAD | SDL_INIT_JOYSTICK;
-#endif
 #ifdef SF_GAME_REQUIRES_CAMERA_AND_SENSOR_ACCESS
         initFlags |= SDL_INIT_CAMERA | SDL_INIT_SENSOR;
 #endif

@@ -331,7 +331,7 @@ namespace SF::Engine
          * Called when a key changes state.
          * @return The delegate.
          */
-        rocket::signal<void(Key, InputAction, Bitmask::Bitmask<InputMod>)> &OnKey() { return onKey; }
+        rocket::signal<void(Key, InputAction, Bitmask<InputMod>)> &OnKey() { return onKey; }
 
         /**
          * Called when a character has been typed.
@@ -343,7 +343,7 @@ namespace SF::Engine
          * Called when a mouse button changes state.
          * @return The delegate.
          */
-        rocket::signal<void(MouseButton, InputAction, Bitmask::Bitmask<InputMod>)> &OnMouseButton()
+        rocket::signal<void(MouseButton, InputAction, Bitmask<InputMod>)> &OnMouseButton()
         {
             return onMouseButton;
         }
@@ -431,9 +431,9 @@ namespace SF::Engine
         rocket::signal<void(bool)> onIconify;
         rocket::signal<void(bool)> onEnter;
         rocket::signal<void(std::vector<std::string>)> onDrop;
-        rocket::signal<void(Key, InputAction, Bitmask::Bitmask<InputMod>)> onKey;
+        rocket::signal<void(Key, InputAction, Bitmask<InputMod>)> onKey;
         rocket::signal<void(char)> onChar;
-        rocket::signal<void(MouseButton, InputAction, Bitmask::Bitmask<InputMod>)> onMouseButton;
+        rocket::signal<void(MouseButton, InputAction, Bitmask<InputMod>)> onMouseButton;
         rocket::signal<void(DVec2)> onMousePosition;
         rocket::signal<void(DVec2)> onMouseScroll;
 

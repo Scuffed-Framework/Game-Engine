@@ -22,7 +22,7 @@ namespace SF::Engine
     {
         constexpr auto kWindowProperty = "SFE.Window";
 
-        inline bool ImGuiReady() { return ImGui::GetCurrentContext() != nullptr; }
+        bool ImGuiReady() { return ImGui::GetCurrentContext() != nullptr; }
 
         struct KeyMapping
         {
@@ -153,9 +153,9 @@ namespace SF::Engine
                 {SDL_SCANCODE_APPLICATION, Key::Menu},
         };
 
-        constexpr Key kUnknownKey = static_cast<Key>(-1);
+        constexpr auto kUnknownKey = static_cast<Key>(-1);
 
-        Key ToKey(SDL_Scancode scancode)
+        Key ToKey(const SDL_Scancode scancode)
         {
             static constexpr array<Key, SDL_SCANCODE_COUNT> table = []
             {
@@ -173,8 +173,8 @@ namespace SF::Engine
             static const unordered_map<int32_t, SDL_Scancode> table = []
             {
                 unordered_map<int32_t, SDL_Scancode> t;
-                for (const auto &m: kKeyMap)
-                    t[static_cast<int32_t>(m.key)] = m.scancode;
+                for (const auto &[scancode, key]: kKeyMap)
+                    t[static_cast<int32_t>(key)] = scancode;
                 return t;
             }();
             const auto it = table.find(static_cast<int32_t>(key));
@@ -200,7 +200,7 @@ namespace SF::Engine
             }
         }
 
-        int32_t ToSdlButton(int32_t button)
+        int32_t ToSdlButton(const int32_t button)
         {
             switch (button)
             {
@@ -219,7 +219,7 @@ namespace SF::Engine
             }
         }
 
-        Bitmask::Bitmask<InputMod> ToMods(SDL_Keymod mod)
+        Bitmask<InputMod> ToMods(const SDL_Keymod mod)
         {
             int32_t mods = 0;
             if (mod & SDL_KMOD_SHIFT)
@@ -234,7 +234,7 @@ namespace SF::Engine
                 mods |= 0x0010;
             if (mod & SDL_KMOD_NUM)
                 mods |= 0x0020;
-            return Bitmask::Bitmask<InputMod>(mods);
+            return Bitmask<InputMod>(mods);
         }
 
         InputAction ToAction(bool down, bool repeat)

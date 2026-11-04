@@ -28,6 +28,8 @@ class SfEngineConan(ConanFile):
             del self.options.fPIC
 
     def requirements(self):
+        android = self.settings.os == "Android"
+
         # Audio
         self.requires("openal-soft/1.24.3")
         self.requires("opusfile/0.12")
@@ -88,6 +90,10 @@ class SfEngineConan(ConanFile):
 
         # Platforms
         # self.requires("android-ndk/r29")
+
+    def configure(self):
+        if self.settings.os == "Android":
+            self.options["sdl"].shared = True
 
     def layout(self):
         cmake_layout(self)
