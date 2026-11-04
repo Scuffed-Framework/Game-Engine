@@ -1,13 +1,13 @@
 #pragma once
+#include <Engine/Log/Log.hpp>
 #include <LowLevel/Reflection/RTTI/RTTICast.hpp>
 #include <LowLevel/XML/XMLModule.hpp>
-#include <Engine/Log/Log.hpp>
-#include <string>
-#include <memory>
-#include <vector>
-#include <unordered_map>
 #include <functional>
+#include <memory>
+#include <string>
 #include <type_traits>
+#include <unordered_map>
+#include <vector>
 
 namespace SF::Engine
 {
@@ -22,11 +22,11 @@ namespace SF::Engine
             return instance;
         }
 
-        template <typename T>
+        template<typename T>
         void Register()
         {
             static_assert(std::is_base_of_v<Serializable, T>, "T must derive from Serializable.");
-            static_assert(SF::RTTI::HasRtti<T>, "T needs SF_RTTI / SF_RTTI_BASE before it can be registered.");
+            static_assert(SF::Reflection::HasRtti<T>, "T needs SF_RTTI / SF_RTTI_BASE before it can be registered.");
 
             const std::string typeName = T::RTTI_TypeName();
             if (factories_.contains(typeName))
@@ -34,8 +34,7 @@ namespace SF::Engine
                 Log::Error("SerializableRegistry: '{}' registered more than once; ignoring duplicate.", typeName);
                 return;
             }
-            factories_.emplace(typeName, []
-                               { return std::unique_ptr<Serializable>(std::make_unique<T>()); });
+            factories_.emplace(typeName, [] { return std::unique_ptr<Serializable>(std::make_unique<T>()); });
         }
 
         std::unique_ptr<Serializable> Create(const std::string &typeName) const
@@ -48,7 +47,7 @@ namespace SF::Engine
         std::unordered_map<std::string, FactoryFn> factories_;
     };
 
-    template <typename T>
+    template<typename T>
     struct SerializableRegistrar
     {
         SerializableRegistrar() { SerializableRegistry::Instance().template Register<T>(); }
@@ -71,8 +70,8 @@ namespace SF::Engine
             std::string typeName;
             if (!node.GetAttribute(kTypeAttribute, typeName))
             {
-                Log::Error("RttiXml::ReadPolymorphic: node '{}' has no '{}' attribute.",
-                           node.GetName(), kTypeAttribute);
+                Log::Error("RttiXml::ReadPolymorphic: node '{}' has no '{}' attribute.", node.GetName(),
+                           kTypeAttribute);
                 return nullptr;
             }
 
@@ -87,10 +86,10 @@ namespace SF::Engine
             return obj;
         }
 
-        template <typename T>
+        template<typename T>
         std::unique_ptr<T> ReadPolymorphicAs(const XMLNode &node)
         {
-            static_assert(SF::RTTI::HasRtti<T>, "T needs SF_RTTI / SF_RTTI_BASE.");
+            static_assert(SF::Reflection::HasRtti<T>, "T needs SF_RTTI / SF_RTTI_BASE.");
 
             std::unique_ptr<Serializable> obj = ReadPolymorphic(node);
             if (!obj || !obj->RTTI_IsTypeOf(T::RTTI_Type()))
@@ -100,19 +99,19 @@ namespace SF::Engine
             return std::unique_ptr<T>(static_cast<T *>(obj.release()));
         }
 
-        template <typename Container>
+        template<typename Container>
         void WritePolymorphicList(XMLNode &parent, const std::string &listElementName,
                                   const std::string &itemElementName, const Container &items)
         {
             XMLNode listNode = parent.AddChild(listElementName);
-            for (const auto &itemPtr : items)
+            for (const auto &itemPtr: items)
             {
                 WritePolymorphic(listNode, itemElementName, *itemPtr);
             }
         }
 
-        inline std::vector<std::unique_ptr<Serializable>> ReadPolymorphicList(
-            const XMLNode &parent, const std::string &listElementName)
+        inline std::vector<std::unique_ptr<Serializable>> ReadPolymorphicList(const XMLNode &parent,
+                                                                              const std::string &listElementName)
         {
             std::vector<std::unique_ptr<Serializable>> result;
 
@@ -122,7 +121,7 @@ namespace SF::Engine
                 return result;
             }
 
-            for (XMLNode item : listNode.GetChildren())
+            for (XMLNode item: listNode.GetChildren())
             {
                 if (auto obj = ReadPolymorphic(item))
                 {
@@ -131,5 +130,5 @@ namespace SF::Engine
             }
             return result;
         }
-    }
+    } // namespace RttiXml
 }

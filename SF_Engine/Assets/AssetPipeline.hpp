@@ -208,7 +208,7 @@ namespace SF::Engine
         template<typename T>
         shared_ptr<Asset<T>> GetAsset(const UUID &guid) const
         {
-            return ::SF::RTTI::rtti_pointer_cast<Asset<T>>(FindByUUID(guid));
+            return ::SF::Reflection::rtti_pointer_cast<Asset<T>>(FindByUUID(guid));
         }
 
         vector<shared_ptr<AssetBase>> assets_;

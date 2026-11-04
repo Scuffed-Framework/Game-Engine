@@ -18,11 +18,14 @@ namespace SF::EBML
     class Schema
     {
     public:
+        constexpr Schema() = default;
+        ~Schema()          = default;
+
         void set(Identifier id, Element::Kind kind) { m_map[id.value()] = kind; }
 
         Element::Kind classify(Identifier id) const
         {
-            auto it = m_map.find(id.value());
+            const auto it = m_map.find(id.value());
             return it == m_map.end() ? Element::Kind::Binary : it->second;
         }
 
@@ -50,15 +53,15 @@ namespace SF::EBML
         // information.
         bool is_valid_child(Identifier parent, Identifier child) const
         {
-            auto it = m_children.find(parent.value());
+            const auto it = m_children.find(parent.value());
             if (it == m_children.end())
                 return true;
             return it->second.contains(child.value());
         }
 
     private:
-        unordered_map<uint32_t, Element::Kind> m_map;
-        unordered_map<uint32_t, unordered_set<uint32_t>> m_children;
+        unordered_map<uint32_t, Element::Kind> m_map{};
+        unordered_map<uint32_t, unordered_set<uint32_t>> m_children{};
     };
 
     class ParseError : public runtime_error
