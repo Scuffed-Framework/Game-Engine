@@ -5,6 +5,9 @@
 #include <SDL3/SDL_vulkan.h>
 #include <algorithm>
 
+#include <Device/JoystickController.hpp>
+#include <Device/MicrophoneController.hpp>
+
 namespace SF::Engine
 {
     bool WindowManager::CheckSdl(const bool result)
@@ -16,11 +19,11 @@ namespace SF::Engine
 
     WindowManager::WindowManager()
     {
-        Uint32 initFlags = SDL_INIT_VIDEO;
+        initFlags = SDL_INIT_VIDEO;
 #ifdef SF_GAME_REQUIRES_CAMERA_AND_SENSOR_ACCESS
         initFlags |= SDL_INIT_CAMERA | SDL_INIT_SENSOR;
 #endif
-        if (!SDL_Init(initFlags))
+        if (!SDL_InitSubSystem(initFlags))
             throw runtime_error(string("SDL failed to initialize: ") + SDL_GetError());
 
         if (!SDL_Vulkan_LoadLibrary(nullptr))
@@ -45,7 +48,7 @@ namespace SF::Engine
         monitors.clear();
 
         SDL_Vulkan_UnloadLibrary();
-        SDL_Quit();
+        SDL_QuitSubSystem(initFlags);
     }
 
     void WindowManager::Update()
@@ -55,19 +58,29 @@ namespace SF::Engine
             window->Update();
     }
 
+    void WindowManager::ProcessEvent(const SDL_Event &event)
+    {
+        DispatchEvent(event);
+        if (auto *mics = MicrophoneController::Get())
+            mics->HandleEvent(event);
+        if (auto *joysticks = JoystickController::Get())
+            joysticks->HandleEvent(event);
+    }
+
     void WindowManager::PollEvents()
     {
         SDL_Event event;
         while (SDL_PollEvent(&event))
-            DispatchEvent(event);
+            ProcessEvent(event);
     }
+
 
     void WindowManager::WaitEvents(const int32_t timeoutMs)
     {
         SDL_Event event;
         if (SDL_WaitEventTimeout(&event, timeoutMs))
         {
-            DispatchEvent(event);
+            ProcessEvent(event);
             PollEvents();
         }
     }

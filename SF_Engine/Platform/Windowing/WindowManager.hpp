@@ -69,6 +69,7 @@ namespace SF::Engine
 
     private:
         void DispatchEvent(const SDL_Event &event);
+        void ProcessEvent(const SDL_Event &event);
         void PollEvents();
         void AddMonitor(SDL_DisplayID display);
         void RemoveMonitor(SDL_DisplayID display);
@@ -84,5 +85,7 @@ namespace SF::Engine
         rocket::signal<void(Window *, bool)> onAddWindow;
         rocket::signal<void(Monitor *, bool)> onMonitorConnect;
         rocket::signal<void(bool)> onBackground;
+
+        uint32_t initFlags = 0;
     };
 } // namespace SF::Engine

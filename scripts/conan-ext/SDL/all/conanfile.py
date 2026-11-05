@@ -73,7 +73,7 @@ class SDLConan(ConanFile):
             "fPIC": True,
         },
         # Subsystems: only what the engine actually uses from SDL
-        "audio": False,
+        "audio": True,
         "video": True,
         "gpu": False,
         "render": False,

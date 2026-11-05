@@ -1,8 +1,8 @@
 #pragma once
-#include <cstdint>
-#include <Assets/Audio/Microphone.hpp>
-#include <string>
+#include <Device/MicrophoneController.hpp>
 #include <UtilityClasses/UUID.hpp>
+#include <cstdint>
+#include <string>
 
 namespace SF::Engine
 {
@@ -13,7 +13,7 @@ namespace SF::Engine
         uint32_t maxPartySize;
         uint32_t maxSplitscreenPlayers = 4;
 
-        MicrophoneSpeechMode micMode = MicrophoneSpeechMode::PushToTalk;
+        MicrophoneRecordMode micMode = MicrophoneRecordMode::PushToTalk;
         std::wstring sessionName;
 
         UUID GetNextPlayerID();

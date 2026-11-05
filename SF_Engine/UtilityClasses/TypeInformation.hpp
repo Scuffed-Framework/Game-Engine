@@ -68,7 +68,7 @@
 // value needs to go through TypeId::value instead.
 namespace SF::Engine
 {
-    using TypeId = ::SF::Reflection::TypeId;
+    using TypeId = Reflection::TypeId;
 
     /**
      * @brief Thread-safe, per-hierarchy convenience wrapper around

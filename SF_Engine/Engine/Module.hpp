@@ -46,12 +46,16 @@ namespace SF::Engine
         Render  // Rendering stage
     };
 
+    /**
+     * @brief Dictates at what point the Module is initialized.
+     */
     enum class ModuleStartStage : uint8_t
     {
         ManualStartup, // default
         OnEngineInit,
         Normal,
-        PostMainWindowInit
+        PostMainWindowInit,
+        Custom // add a way to provide lambda calling at some place
     };
 
     /**
@@ -72,10 +76,11 @@ namespace SF::Engine
          */
         struct CreateInfo
         {
-            function<unique_ptr<Base>()> createFunc;
-            ModuleStage stage;
-            vector<TypeId> dependencies;
-            string_view name; // For debugging and logging
+            function<unique_ptr<Base>()> createFunc{};
+            ModuleStage stage{};
+            ModuleStartStage start_stage = ModuleStartStage::OnEngineInit;
+            vector<TypeId> dependencies{};
+            string_view name{}; // For debugging and logging
         };
 
         using RegistryMap = unordered_map<TypeId, CreateInfo>;
@@ -125,10 +130,11 @@ namespace SF::Engine
 
             // Move Register into the public section so derived classes can call it via the macro
             template<typename... Args>
-            static bool Register(ModuleStage stage, Requires<Args...> dependencies = {})
+            static bool Register(ModuleStage stage, const ModuleStartStage startup, Requires<Args...> dependencies = {})
             {
-                s_registeredStage = stage;
-                s_registeredName  = typeid(T).name();
+                s_registeredStage        = stage;
+                s_registeredStartupStage = startup;
+                s_registeredName         = typeid(T).name();
 
                 ModuleFactory::Registry()[TypeInfo<Base>::template GetTypeId<T>()] = {
                         []() -> unique_ptr<Base>
@@ -136,28 +142,32 @@ namespace SF::Engine
                             s_instance = new T();
                             return unique_ptr<Base>(s_instance);
                         },
-                        stage, dependencies.Get(), s_registeredName};
+                        stage, s_registeredStartupStage, dependencies.Get(), s_registeredName};
 
                 return true;
             }
 
-            inline static ModuleStage s_registeredStage = ModuleStage::Never;
-            inline static string_view s_registeredName  = "";
+            inline static auto s_registeredStage        = ModuleStage::Never;
+            inline static auto s_registeredStartupStage = ModuleStartStage::OnEngineInit;
+            inline static string_view s_registeredName;
 
         private:
             inline static T *s_instance = nullptr;
         };
 
         template<typename T, typename... Args>
-        static bool RegisterModule(ModuleStage stage, Requires<Args...> deps = {})
+        static bool RegisterModule(ModuleStage stage, ModuleStartStage startup, Requires<Args...> deps = {})
         {
-            return Registrar<T>::Register(stage, deps);
+            return Registrar<T>::Register(stage, startup, deps);
         }
 
         template<typename T, typename... Args>
         struct AutoRegister
         {
-            AutoRegister(ModuleStage stage, Requires<Args...> deps = {}) { Registrar<T>::Register(stage, deps); }
+            AutoRegister(ModuleStage stage, ModuleStartStage startup, Requires<Args...> deps = {})
+            {
+                Registrar<T>::Register(stage, startup, deps);
+            }
         };
     };
 
@@ -178,7 +188,8 @@ namespace SF::Engine
         /**
          * @brief Stage and type identifier pair
          */
-        using StageIndex = pair<Stage, TypeId>;
+        using StageIndex   = pair<Stage, TypeId>;
+        using StartupIndex = pair<StartupStage, TypeId>;
 
         virtual ~Module() = default;
 
@@ -204,6 +215,11 @@ namespace SF::Engine
         [[nodiscard]] virtual Stage GetStage() const = 0;
 
         /**
+         * @brief Get the module's start up stage
+         */
+        [[nodiscard]] virtual StartupStage GetStartupStage() const = 0;
+
+        /**
          * @brief Get the module's type ID
          */
         [[nodiscard]] virtual TypeId GetTypeId() const = 0;
@@ -226,9 +242,12 @@ namespace SF::Engine
     class ModuleRegistrar : public Module::Registrar<T>
     {
     public:
-        // Implement the pure virtual methods from Module
-        // FIX: Changed 'Stage' to 'ModuleStage' (or you could use 'Module::Stage')
         [[nodiscard]] ModuleStage GetStage() const override { return ModuleRegistrar<T>::s_registeredStage; }
+
+        [[nodiscard]] ModuleStartStage GetStartupStage() const override
+        {
+            return ModuleRegistrar<T>::s_registeredStartupStage;
+        }
 
         [[nodiscard]] TypeId GetTypeId() const override { return TypeInfo<Module>::template GetTypeId<T>(); }
 
@@ -291,11 +310,15 @@ namespace SF::Engine
         unordered_set<TypeId> m_excluded;
     };
 
-/**
- * @brief Helper macro for registering modules
- * Usage: REGISTER_MODULE(MyModule, ModuleStage::Normal, Module::Requires<Dep1, Dep2>{})
- */
+    /**
+     * @brief Helper macro for registering modules
+     * Usage: REGISTER_MODULE(MyModule, ModuleStage::Normal, Module::Requires<Dep1, Dep2>{})
+     */
 #define REGISTER_MODULE(ModuleClass, UpdateStage, ...)                                                                 \
-    inline static bool ModuleClass##_registered = ModuleClass::Register(UpdateStage, ##__VA_ARGS__)
+    inline static bool ModuleClass##_registered =                                                                      \
+            ModuleClass::Register(UpdateStage, ModuleStartStage::OnEngineInit, ##__VA_ARGS__)
+
+#define REGISTER_MODULE_EX(ModuleClass, UpdateStage, StartupStage, ...)                                                \
+    inline static bool ModuleClass##_registered = ModuleClass::Register(UpdateStage, StartupStage, ##__VA_ARGS__)
 
 } // namespace SF::Engine
