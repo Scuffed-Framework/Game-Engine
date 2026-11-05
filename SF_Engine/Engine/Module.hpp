@@ -2,6 +2,7 @@
 
 #include <bitset>
 #include <concepts>
+#include <cstdint>
 #include <functional>
 #include <memory>
 #include <string_view>
@@ -49,10 +50,10 @@ namespace SF::Engine
     /**
      * @brief Dictates at what point the Module is initialized.
      */
-    enum class ModuleStartStage : uint8_t
+    enum class ModuleStartupStage : uint8_t
     {
-        ManualStartup, // default
-        OnEngineInit,
+        OnEngineInit, // default
+        ManualStartup,
         Normal,
         PostMainWindowInit,
         Custom // add a way to provide lambda calling at some place
@@ -78,7 +79,7 @@ namespace SF::Engine
         {
             function<unique_ptr<Base>()> createFunc{};
             ModuleStage stage{};
-            ModuleStartStage start_stage = ModuleStartStage::OnEngineInit;
+            ModuleStartupStage start_stage = ModuleStartupStage::OnEngineInit;
             vector<TypeId> dependencies{};
             string_view name{}; // For debugging and logging
         };
@@ -130,7 +131,8 @@ namespace SF::Engine
 
             // Move Register into the public section so derived classes can call it via the macro
             template<typename... Args>
-            static bool Register(ModuleStage stage, const ModuleStartStage startup, Requires<Args...> dependencies = {})
+            static bool Register(ModuleStage stage, const ModuleStartupStage startup,
+                                 Requires<Args...> dependencies = {})
             {
                 s_registeredStage        = stage;
                 s_registeredStartupStage = startup;
@@ -148,7 +150,7 @@ namespace SF::Engine
             }
 
             inline static auto s_registeredStage        = ModuleStage::Never;
-            inline static auto s_registeredStartupStage = ModuleStartStage::OnEngineInit;
+            inline static auto s_registeredStartupStage = ModuleStartupStage::OnEngineInit;
             inline static string_view s_registeredName;
 
         private:
@@ -156,7 +158,7 @@ namespace SF::Engine
         };
 
         template<typename T, typename... Args>
-        static bool RegisterModule(ModuleStage stage, ModuleStartStage startup, Requires<Args...> deps = {})
+        static bool RegisterModule(ModuleStage stage, ModuleStartupStage startup, Requires<Args...> deps = {})
         {
             return Registrar<T>::Register(stage, startup, deps);
         }
@@ -164,7 +166,7 @@ namespace SF::Engine
         template<typename T, typename... Args>
         struct AutoRegister
         {
-            AutoRegister(ModuleStage stage, ModuleStartStage startup, Requires<Args...> deps = {})
+            AutoRegister(ModuleStage stage, ModuleStartupStage startup, Requires<Args...> deps = {})
             {
                 Registrar<T>::Register(stage, startup, deps);
             }
@@ -183,7 +185,7 @@ namespace SF::Engine
          */
         using Stage = ModuleStage;
 
-        using StartupStage = ModuleStartStage;
+        using StartupStage = ModuleStartupStage;
 
         /**
          * @brief Stage and type identifier pair
@@ -244,7 +246,7 @@ namespace SF::Engine
     public:
         [[nodiscard]] ModuleStage GetStage() const override { return ModuleRegistrar<T>::s_registeredStage; }
 
-        [[nodiscard]] ModuleStartStage GetStartupStage() const override
+        [[nodiscard]] ModuleStartupStage GetStartupStage() const override
         {
             return ModuleRegistrar<T>::s_registeredStartupStage;
         }
@@ -316,7 +318,7 @@ namespace SF::Engine
      */
 #define REGISTER_MODULE(ModuleClass, UpdateStage, ...)                                                                 \
     inline static bool ModuleClass##_registered =                                                                      \
-            ModuleClass::Register(UpdateStage, ModuleStartStage::OnEngineInit, ##__VA_ARGS__)
+            ModuleClass::Register(UpdateStage, ModuleStartupStage::OnEngineInit, ##__VA_ARGS__)
 
 #define REGISTER_MODULE_EX(ModuleClass, UpdateStage, StartupStage, ...)                                                \
     inline static bool ModuleClass##_registered = ModuleClass::Register(UpdateStage, StartupStage, ##__VA_ARGS__)
