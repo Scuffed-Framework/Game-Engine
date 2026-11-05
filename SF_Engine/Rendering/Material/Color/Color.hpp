@@ -13,6 +13,21 @@
 
 namespace SF::Engine
 {
+    namespace Detail
+    {
+        template<size_t N>
+        struct SwizzleString
+        {
+            char value[N]{};
+            static constexpr size_t Length = N - 1; // exclude '\0'
+
+            constexpr SwizzleString(const char (&str)[N]) noexcept
+            {
+                for (size_t i = 0; i < N; ++i)
+                    value[i] = str[i];
+            }
+        };
+    } // namespace Detail
     /**
      * @brief Represents an RGBA color with floating-point components (0-1 range)
      */
@@ -168,6 +183,48 @@ namespace SF::Engine
         }
 
         /**
+         * @brief Get components in any order/combination (1-4 components, repeats allowed, case-insensitive)
+         *
+         * Usage:
+         *   color.Swizzle<"r">();     // float
+         *   color.Swizzle<"bgr">();   // Vec3
+         *   color.Swizzle<"rrr">();   // Vec3
+         *   color.Swizzle<"abgr">();  // Vec4
+         *   color.Swizzle<"arar">();  // Vec4
+         *
+         * @tparam Mask String of 'r', 'g', 'b', 'a' characters
+         * @return float for 1 component, Vec2/Vec3/Vec4 for 2/3/4
+         */
+        template<Detail::SwizzleString Mask>
+        [[nodiscard]] constexpr auto Swizzle() const noexcept
+        {
+            constexpr size_t N = decltype(Mask)::Length;
+            static_assert(N >= 1 && N <= 4, "Swizzle mask must be 1 to 4 characters");
+
+            constexpr bool valid = []
+            {
+                for (size_t i = 0; i < N; ++i)
+                    if (ComponentIndex(Mask.value[i]) < 0)
+                        return false;
+                return true;
+            }();
+            static_assert(valid, "Swizzle mask may only contain r, g, b, a");
+
+            // Component i of the result
+            const auto c = [this](size_t i) constexpr
+            { return (*this)[static_cast<size_t>(ComponentIndex(Mask.value[i]))]; };
+
+            if constexpr (N == 1)
+                return c(0);
+            else if constexpr (N == 2)
+                return Vec2{c(0), c(1)};
+            else if constexpr (N == 3)
+                return Vec3{c(0), c(1), c(2)};
+            else
+                return Vec4{c(0), c(1), c(2), c(3)};
+        }
+
+        /**
          * @brief Clamp all components to 0-1 range
          * @return The clamped color
          */
@@ -196,10 +253,10 @@ namespace SF::Engine
          */
         [[nodiscard]] constexpr uint32_t ToInt(PackingOrder order = PackingOrder::RGBA) const noexcept
         {
-            auto r8 = static_cast<uint8_t>(Mathematics::Saturate(r) * 255.0f);
-            auto g8 = static_cast<uint8_t>(Mathematics::Saturate(g) * 255.0f);
-            auto b8 = static_cast<uint8_t>(Mathematics::Saturate(b) * 255.0f);
-            auto a8 = static_cast<uint8_t>(Mathematics::Saturate(a) * 255.0f);
+            const auto r8 = static_cast<uint8_t>(Mathematics::Saturate(r) * 255.0f);
+            const auto g8 = static_cast<uint8_t>(Mathematics::Saturate(g) * 255.0f);
+            const auto b8 = static_cast<uint8_t>(Mathematics::Saturate(b) * 255.0f);
+            const auto a8 = static_cast<uint8_t>(Mathematics::Saturate(a) * 255.0f);
 
             switch (order)
             {
@@ -332,7 +389,28 @@ namespace SF::Engine
 
 
     private:
-        constexpr void FromInt(uint32_t value, PackingOrder order) noexcept
+        static constexpr int ComponentIndex(char ch) noexcept
+        {
+            switch (ch)
+            {
+                case 'r':
+                case 'R':
+                    return 0;
+                case 'g':
+                case 'G':
+                    return 1;
+                case 'b':
+                case 'B':
+                    return 2;
+                case 'a':
+                case 'A':
+                    return 3;
+                default:
+                    return -1;
+            }
+        }
+
+        constexpr void FromInt(const uint32_t value, const PackingOrder order) noexcept
         {
             switch (order)
             {
@@ -378,7 +456,7 @@ namespace SF::Engine
             if (hex.size() != 6 && hex.size() != 8)
                 throw std::invalid_argument("Hex string must be 6 or 8 characters (RGB or RGBA)");
 
-            auto hexValue = std::stoul(std::string(hex), nullptr, 16);
+            const auto hexValue = std::stoul(std::string(hex), nullptr, 16);
 
             if (hex.size() == 6)
             {
