@@ -13,7 +13,6 @@
 #include <string>
 #include <vector>
 
-// Forward declarations so SDL stays out of the public header.
 struct SDL_Joystick;
 union SDL_Event;
 

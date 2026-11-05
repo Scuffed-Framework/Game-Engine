@@ -200,7 +200,7 @@ namespace SF::Engine
 
 // Helper macro to enable Bitmask operations on an enum class
 #define ENABLE_BITMASK_OPERATORS(Enum)                                                                                 \
-    namespace SF::Engine::Bitmask                                                                                      \
+    namespace SF::Engine                                                                                               \
     {                                                                                                                  \
         inline constexpr Bitmask<Enum> operator|(Enum lhs, Enum rhs) noexcept { return Bitmask<Enum>(lhs) |= rhs; }    \
         inline constexpr Bitmask<Enum> operator&(Enum lhs, Enum rhs) noexcept { return Bitmask<Enum>(lhs) &= rhs; }    \
