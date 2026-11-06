@@ -57,14 +57,22 @@ namespace SF::Engine
 
     void RhiRenderStage::Update()
     {
-        auto lastRenderArea = renderArea;
+        const auto lastRenderArea = renderArea;
 
         renderArea.SetOffset(viewport.GetOffset());
 
         if (viewport.GetSize())
             renderArea.SetExtent(UVec2(viewport.GetScale() * Vec2(*viewport.GetSize())));
         else
-            renderArea.SetExtent(UVec2(viewport.GetScale() * Vec2(WindowManager::Get()->GetWindow(0)->GetSize())));
+        {
+            const auto *win = WindowManager::Get() ? WindowManager::Get()->GetWindow(0) : nullptr;
+            if (!win)
+            {
+                outOfDate = false;
+                return;
+            }
+            renderArea.SetExtent(UVec2(viewport.GetScale() * Vec2(win->GetSize())));
+        }
 
         // Don't mark as out of date with a zero extent : window is probably minimized.
         // Rebuilding with zero extent creates an invalid framebuffer and crashes.

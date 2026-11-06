@@ -218,6 +218,11 @@ namespace SF::Engine
         if (!rs)
             return; // not ready yet; SceneManager::Update retries next frame
 
+        auto *wm = WindowManager::Get();
+        if (const auto *mainWindow = wm ? wm->GetWindow(0) : nullptr;
+            !mainWindow || mainWindow->GetSize().x == 0 || mainWindow->GetSize().y == 0)
+            return; // SceneManager::Update retries next frame
+
         initialized_ = true;
 
         SceneRendererConfig cfg = rendererCfg_;
