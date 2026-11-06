@@ -6,6 +6,26 @@
 #pragma GCC diagnostic ignored "-Wunused-function"
 namespace SF::Engine
 {
+    struct ScopedId
+    {
+        ScopedId(const char *scope, const string &name)
+        {
+            ImGui::PushID(scope);
+            ImGui::PushID(name.c_str());
+        }
+        ~ScopedId()
+        {
+            ImGui::PopID();
+            ImGui::PopID();
+        }
+        ScopedId(const ScopedId &)            = delete;
+        ScopedId &operator=(const ScopedId &) = delete;
+    };
+
+    static constexpr Vec4 kHeadingColor(0.5f, 0.8f, 1.0f, 1.0f);
+    static constexpr Vec4 kErrorColor(1.0f, 0.3f, 0.3f, 1.0f);
+    static constexpr Vec4 kWarningColor(1.0f, 0.6f, 0.2f, 1.0f);
+    static constexpr Vec4 kCurrentSceneColor(0.45f, 0.80f, 1.0f, 1.0f);
     static constexpr Vec4 kAccent      = {0.00f, 0.54f, 1.00f, 1.00f};
     static constexpr Vec4 kAccentDim   = {0.00f, 0.54f, 1.00f, 0.20f};
     static constexpr Vec4 kRed         = {0.86f, 0.20f, 0.20f, 1.00f};
@@ -16,6 +36,8 @@ namespace SF::Engine
     static constexpr Vec4 kBlueDim     = {0.20f, 0.40f, 1.00f, 0.25f};
     static constexpr Vec4 kComponentBg = {0.08f, 0.08f, 0.08f, 0.80f};
     static constexpr Vec4 kHeaderBg    = {0.12f, 0.12f, 0.14f, 1.00f};
+
+    inline void Heading(const char *text) { ImGui::TextColored(kHeadingColor, "%s", text); }
 
     static bool InputTextWithHint(const char *id, const char *hint, char *buf, size_t bufSize,
                                   ImGuiInputTextFlags flags = 0)
@@ -54,9 +76,10 @@ namespace SF::Engine
     }
 
     // Done this way because I think it is easier to read
-    inline std::string InputStringPopup(std::string WindowName, std::string WindowComment, std::string FallBackName)
+    inline std::string InputStringPopup(const std::string &WindowName, const std::string &WindowComment,
+                                        const std::string &FallBackName)
     {
-        ImGui::SetNextWindowSize(::SF::Engine::Vec2(450, 250));
+        ImGui::SetNextWindowSize(Vec2(450, 250));
 
         std::string retValue;
         std::string storageValue;
@@ -77,7 +100,7 @@ namespace SF::Engine
         return retValue;
     }
 
-    inline void RightAlignedText(const char *text, float rightPadding = 12.0f)
+    inline void RightAlignedText(const char *text, const float rightPadding = 12.0f)
     {
         const float w = ImGui::CalcTextSize(text).x;
         ImGui::SameLine(ImGui::GetWindowWidth() - w - rightPadding);

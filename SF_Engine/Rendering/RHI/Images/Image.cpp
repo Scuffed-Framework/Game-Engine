@@ -4,6 +4,7 @@
 
 #include <Rendering/RHI/Memory/Buffer.hpp>
 #include <Rendering/RenderSystem.hpp>
+#include <Engine/Engine.hpp>
 #define VMA_IMPLEMENTATION
 #include "vk_mem_alloc.h"
 

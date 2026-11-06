@@ -33,7 +33,8 @@ namespace SF::Engine
     class RenderSystem final : public ModuleRegistrar<RenderSystem>
     {
         friend class ModuleRegistrar<RenderSystem>;
-        REGISTER_MODULE(RenderSystem, Module::Stage::Render, Module::Requires<WindowManager>{});
+        REGISTER_MODULE_EX(RenderSystem, Module::Stage::Render, ModuleStartupStage::PreEngineInitComplete,
+                           Module::Requires<WindowManager>{});
 
     public:
         RenderSystem();

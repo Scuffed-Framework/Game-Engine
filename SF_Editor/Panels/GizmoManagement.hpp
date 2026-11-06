@@ -8,7 +8,9 @@
 #include <glm/gtc/type_ptr.hpp>
 
 #include <Math/Transform.hpp>
+#include <Platform/Windowing/WindowManager.hpp>
 
+// TODO: cpp file
 namespace SF::Engine
 {
     class GizmoManagement : public StaticSingleInstancePanel<GizmoManagement>

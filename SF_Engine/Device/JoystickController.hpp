@@ -29,7 +29,6 @@ namespace SF::Engine
         Down     = 4, // == SDL_HAT_DOWN
         Left     = 8  // == SDL_HAT_LEFT
     };
-    ENABLE_BITMASK_OPERATORS(JoystickPositionValue)
 
     enum class JoystickPort : uint8_t
     {
@@ -255,3 +254,5 @@ namespace SF::Engine
         array<Joystick, Reflection::enum_count<JoystickPort>()> joysticks;
     };
 } // namespace SF::Engine
+
+ENABLE_BITMASK_OPERATORS(SF::Engine::JoystickPositionValue)

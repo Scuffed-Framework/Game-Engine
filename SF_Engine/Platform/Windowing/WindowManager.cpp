@@ -7,6 +7,7 @@
 
 #include <Device/JoystickController.hpp>
 #include <Device/MicrophoneController.hpp>
+#include <Engine/Engine.hpp>
 
 namespace SF::Engine
 {
@@ -185,6 +186,8 @@ namespace SF::Engine
     {
         const auto window = windows.emplace_back(make_unique<Window>(windows.size())).get();
         onAddWindow(window, true);
+        if (windows.size() == 1)
+            Engine::Get()->OnMainWindowReady();
         return window;
     }
 

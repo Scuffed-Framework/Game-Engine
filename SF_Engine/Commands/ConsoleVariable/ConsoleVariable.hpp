@@ -8,6 +8,10 @@
 #include <LowLevel/XML/XMLModule.hpp>
 #include <UtilityClasses/StreamFactory.hpp>
 
+#ifdef Always
+    #undef Always
+#endif
+
 namespace SF::Engine
 {
     using namespace std;
@@ -115,7 +119,7 @@ namespace SF::Engine
 
     class ConsoleVariableRegistry : public ModuleRegistrar<ConsoleVariableRegistry>
     {
-        static inline bool reg = Register(ModuleStage::Always, Requires<>{});
+        REGISTER_MODULE_EX(ConsoleVariableRegistry, ModuleStage::Always, ModuleStartupStage::OnEngineInit);
         SF_RTTI(Module, ConsoleVariableRegistry)
 
         inline static unordered_map<string, IConsoleVariable *> s_cvars;
@@ -133,7 +137,7 @@ namespace SF::Engine
         void Update() override {}
 
         [[nodiscard]] Stage GetStage() const override { return ModuleStage::Always; }
-        [[nodiscard]] ::std::string_view GetName() const override { return RTTI_GetTypeName(); }
+        [[nodiscard]] string_view GetName() const override { return RTTI_GetTypeName(); }
 
         // NOLINTBEGIN(readability-convert-member-functions-to-static)
         void Serialize(XMLNode &node) const

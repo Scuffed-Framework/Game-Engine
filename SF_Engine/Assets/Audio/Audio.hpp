@@ -18,7 +18,7 @@ namespace SF::Engine
      */
     class Audio : public ModuleRegistrar<Audio>
     {
-        REGISTER_MODULE(Audio, Module::Stage::Pre);
+        REGISTER_MODULE_EX(Audio, Module::Stage::Pre, ModuleStartupStage::PreEngineInitComplete);
     public:
         enum class Type
         {

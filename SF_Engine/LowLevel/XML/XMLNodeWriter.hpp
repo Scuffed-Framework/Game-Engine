@@ -6,7 +6,7 @@
 
 namespace SF::Engine
 {
-    class XmlNodeWriter final : public SF::Reflection::IWriter
+    class XmlNodeWriter final : public ::SF::Reflection::IWriter
     {
     public:
         explicit XmlNodeWriter(XMLNode &root) { stack_.push_back(root); }
@@ -30,7 +30,7 @@ namespace SF::Engine
         std::vector<XMLNode> stack_;
     };
 
-    class XmlNodeReader final : public SF::Reflection::IReader
+    class XmlNodeReader final : public ::SF::Reflection::IReader
     {
     public:
         explicit XmlNodeReader(const XMLNode &root) { stack_.push_back(root); }
@@ -74,4 +74,4 @@ namespace SF::Engine
     private:
         std::vector<XMLNode> stack_;
     };
-}
+} // namespace SF::Engine

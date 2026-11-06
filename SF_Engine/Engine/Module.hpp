@@ -52,6 +52,7 @@ namespace SF::Engine
      */
     enum class ModuleStartupStage : uint8_t
     {
+        PreEngineInitComplete,
         OnEngineInit, // default
         ManualStartup,
         Normal,

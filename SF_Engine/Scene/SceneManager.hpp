@@ -15,7 +15,7 @@ namespace SF::Engine
      */
     class SceneManager : public ModuleRegistrar<SceneManager>
     {
-        REGISTER_MODULE(SceneManager, ModuleStage::Normal, Requires<RenderSystem>{});
+        REGISTER_MODULE_EX(SceneManager, ModuleStage::Normal, ModuleStartupStage::PreEngineInitComplete, Requires<RenderSystem>{});
 
     public:
         SceneManager();

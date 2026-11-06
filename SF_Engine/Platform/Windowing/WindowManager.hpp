@@ -1,6 +1,6 @@
 #pragma once
 
-#include <Engine/Engine.hpp>
+#include <Engine/Module.hpp>
 #include <SDL3/SDL.h>
 #include <atomic>
 #include "Window.hpp"
@@ -13,7 +13,7 @@ namespace SF::Engine
      */
     class WindowManager : public ModuleRegistrar<WindowManager>
     {
-        REGISTER_MODULE(WindowManager, ModuleStage::Pre);
+        REGISTER_MODULE_EX(WindowManager, ModuleStage::Pre, ModuleStartupStage::PreEngineInitComplete);
 
     public:
         WindowManager();

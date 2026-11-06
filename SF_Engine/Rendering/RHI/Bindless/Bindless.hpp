@@ -2,13 +2,19 @@
 #include <Math/KVP.hpp>
 #include <Rendering/RenderSystem.hpp>
 #include <UtilityClasses/NoCopy.hpp>
+
+#include <Rendering/RHI/Memory/Buffer.hpp>
+#include <queue>
+
 #ifdef Bool
     #undef Bool
 #endif
 #include <slang-com-ptr.h>
 #include <slang.h>
+
 namespace SF::Engine
 {
+    class Image;
     enum class EBindingType
     {
         BindlessStorageBuffer = 0,
@@ -23,9 +29,9 @@ namespace SF::Engine
 
     struct BindlessReflectionData
     {
-        std::string name;
-        uint32_t set;
-        uint32_t binding;
+        string name;
+        uint32_t set{};
+        uint32_t binding{};
     };
 
     using BindlessIndex = KeyValuePair<uint32_t, uint32_t>;
@@ -34,7 +40,7 @@ namespace SF::Engine
     {
     public:
         explicit BindlessManager();
-        ~BindlessManager();
+        ~BindlessManager() override;
         [[nodiscard]] BindlessIndex RegisterSampler(VkSampler sampler);
         [[nodiscard]] BindlessIndex RegisterSRV(VkImageView view);
         [[nodiscard]] BindlessIndex RegisterUAV(VkImageView view);
@@ -43,11 +49,11 @@ namespace SF::Engine
         void FreeSRV(BindlessIndex &index, Image fallback);
         void FreeSRV(BindlessIndex &index);
         void FreeUAV(BindlessIndex &index, Image fallback);
-        void FreeStorageBuffer(BindlessIndex &index, const std::shared_ptr<Buffer> &fallback);
-        void FreeUniformBuffer(BindlessIndex &index, const std::shared_ptr<Buffer> &fallback);
-        void VerifyShaderLayout(const std::vector<BindlessReflectionData> &reflectionData);
-        const VkDescriptorSetLayout &getSetLayout() const { return m_setLayout; }
-        const VkDescriptorSet &getSet() const { return m_set; }
+        void FreeStorageBuffer(BindlessIndex &index, const shared_ptr<Buffer> &fallback);
+        void FreeUniformBuffer(BindlessIndex &index, const shared_ptr<Buffer> &fallback);
+        void VerifyShaderLayout(const vector<BindlessReflectionData> &reflectionData);
+        [[nodiscard]] const VkDescriptorSetLayout &getSetLayout() const { return m_setLayout; }
+        [[nodiscard]] const VkDescriptorSet &getSet() const { return m_set; }
         void Bind(VkCommandBuffer cmd, VkPipelineBindPoint bindPoint, VkPipelineLayout layout) const
         {
             vkCmdBindDescriptorSets(cmd, bindPoint, layout, 0, 1, &m_set, 0, nullptr);
@@ -70,7 +76,6 @@ namespace SF::Engine
             uint64_t freedOnFrame;
         };
 
-    private:
         static constexpr auto kBindingCount = static_cast<uint32_t>(EBindingType::MAX);
         VkDescriptorPool m_pool             = VK_NULL_HANDLE;
         VkDescriptorSet m_set               = VK_NULL_HANDLE;
@@ -82,26 +87,26 @@ namespace SF::Engine
             uint32_t limit;
         };
         BindingConfig m_bindingConfigs[kBindingCount]{};
-        std::mutex m_lockCount;
-        std::queue<uint32_t> m_freeCount[kBindingCount];
+        mutex m_lockCount;
+        queue<uint32_t> m_freeCount[kBindingCount];
         uint32_t m_usedCount[kBindingCount]{};
 
-        std::vector<PendingFree> m_pendingFrees;
+        vector<PendingFree> m_pendingFrees;
         uint64_t m_currentFrame = 0;
     };
 
-    inline std::vector<SF::Engine::BindlessReflectionData>
-    ReflectBindlessLayout(Slang::ComPtr<slang::IComponentType> linkedProgram)
+    inline vector<BindlessReflectionData>
+    ReflectBindlessLayout(const Slang::ComPtr<slang::IComponentType> &linkedProgram)
     {
-        std::vector<SF::Engine::BindlessReflectionData> reflectedBindings;
+        vector<BindlessReflectionData> reflectedBindings;
         slang::ProgramLayout *layout = linkedProgram->getLayout();
         if (!layout)
             return reflectedBindings;
-        unsigned paramCount = layout->getParameterCount();
+        const unsigned paramCount = layout->getParameterCount();
         for (unsigned i = 0; i < paramCount; ++i)
         {
             slang::VariableLayoutReflection *param = layout->getParameterByIndex(i);
-            SF::Engine::BindlessReflectionData data;
+            BindlessReflectionData data;
             data.name    = param->getName();
             data.binding = param->getBindingIndex();
             data.set     = param->getBindingSpace();

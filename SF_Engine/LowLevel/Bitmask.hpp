@@ -67,25 +67,6 @@ namespace SF::Engine
         underlying_type value;
     };
 
-    // Operator overloads for enum + Bitmask
-    template<typename Enum>
-    constexpr Bitmask<Enum> operator|(Enum lhs, Enum rhs) noexcept
-    {
-        return Bitmask<Enum>(lhs) |= rhs;
-    }
-
-    template<typename Enum>
-    constexpr Bitmask<Enum> operator&(Enum lhs, Enum rhs) noexcept
-    {
-        return Bitmask<Enum>(lhs) &= rhs;
-    }
-
-    template<typename Enum>
-    constexpr Bitmask<Enum> operator^(Enum lhs, Enum rhs) noexcept
-    {
-        return Bitmask<Enum>(lhs) ^= rhs;
-    }
-
     template<typename Enum>
     constexpr Bitmask<Enum> operator|(Bitmask<Enum> lhs, Enum rhs) noexcept
     {

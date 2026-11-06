@@ -51,11 +51,12 @@
 namespace SF::Engine
 {
     class Application;
+    class Image;
 
     class Engine : NoCopy
     {
     public:
-        using RegMap = ::SF::Engine::Module::RegistryMap;
+        using RegMap = Module::RegistryMap;
         /**
          * Gets the engines instance.
          * @return The current engine instance.
@@ -212,6 +213,26 @@ namespace SF::Engine
         {
             layerStack.DispatchEvent(event);
         }
+
+    private:
+        bool InitializeModule(TypeId id);
+
+        vector<TypeId> creationOrder; // dependencies first
+        unordered_set<TypeId> initializedModules;
+        bool mainWindowReady = false;
+
+    public:
+        void InitializeStage(ModuleStartupStage stage);
+
+        // For ManualStartup / Custom modules.
+        template<ModuleDerived T>
+        bool StartModule()
+        {
+            return InitializeModule(TypeInfo<Module>::GetTypeId<T>());
+        }
+
+        // Call once the main window is fully set up.
+        void OnMainWindowReady();
 
     private:
         void CreateModule(RegMap::const_iterator it, const ModuleFilter &filter);

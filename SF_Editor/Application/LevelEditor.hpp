@@ -1,18 +1,20 @@
 #pragma once
 #include <Commands/CommandsWindow.hpp>
 #include <Engine/Application/Application.hpp>
+#include <Scene/SceneManager.hpp>
 #include "Panels/AssetsWindow.hpp"
 #include "Panels/BarPanels.hpp"
 #include "Panels/GizmoManagement.hpp"
 #include "Panels/HierarchyPanel.hpp"
 #include "Panels/InspectorPanel.hpp"
 
+// Todo: cpp file
 namespace SF::Engine
 {
-    class EditorInfo : public ::SF::Engine::AppInfo
+    class EditorInfo : public AppInfo
     {
     public:
-        EditorInfo() : AppInfo{/*Name*/ {"SF Level Editor"}, /*Version*/ {1, 0, 0}} {};
+        EditorInfo() : AppInfo{.name = {"SF Level Editor"}, .version = {1, 0, 0}} {};
     };
 
     class EditorApplication : public Application
@@ -26,10 +28,8 @@ namespace SF::Engine
         {
         }
 
-        InitializationReturn Init() override
+        InitializationReturn OnInit(Engine &) override
         {
-            if (const auto result = Application::Init(); result != Success)
-                return result;
             SetOnSceneReplaced(
                     [this]
                     {
@@ -54,7 +54,7 @@ namespace SF::Engine
             return Success;
         }
 
-        void Update() override { Application::Update(); }
+        void OnUpdate() override {}
 
     private:
         std::unique_ptr<HierarchyPanel> hierarchy;

@@ -24,18 +24,12 @@ namespace SF::Engine
         for (auto it = Module::Registry().begin(); it != Module::Registry().end(); ++it)
             CreateModule(it, moduleFilter);
 
-        // Initialize all modules
-        for (auto &module: modules | views::values)
-        {
-            if (module && !module->Initialize())
-            {
-                Log::Error("Failed to initialize module: {}", module->GetName());
-            }
-        }
+        InitializeStage(ModuleStartupStage::PreEngineInitComplete);
 
-        // annoying, getting the logical device inside the RenderSystem constructor is too early,
-        // so we have to call this after the RenderSystem is fully initialized.
-        RenderSystem::Get()->PostInit();
+        if (auto *rs = RenderSystem::Get())
+            rs->PostInit();
+
+        InitializeStage(ModuleStartupStage::OnEngineInit);
 
         // Nothing game-specific happens here anymore: no GameInstance, no startup scene.
         // The application attaches afterwards and decides (see LoadStartupScene).
@@ -60,7 +54,7 @@ namespace SF::Engine
         // and iterating + erasing simultaneously invalidates the reverse iterator
         while (!modules.empty())
         {
-            auto id = modules.rbegin()->first;
+            const auto id = modules.rbegin()->first;
             DestroyModule(id);
         }
 
@@ -72,7 +66,10 @@ namespace SF::Engine
     {
         app = application;
         if (app)
-            app->started_ = true; // Engine is a friend of Application
+        {
+            app->started_ = true;
+            InitializeStage(ModuleStartupStage::Normal);
+        }
     }
 
     void Engine::LoadStartupScene(const URL &startUpURL)
@@ -208,7 +205,7 @@ namespace SF::Engine
         {
             Log::Info("Creating module: {}", it->second.name);
             modules[it->first] = std::move(module);
-            moduleStages[it->second.stage].emplace_back(it->first);
+            creationOrder.push_back(it->first);
         } else
         {
             Log::Error("Failed to create module: {}", it->second.name);
@@ -237,22 +234,76 @@ namespace SF::Engine
             return; // already destroyed by recursive call
 
         auto &stageVec = moduleStages[stage]; // use captured stage, not it->second
-        std::erase(stageVec, id);
+        erase(stageVec, id);
 
         modules.erase(it);
+        erase(creationOrder, id);
+        initializedModules.erase(id);
     }
 
     void Engine::UpdateStage(ModuleStage stage)
     {
-        auto stageIt = moduleStages.find(stage);
+        const auto stageIt = moduleStages.find(stage);
         if (stageIt == moduleStages.end())
             return;
 
         for (auto &moduleId: stageIt->second)
         {
-            auto modIt = modules.find(moduleId);
-            if (modIt != modules.end() && modIt->second)
+            if (auto modIt = modules.find(moduleId); modIt != modules.end() && modIt->second)
                 modIt->second->Update();
         }
+    }
+
+    void Engine::InitializeStage(ModuleStartupStage stage)
+    {
+        for (const TypeId id: creationOrder)
+        {
+            const auto it = modules.find(id);
+            if (it != modules.end() && it->second && it->second->GetStartupStage() == stage)
+                InitializeModule(id);
+        }
+    }
+
+    bool Engine::InitializeModule(TypeId id)
+    {
+        if (initializedModules.contains(id))
+            return true;
+
+        const auto it = modules.find(id);
+        if (it == modules.end() || !it->second)
+            return false;
+        Module &module = *it->second;
+
+        // Pull dependencies forward so a module never initializes before what it requires,
+        // even if the dependency is registered for a later stage.
+        if (const auto reg = Module::Registry().find(id); reg != Module::Registry().end())
+        {
+            for (const TypeId dep: reg->second.dependencies)
+            {
+                if (modules.contains(dep) && !InitializeModule(dep))
+                {
+                    Log::Error("Module {} not initialized: dependency failed", module.GetName());
+                    return false;
+                }
+            }
+        }
+
+        if (!module.Initialize())
+        {
+            Log::Error("Failed to initialize module: {}", module.GetName());
+            return false;
+        }
+
+        initializedModules.insert(id);
+        moduleStages[module.GetStage()].emplace_back(id); // only initialized modules get updated
+        return true;
+    }
+
+    void Engine::OnMainWindowReady()
+    {
+        if (mainWindowReady)
+            return;
+        mainWindowReady = true;
+        InitializeStage(ModuleStartupStage::PostMainWindowInit);
     }
 } // namespace SF::Engine

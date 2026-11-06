@@ -4,10 +4,11 @@
 
 
 #include "OceanSFERenderpass.hpp"
+#include <Controllers/CameraController.hpp>
 #include <Rendering/Mesh/Vertex.hpp> // PatchVertex::GetVertexInput()
-#include <Rendering/RHI/Shaders/Parser/Parser.hpp>
 #include <Rendering/RenderSystem.hpp>
 #include <Rendering/SharedFunctions.hpp>
+#include <Engine/Engine.hpp>
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wmissing-field-initializers"

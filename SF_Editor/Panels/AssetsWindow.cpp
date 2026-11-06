@@ -2,24 +2,32 @@
 #include <Assets/Audio/AudioAsset.hpp>
 #include <Assets/Import/AssetImporter.hpp>
 #include <Assets/Models/MeshAsset.hpp>
+
 #include <Controllers/CameraController.hpp>
 #include <Engine/Project/Project.hpp>
+
 #include <Gui/ImGui/CommonGuiFunctions.hpp>
 #include <Gui/ImGui/ocornut/imgui_impl_vulkan.h>
+
 #include <LowLevel/FileSystem/File.hpp>
 #include <Platform/Windowing/WindowManager.hpp>
+
 #include <Scene/Scene.hpp>
+#include <Scene/SceneManager.hpp>
+
+#include <UtilityClasses/ConstantExpression.hpp>
+
 #include "../Wizards/Shaders.hpp"
 #include "Panels.hpp"
-#include "Scene/SceneManager.hpp"
 
 #include <algorithm>
-#include <cctype>
-#include <cstdint>
 #include <cstdio>
 #include <cstring>
 #include <string_view>
 #include <system_error>
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-function"
 
 namespace SF::Engine
 {
@@ -55,72 +63,18 @@ namespace SF::Engine
         constexpr uint32_t kDefaultImageSize     = 256;
         constexpr VkFormat kDefaultImageFormat   = VK_FORMAT_R8G8B8A8_UNORM;
 
-        constexpr Vec4 kHeadingColor(0.5f, 0.8f, 1.0f, 1.0f);
-        constexpr Vec4 kErrorColor(1.0f, 0.3f, 0.3f, 1.0f);
-        constexpr Vec4 kWarningColor(1.0f, 0.6f, 0.2f, 1.0f);
-        constexpr Vec4 kCurrentSceneColor(0.45f, 0.80f, 1.0f, 1.0f);
-
         struct ViewModeInfo
         {
             AssetBrowser::ViewMode mode;
             const char *icon;
             const char *menuLabel;
         };
+
         constexpr ViewModeInfo kViewModes[] = {
                 {AssetBrowser::ViewMode::Grid, ICON_MD_GRID_ON, ICON_MD_GRID_ON " Grid"},
                 {AssetBrowser::ViewMode::List, ICON_MD_FORMAT_LIST_BULLETED, ICON_MD_FORMAT_LIST_BULLETED " List"},
                 {AssetBrowser::ViewMode::Details, ICON_MD_DETAILS, ICON_MD_DETAILS " Details"}};
 
-        // Pushes a two-level ID ("folder" + "Textures") so a folder and a scene file
-        // that share a name can never collide.
-        struct ScopedId
-        {
-            ScopedId(const char *scope, const string &name)
-            {
-                ImGui::PushID(scope);
-                ImGui::PushID(name.c_str());
-            }
-            ~ScopedId()
-            {
-                ImGui::PopID();
-                ImGui::PopID();
-            }
-            ScopedId(const ScopedId &)            = delete;
-            ScopedId &operator=(const ScopedId &) = delete;
-        };
-
-        string ToLower(string_view s)
-        {
-            string out(s);
-            ranges::transform(out, out.begin(), [](unsigned char c) { return static_cast<char>(tolower(c)); });
-            return out;
-        }
-
-        bool ContainsNoCase(string_view haystack, string_view needle)
-        {
-            if (needle.empty())
-                return true;
-            const auto it =
-                    ranges::search(haystack, needle, [](char h, char n)
-                                   { return tolower(static_cast<unsigned char>(h)) == static_cast<unsigned char>(n); })
-                            .begin();
-            return it != haystack.end();
-        }
-
-        bool LessNoCase(const string &a, const string &b)
-        {
-            return ranges::lexicographical_compare(a, b, [](unsigned char x, unsigned char y)
-                                                   { return tolower(x) < tolower(y); });
-        }
-
-        string CleanFileName(string s)
-        {
-            for (char &c: s)
-                if (strchr("<>:\"/\\|?*", c) || static_cast<unsigned char>(c) < 32)
-                    c = '_';
-            s.erase(s.find_last_not_of(" \t\n\r\f\v") + 1); // trailing whitespace (npos + 1 == 0 -> clears all-blank)
-            return s;
-        }
 
         bool IsSceneFile(const filesystem::path &p)
         {
@@ -153,14 +107,7 @@ namespace SF::Engine
             return {u8string(static_cast<const char8_t *>(payload->Data), static_cast<size_t>(payload->DataSize))};
         }
 
-        string ToHex(uint32_t v)
-        {
-            char buf[16];
-            snprintf(buf, sizeof(buf), "0x%X", v);
-            return buf;
-        }
-
-        // Scale `src` to fit inside `box`, preserving aspect ratio.
+        // Scale "src" to fit inside "box", preserving aspect ratio.
         Vec2 FitInside(Vec2 src, Vec2 box, bool allowUpscale)
         {
             if (src.x <= 0.0f || src.y <= 0.0f)
@@ -177,8 +124,6 @@ namespace SF::Engine
             ImGui::Dummy(Vec2(10, 0));
             ImGui::SameLine();
         }
-
-        void Heading(const char *text) { ImGui::TextColored(kHeadingColor, "%s", text); }
 
         void DrawIcon(const shared_ptr<Image2d> &icon, Vec2 size)
         {
@@ -211,7 +156,7 @@ namespace SF::Engine
         template<typename TImage, typename Fn>
         bool TryVisit(const shared_ptr<AssetBase> &asset, Fn &fn)
         {
-            if (const auto image = ::SF::RTTI::rtti_pointer_cast<ImageAsset<TImage>>(asset))
+            if (const auto image = Reflection::rtti_pointer_cast<ImageAsset<TImage>>(asset))
             {
                 fn(image);
                 return true;
@@ -1502,7 +1447,7 @@ namespace SF::Engine
             if (!asset->assetPath.empty())
                 PropertyRow(ICON_MD_INSERT_DRIVE_FILE " Source", asset->assetPath.filename().string());
 
-            if (const auto model = ::SF::RTTI::rtti_pointer_cast<MeshAsset>(asset))
+            if (const auto model = Reflection::rtti_pointer_cast<MeshAsset>(asset))
             {
                 if (model->IsLoaded())
                 {
@@ -1522,7 +1467,7 @@ namespace SF::Engine
                     if (model->animationCount > 0)
                         PropertyRow(ICON_MD_WARNING " Animations", to_string(model->animationCount) + " (ignored)");
                 }
-            } else if (const auto audio = ::SF::RTTI::rtti_pointer_cast<AudioAsset>(asset))
+            } else if (const auto audio = Reflection::rtti_pointer_cast<AudioAsset>(asset))
             {
                 if (audio->buffer)
                 {
@@ -1633,7 +1578,7 @@ namespace SF::Engine
                                  ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_AutoSelectAll);
 
         // Enter confirms; so does clicking away. IsItemDeactivated() is only true for a field that was
-        // active, so no "armed" flag is needed. (The old local `m_inlineEditArmed` shadowed nothing and was
+        // active, so no "armed" flag is needed. (The old local "m_inlineEditArmed" shadowed nothing and was
         // reset every frame, so click-away never committed.)
         if (confirmed || ImGui::IsItemDeactivated())
             CommitInlineEdit();
@@ -2026,7 +1971,7 @@ namespace SF::Engine
         EndInlineEdit();
     }
 
-    // Call right after an item that should accept drops into `destFolder` (folder tiles/rows, the Up button).
+    // Call right after an item that should accept drops into "destFolder" (folder tiles/rows, the Up button).
     void AssetBrowser::AcceptBrowserDrop(const filesystem::path &destFolder)
     {
         if (!ImGui::BeginDragDropTarget())
@@ -2316,3 +2261,5 @@ namespace SF::Engine
         m_dirDirty = true;
     }
 } // namespace SF::Engine
+
+#pragma GCC diagnostic pop

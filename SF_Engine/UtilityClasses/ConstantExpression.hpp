@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cctype>
+#include <cstdint>
 #include <memory>
 #include <optional>
 #include <utility>
@@ -181,6 +183,39 @@ namespace SF::Engine
             s.insert(s.begin(), digits[value & 0xF]);
             value >>= 4;
         } while (value != 0);
+        return s;
+    }
+
+    constexpr string ToLower(const string_view s)
+    {
+        string out(s);
+        ranges::transform(out, out.begin(), [](const unsigned char c) { return static_cast<char>(tolower(c)); });
+        return out;
+    }
+
+    constexpr bool ContainsNoCase(string_view haystack, string_view needle)
+    {
+        if (needle.empty())
+            return true;
+        const auto it =
+                ranges::search(haystack, needle, [](const char h, const char n)
+                               { return tolower(static_cast<unsigned char>(h)) == static_cast<unsigned char>(n); })
+                        .begin();
+        return it != haystack.end();
+    }
+
+    constexpr bool LessNoCase(const string &a, const string &b)
+    {
+        return ranges::lexicographical_compare(a, b, [](const unsigned char x, const unsigned char y)
+                                               { return tolower(x) < tolower(y); });
+    }
+
+    constexpr string CleanFileName(string s)
+    {
+        for (char &c: s)
+            if (strchr("<>:\"/\\|?*", c) || static_cast<unsigned char>(c) < 32)
+                c = '_';
+        s.erase(s.find_last_not_of(" \t\n\r\f\v") + 1); // trailing whitespace (npos + 1 == 0 -> clears all-blank)
         return s;
     }
 } // namespace SF::Engine

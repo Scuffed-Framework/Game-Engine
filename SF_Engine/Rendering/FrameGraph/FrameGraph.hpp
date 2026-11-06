@@ -14,6 +14,12 @@
 #include "EngineRenderpassManager.hpp"
 #include "FrameGraphNode.hpp"
 
+// I HATE YOU X11 DIE DIE DIE!!!!
+// wayland is better
+#ifdef None
+    #undef None
+#endif
+
 namespace SF::Engine
 {
     enum class ResourceUsage
@@ -28,9 +34,9 @@ namespace SF::Engine
 
     struct Texture
     {
-        VkImage image    = VK_NULL_HANDLE;
-        VkImageView view = VK_NULL_HANDLE;
-        VkFormat format  = VK_FORMAT_UNDEFINED;
+        VkImage image                  = VK_NULL_HANDLE;
+        VkImageView view               = VK_NULL_HANDLE;
+        VkFormat format                = VK_FORMAT_UNDEFINED;
         VkImageAspectFlags aspect_mask = VK_IMAGE_ASPECT_COLOR_BIT;
     };
 
@@ -45,7 +51,7 @@ namespace SF::Engine
 
     using VulkanStateMapping = ResourceState;
 
-    inline VulkanStateMapping GetVulkanState(ResourceUsage usage)
+    inline VulkanStateMapping GetVulkanState(const ResourceUsage usage)
     {
         switch (usage)
         {
@@ -59,15 +65,17 @@ namespace SF::Engine
                                       VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT,
                         .last_access = VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT};
             case ResourceUsage::SampledTexture:
-                return {VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                        VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
-                        VK_ACCESS_2_SHADER_READ_BIT};
+                return {.current_layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                        .last_stage  = VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+                        .last_access = VK_ACCESS_2_SHADER_READ_BIT};
             case ResourceUsage::StorageRead:
-                return {VK_IMAGE_LAYOUT_GENERAL, VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
-                        VK_ACCESS_2_SHADER_READ_BIT};
+                return {.current_layout = VK_IMAGE_LAYOUT_GENERAL,
+                        .last_stage     = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+                        .last_access    = VK_ACCESS_2_SHADER_READ_BIT};
             case ResourceUsage::StorageWrite:
-                return {VK_IMAGE_LAYOUT_GENERAL, VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
-                        VK_ACCESS_2_SHADER_WRITE_BIT};
+                return {.current_layout = VK_IMAGE_LAYOUT_GENERAL,
+                        .last_stage     = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+                        .last_access    = VK_ACCESS_2_SHADER_WRITE_BIT};
             default:
                 return {.current_layout = VK_IMAGE_LAYOUT_UNDEFINED,
                         .last_stage     = VK_PIPELINE_STAGE_2_NONE,
@@ -82,7 +90,7 @@ namespace SF::Engine
      *   - Passes declare, once, which named resources they Create/Read/Write and with what
      *     ResourceUsage.
      *   - Compile() culls passes nothing reads (dead code elimination for renderer features
-     *     that are toggled off -- e.g. an SSR pass nobody samples this frame), topologically
+     *     that are toggled off, e.g. an SSR pass nobody samples this frame), topologically
      *     sorts the survivors, and writes the result back onto the real EngineRenderpass
      *     objects via SetEnabled()/SetOrder(). EngineRenderpassManager's existing
      *     PreRenderStage()/RenderStage() iteration is untouched and just picks up the new
@@ -103,7 +111,7 @@ namespace SF::Engine
      *     one-line hookup instead.
      *   - It does not insert barriers automatically mid-frame. Vulkan barriers can only be
      *     recorded outside an active render pass, and PreRenderStage() is the only point in the
-     *     existing loop that's guaranteed to run before a renderpass begins -- so a pass has to
+     *     existing loop that's guaranteed to run before a renderpass begins, so a pass has to
      *     explicitly call EmitPendingBarriers() from there. This is a deliberate one-line manual
      *     hook rather than an automatic one threaded through the hot render loop.
      */
@@ -112,16 +120,16 @@ namespace SF::Engine
     public:
         FrameGraph() = default;
 
-        // ---- Resources ----
-
         /**
          * Registers a named, externally-owned resource (an attachment, an offscreen Image2d, an
-         * ImageDepth, a baked LUT...). `resolve` is called lazily, only when the graph actually
+         * ImageDepth, a baked LUT...). "resolve" is called lazily, only when the graph actually
          * needs to build a barrier for it, so it's safe to import a resource before the
-         * underlying Vulkan image exists yet (e.g. before the first ResetRenderStages()) -- if
-         * `resolve` returns a Texture with a VK_NULL_HANDLE image, that access is skipped for
+         * underlying Vulkan image exists yet (e.g. before the first ResetRenderStages()). If
+         * "resolve" returns a Texture with a VK_NULL_HANDLE image, that access is skipped for
          * this Compile() rather than producing a bogus barrier.
          *
+         * @param name
+         * @param resolve
          * @param initialState What the resource's layout/stage/access already is when the graph
          *        first touches it (e.g. a baked LUT already sitting in
          *        SHADER_READ_ONLY_OPTIMAL). Defaults to UNDEFINED, appropriate for anything the
@@ -133,56 +141,52 @@ namespace SF::Engine
         [[nodiscard]] ResourceHandle FindResource(std::string_view name) const;
         [[nodiscard]] ResourceHandle RequireResource(std::string_view name) const;
 
-        // ---- Passes ----
-
         /**
          * Wraps an already-registered EngineRenderpass (owned by EngineRenderpassManager) as a
-         * graph node. Call once per pass -- right after EngineRenderpassManager::Add<T>() is a
-         * natural spot -- then declare its resource dependencies with Read/Write/Create before
+         * graph node. Call once per pass, right after EngineRenderpassManager::Add<T>() is a
+         * natural spot, then declare its resource dependencies with Read/Write/Create before
          * calling Compile(). Returns a reference valid for the lifetime of the FrameGraph.
          */
         FrameGraphRenderpassNode &AddPass(std::string_view name, EngineRenderpass &pass);
 
-        // Declares that `node` reads `resource` as `usage`, whether that happens in the pass's
+        // Declares that "node" reads "resource" as "usage", whether that happens in the pass's
         // PreRender() (compute) or Render() (subpass) step.
         void Read(FrameGraphRenderpassNode &node, ResourceHandle resource, ResourceUsage usage);
 
-        // Declares that `node` writes `resource` as `usage`, where the resource already has
+        // Declares that "node" writes "resource" as "usage", where the resource already has
         // meaningful contents from an earlier pass this frame (so Compile()'s hazard detector
-        // treats this as consuming, not stomping, whatever came before -- pair it with a Read of
+        // treats this as consuming, not stomping, whatever came before, pair it with a Read of
         // the same resource on this node if this pass also reads it back).
         void Write(FrameGraphRenderpassNode &node, ResourceHandle resource, ResourceUsage usage);
 
-        // Declares that `node` is the FIRST writer of `resource` this frame: it fully
+        // Declares that "node" is the FIRST writer of "resource" this frame: it fully
         // (re)initializes the resource and doesn't care about, or intentionally discards,
         // whatever was there before (a render target being cleared, a compute dispatch that
         // fully overwrites a buffer). Distinguishing Create from Write is what lets Compile()'s
         // hazard detector flag "X wrote resource R, then Y re-created R with nothing ever
-        // reading X's output in between" -- exactly the atmosphere/hdr bug shape.
+        // reading X's output in between", exactly the atmosphere/hdr bug shape.
         void Create(FrameGraphRenderpassNode &node, ResourceHandle resource, ResourceUsage usage);
 
-        // Marks a node as always executing regardless of whether anything reads its outputs --
+        // Marks a node as always executing regardless of whether anything reads its outputs,
         // use for anything with an externally-visible effect: final composite/present passes,
         // GPU readback, debug overlays.
         void MarkSideEffect(FrameGraphRenderpassNode &node);
-
-        // ---- Compile / Execute ----
 
         /**
          * Culls dead passes, topologically sorts the survivors, logs any write-after-write
          * hazards, and rebuilds the pending barrier plan. Call once after registering all
          * passes and their dependencies, and again any time a pass is added/removed or its
          * dependencies change at runtime (e.g. a graphics-settings toggle that adds/removes a
-         * whole pipeline pass). Cheap enough to not worry about beyond that -- it's O(passes +
+         * whole pipeline pass). Cheap enough to not worry about beyond that, it's O(passes +
          * accesses), no allocdriven-per-frame cost, which is what makes Execute-side
          * (EmitPendingBarriers) fast: it's just replaying a precomputed list.
          */
         void Compile();
 
         /**
-         * Records the batch of image barriers needed before `renderStageIndex`'s renderpass
+         * Records the batch of image barriers needed before "renderStageIndex"'s renderpass
          * begins (i.e. before RenderSystem::StartRenderpass() is called for that render stage
-         * this frame). Call this from the LAST PreRender() that runs for that render stage --
+         * this frame). Call this from the LAST PreRender() that runs for that render stage,
          * concretely, the pass registered at that render stage's highest subpass index that has
          * a PreRender(). Safe to call every frame; it's just replaying the plan Compile() built.
          */
@@ -205,7 +209,7 @@ namespace SF::Engine
         struct PendingBarrier
         {
             uint32_t renderStageIndex;
-            // Execution + memory dependency only -- deliberately NO VkImage and NO layout
+            // Execution + memory dependency only, deliberately NO VkImage and NO layout
             // transition. Every resource this graph models today is a framebuffer attachment whose
             // layouts are owned by its renderpass (initialLayout/finalLayout); a graph-issued layout
             // transition on top of that disagreed with the real layout, and caching VkImage handles
@@ -219,7 +223,7 @@ namespace SF::Engine
         // Shared by Cull()/TopoSort(): for each node, which OTHER node indices it must run
         // after, derived from "the last Create/Write of a resource before this Read of it, in
         // declaration order". The graph doesn't version resources, so a Read always binds to
-        // whichever Create/Write for that handle was declared most recently before it -- if two
+        // whichever Create/Write for that handle was declared most recently before it, if two
         // passes are meant to write the same resource independently of each other's timing,
         // give them separate resource handles.
         [[nodiscard]] std::vector<std::vector<uint32_t>> BuildDependencyEdges() const;

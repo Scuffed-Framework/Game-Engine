@@ -107,7 +107,7 @@ namespace SF::Engine
 
     class XMLModule : public ModuleRegistrar<XMLModule>
     {
-        REGISTER_MODULE(XMLModule, ModuleStage::Normal, Requires<>{});
+        REGISTER_MODULE_EX(XMLModule, ModuleStage::Normal, ModuleStartupStage::PreEngineInitComplete, Requires<>{});
 
     public:
         XMLModule();

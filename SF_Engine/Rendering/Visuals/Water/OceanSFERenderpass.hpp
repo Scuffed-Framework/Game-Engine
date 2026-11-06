@@ -14,7 +14,7 @@
 
 namespace SF::Engine
 {
-    // TODO: fix lol
+    // TODO: end this thing's misery (look at acerola code or something)
     struct OceanTessellationParams
     {
         //  Gerstner waves
@@ -138,7 +138,7 @@ namespace SF::Engine
 
         void SetParams(const OceanTessellationParams &params);
         OceanTessellationParams &GetParams() { return params_; }
-        const OceanTessellationParams &GetParams() const { return params_; }
+        [[nodiscard]] const OceanTessellationParams &GetParams() const { return params_; }
 
         // Rebuild mesh topology when patchCount / patchExtent changes.
         void RebuildMesh();

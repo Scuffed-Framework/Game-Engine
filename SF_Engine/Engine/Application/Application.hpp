@@ -29,13 +29,8 @@
 #include <Platform/PlatformIncludes.hpp>
 #include <UtilityClasses/NoCopy.hpp>
 
-#include <Configuration/Default/ImGuiDefaultWidgets.hpp>
 #include <Engine/InitGame/AppInfo.hpp>
 #include <Engine/Log/Log.hpp>
-#include <Platform/Windowing/WindowManager.hpp>
-#include <Rendering/RHI/Viewport/Viewport.hpp>
-#include <Rendering/RenderSystem.hpp>
-#include <Scene/SceneManager.hpp>
 
 #ifdef Started
     #undef Started
@@ -47,6 +42,11 @@
 namespace SF::Engine
 {
     class Engine;
+    class Window;
+    class WindowManager;
+    class RenderSystem;
+    class SceneManager;
+    class SceneViewport;
 
     std::filesystem::path GetExecutablePathImpl();
 
@@ -126,7 +126,7 @@ namespace SF::Engine
          * Polled by the engine every iteration. Return true to stop the main loop.
          * Default: the main window has been closed.
          */
-        [[nodiscard]] virtual bool ShouldClose() const { return window && window->IsClosed(); }
+        [[nodiscard]] virtual bool ShouldClose() const;
 
         /// Typed access to the info object for derived applications.
         template<class TInfo>

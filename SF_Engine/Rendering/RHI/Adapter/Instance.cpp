@@ -2,6 +2,7 @@
 
 #include <fmt/format.h>
 
+#include <Engine/Engine.hpp>
 #include <Platform/Windowing/WindowManager.hpp>
 #include <Rendering/RenderSystem.hpp>
 

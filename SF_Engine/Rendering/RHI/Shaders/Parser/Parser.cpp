@@ -1,5 +1,9 @@
 #include "Parser.hpp"
 
+#ifdef Bool
+    #undef Bool
+#endif
+
 #include <slang-com-ptr.h>
 #include <slang.h>
 #include <volk.h>
@@ -99,8 +103,7 @@ namespace SF::Engine::Shaders
         std::string DrainDiagnostics(slang::IBlob *diagnostics)
         {
             if (diagnostics && diagnostics->getBufferSize() > 0)
-                return std::string(static_cast<const char *>(diagnostics->getBufferPointer()),
-                                   diagnostics->getBufferSize());
+                return {static_cast<const char *>(diagnostics->getBufferPointer()), diagnostics->getBufferSize()};
             return {};
         }
 

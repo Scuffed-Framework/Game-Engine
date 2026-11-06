@@ -1,5 +1,10 @@
 #include "Application.hpp"
+#include <Configuration/Default/ImGuiDefaultWidgets.hpp>
 #include <Engine/Engine.hpp>
+#include <Platform/Windowing/WindowManager.hpp>
+#include <Rendering/RHI/Viewport/Viewport.hpp>
+#include <Rendering/RenderSystem.hpp>
+#include <Scene/SceneManager.hpp>
 
 #include <cassert>
 
@@ -110,10 +115,11 @@ namespace SF::Engine
         // EditorApplication::OnInit so plain games don't get an ImGui viewport.
         viewports.push_back(std::make_unique<SceneViewport>(UVec2{800, 600}));
 
+        // stupid shit
         renderer->OnRecordViewports().Add(
                 [this](VkCommandBuffer cmd, std::size_t frameIndex)
                 {
-                    for (auto &vp: viewports)
+                    for (const auto &vp: viewports)
                     {
                         vp->Tick(frameIndex);
                         vp->PrepareForRender(cmd);
@@ -171,14 +177,14 @@ namespace SF::Engine
         return result;
     }
 
+    bool Application::ShouldClose() const { return window && window->IsClosed(); }
+
     // Engine::Run() already drains the GPU and calls OnShutdown() before the application is
     // destroyed, and the engine is guaranteed to outlive it (see RunEngine), so there is nothing
     // left to do here. The only exception is a failed OnInit, which RunEngine handles itself.
     Application::~Application() = default;
 
-    // ---------------------------------------------------------------------------------------------
-    // Program entry
-    // ---------------------------------------------------------------------------------------------
+
     namespace
     {
         void DrainGpu()
