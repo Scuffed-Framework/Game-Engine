@@ -118,7 +118,7 @@ namespace SF::Engine
 
     bool DrawReflected(std::type_index ti, void *obj, const char *id, float labelW)
     {
-        auto &ctx           = SerializeContext::Instance();
+        const auto &ctx           = SerializeContext::Instance();
         const TypeId *tid   = ctx.FindTypeId(ti);
         const ClassData *cd = tid ? ctx.FindClassData(*tid) : nullptr;
         if (!cd)

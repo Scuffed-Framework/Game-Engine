@@ -63,6 +63,8 @@ find_package(OpenAPV REQUIRED)
 find_package(openh264 REQUIRED)
 find_package(TIFF REQUIRED)
 
+find_package(Tracy REQUIRED)
+
 #
 # Sources
 #
@@ -255,6 +257,8 @@ target_link_libraries(SF_Engine PUBLIC
         openapv::openapv
         openh264::openh264
         TIFF::TIFF
+
+        Tracy::TracyClient
 )
 
 if (TARGET SDL3::SDL3-shared)

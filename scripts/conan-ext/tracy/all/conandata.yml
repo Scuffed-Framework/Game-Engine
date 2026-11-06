@@ -1,0 +1,4 @@
+sources:
+  "0.15":
+    url: "https://github.com/wolfpld/tracy/archive/refs/tags/v0.15.0.tar.gz"
+    sha256: "3d57da54aa67d7875da1e8fecd0bd5957675cef73c27dd52bffb6ab8d290a5e6"

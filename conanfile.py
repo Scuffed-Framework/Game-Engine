@@ -91,6 +91,9 @@ class SfEngineConan(ConanFile):
         # Platforms
         # self.requires("android-ndk/r29")
 
+        # Debug
+        self.requires("tracy/0.15")
+
     def configure(self):
         if self.settings.os == "Android":
             self.options["sdl"].shared = True

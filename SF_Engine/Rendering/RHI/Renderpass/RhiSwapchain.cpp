@@ -32,17 +32,17 @@ namespace SF::Engine
         vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice.GetPhysicalDevice(), surface,
                                                   &physicalPresentModeCount, physicalPresentModes.data());
 
-        for (const auto &presentMode: physicalPresentModes)
+        for (const auto &present: physicalPresentModes)
         {
-            if (presentMode == VK_PRESENT_MODE_MAILBOX_KHR)
+            if (present == VK_PRESENT_MODE_MAILBOX_KHR)
             {
-                this->presentMode = presentMode;
+                this->presentMode = present;
                 break;
             }
 
-            if (presentMode != VK_PRESENT_MODE_MAILBOX_KHR && presentMode == VK_PRESENT_MODE_IMMEDIATE_KHR)
+            if (present != VK_PRESENT_MODE_MAILBOX_KHR && present == VK_PRESENT_MODE_IMMEDIATE_KHR)
             {
-                this->presentMode = presentMode;
+                this->presentMode = present;
             }
         }
 
@@ -111,7 +111,7 @@ namespace SF::Engine
 
         if (RenderSystemFamily != presentFamily)
         {
-            array<uint32_t, 2> queueFamily            = {RenderSystemFamily, presentFamily};
+            array queueFamily                         = {RenderSystemFamily, presentFamily};
             swapchainCreateInfo.imageSharingMode      = VK_SHARING_MODE_CONCURRENT;
             swapchainCreateInfo.queueFamilyIndexCount = static_cast<uint32_t>(queueFamily.size());
             swapchainCreateInfo.pQueueFamilyIndices   = queueFamily.data();
@@ -151,14 +151,25 @@ namespace SF::Engine
     {
         if (fence != VK_NULL_HANDLE)
         {
-            auto waitResult = vkWaitForFences(logicalDevice, 1, &fence, VK_TRUE, 1'000'000'000);
+            const auto t0         = std::chrono::steady_clock::now();
+            const auto waitResult = vkWaitForFences(logicalDevice, 1, &fence, VK_TRUE, 1'000'000'000);
             if (waitResult == VK_TIMEOUT)
                 return VK_TIMEOUT; // GPU/present stalled, not a stale swapchain; caller decides
             RenderSystem::CheckVkResult(waitResult);
+
+            static double acc = 0;
+            static int n      = 0;
+            acc += std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count();
+            if (++n == 120)
+            {
+                Log::Info("fence wait avg {:.2f} ms", acc / n);
+                acc = 0;
+                n   = 0;
+            }
         }
 
-        auto acquireResult = vkAcquireNextImageKHR(logicalDevice, swapchain, numeric_limits<uint64_t>::max(),
-                                                   presentCompleteSemaphore, VK_NULL_HANDLE, &activeImageIndex);
+        const auto acquireResult = vkAcquireNextImageKHR(logicalDevice, swapchain, numeric_limits<uint64_t>::max(),
+                                                         presentCompleteSemaphore, VK_NULL_HANDLE, &activeImageIndex);
 
         if (acquireResult == VK_ERROR_OUT_OF_DATE_KHR || acquireResult == VK_SUBOPTIMAL_KHR)
             return acquireResult;

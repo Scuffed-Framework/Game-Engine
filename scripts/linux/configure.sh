@@ -33,6 +33,7 @@ echo "==> Build type: $BUILD_TYPE"
 
 CreateConanPackage "openapv/all/" "1.1.3.0"
 CreateConanPackage "SDL/all/" "3.4.18"
+CreateConanPackage "tracy/all/" "0.15"
 
 echo "==> Running Conan root install..."
 conan install . -s build_type=$BUILD_TYPE --build=missing

@@ -9,6 +9,8 @@
 #include <string>
 #include "LightingTypes.hpp"
 
+#include <LowLevel/Reflection/RTTI/SerializeContext.hpp>
+
 namespace SF::Engine
 {
     /**
@@ -17,6 +19,28 @@ namespace SF::Engine
      */
     struct Light : public Component::Registrar<Light>
     {
+        static bool Reflect()
+        {
+            Reflection::SerializeContext::Instance()
+                    .Class<Light>()
+                    ->Version(1)
+                    ->Field("Position", &Light::position)
+                    ->Speed(0.05f)
+                    ->ResetTo(0, 0, 0)
+                    ->Field("Color", &Light::color)
+                    ->Speed(0.05f)
+                    ->ResetTo(0, 0, 0)
+                    ->Field("Type", &Light::type)
+                    ->Field("CastShadow", &Light::castShadow)
+                    ->Field("Intensity", &Light::intensity)
+                    ->Field("Radius", &Light::radius)
+                    ->Field("InnerConeAngleDeg", &Light::innerConeAngleDeg)
+                    ->Field("OuterConeAngleDeg", &Light::outerConeAngleDeg)
+                    ->Field("Type", &Light::type)
+                    ->ResetTo(1, 1, 1);
+            return true;
+        }
+
         Lighting::LightType type = Lighting::LightType::Point;
 
         Vec3 position           = {0, 0, 0};
