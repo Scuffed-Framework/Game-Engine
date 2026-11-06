@@ -1,11 +1,13 @@
 #include "InspectorPanel.hpp"
-#include <Configuration/Default/ImGuiDefaultWidgets.hpp>
 #include <EntityComponentSystem/Entity.hpp>
 #include <Gui/ImGui/Declare_Widget.hpp>
 #include <Gui/ImGui/ocornut/imgui_internal.h>
 #include <Gui/ImGui/ocornut/imgui_stdlib.h>
+#include <LowLevel/Reflection/RTTI/SerializeContext.hpp>
+#include <LowLevel/Reflection/ReflectedTypes.hpp>
 #include <Math/Transform.hpp>
 #include <Scene/SceneManager.hpp>
+#include <UtilityClasses/StlExtensions.hpp>
 #include "Panels.hpp"
 
 namespace SF::Engine
@@ -61,7 +63,7 @@ namespace SF::Engine
         ImGui::End();
     }
 
-    void InspectorPanel::DrawEntityProperties()
+    void InspectorPanel::DrawEntityProperties() const
     {
         ImGui::PushID("EntityProperties");
         // Name field
@@ -105,127 +107,106 @@ namespace SF::Engine
             ImGui::PushID(component.get());
 
             bool removed = false;
-
-            if (ComponentWidgetRegistry::HasType(type))
+            if (ImGui::BeginPopupContextItem("ComponentOptions"))
             {
-                ComponentWidgetRegistry::DrawByType(type, component.get(), "##w");
-
-                // Right-click the header area for options, since the widget
-                // owns its own header now and there's no "..." button on it.
-                if (ImGui::BeginPopupContextItem("ComponentOptions"))
+                if (ImGui::MenuItem("Reset"))
                 {
-                    if (ImGui::MenuItem("Remove"))
-                    {
-                        removed = m_entity->RemoveComponentByType(type);
-                    }
-                    ImGui::EndPopup();
+                    component->Reset();
+                    OnComponentEdited(*component);
                 }
-            } else
+                if (ImGui::MenuItem("Remove"))
+                    removed = m_entity->RemoveComponentByType(type);
+                ImGui::EndPopup();
+            }
+
+            if (IsReflected(type))
             {
-                bool expanded =
-                        ImGui::CollapsingHeader(component->GetTypeName().data(), ImGuiTreeNodeFlags_DefaultOpen);
-
-                ImGui::SameLine(ImGui::GetWindowWidth() - 30);
-                if (ImGui::SmallButton("..."))
-                    ImGui::OpenPopup("ComponentOptions");
-
-                if (expanded)
-                    DrawComponentField(std::string(component->GetTypeName()), component.get());
-
-                if (ImGui::BeginPopup("ComponentOptions"))
-                {
-                    if (ImGui::MenuItem("Reset"))
-                    {
-                        component->Reset();
-                    }
-                    if (ImGui::MenuItem("Remove"))
-                    {
-                        removed = m_entity->RemoveComponentByType(type);
-                    }
-                    ImGui::EndPopup();
-                }
+                if (DrawReflected(type, component.get(), "##w"))
+                    OnComponentEdited(*component);
             }
 
             ImGui::PopID();
-
             if (removed)
                 break;
         }
+    }
+
+    void InspectorPanel::OnComponentEdited(Component & /*component*/)
+    {
+        // Hook for dirty-flag / undo / gizmo refresh.
     }
 
     void InspectorPanel::DrawAddComponentMenu()
     {
         ImGui::TextColored(Vec4(0.4f, 0.8f, 1.0f, 1.0f), "Add Component");
 
-        static int selectedComponent = -1;
-        const char *components[]     = {"No", "No", "No", "No",
-                                        "No", "No", "No"}; // when I add ComponentRegistry::Get()->GetAll()
-
-        ImGui::PushItemWidth(-1);
-        if (ImGui::Combo("##AddComponent", &selectedComponent, components, IM_ARRAYSIZE(components)))
+        if (ImGui::Button("Add Component...", Vec2(-1, 0)))
         {
-            // Handle component addition based on selection
-            switch (selectedComponent)
-            {
-                case 0:
-                    // m_entity->AddComponent<idk>();
-                    break;
-                case 1:
-                    // m_entity->AddComponent<skibidi>();
-                    break;
-                case 2:
-                    // m_entity->AddComponent<67>();
-                    break;
-                    // ... add other cases
-            }
-            selectedComponent = -1; // Reset selection
-        }
-        ImGui::PopItemWidth();
-    }
-
-    bool InspectorPanel::DrawComponentField(const std::string & /*label*/, SF::Engine::Component *component)
-    {
-        if (!component)
-            return false;
-
-        bool modified = false;
-
-        ImGui::Indent();
-
-        // Transform properties example
-        if (component->GetTypeName() == "TransformComponent")
-        {
-            ImGui::Text("Position");
-            ImGui::SameLine();
-            static float pos[3] = {0.0f, 0.0f, 0.0f};
-            if (ImGui::DragFloat3("##Position", pos, 0.1f))
-            {
-                modified = true;
-            }
-
-            ImGui::Text("Rotation");
-            ImGui::SameLine();
-            static float rot[3] = {0.0f, 0.0f, 0.0f};
-            if (ImGui::DragFloat3("##Rotation", rot, 1.0f))
-            {
-                modified = true;
-            }
-
-            ImGui::Text("Scale");
-            ImGui::SameLine();
-            static float scale[3] = {1.0f, 1.0f, 1.0f};
-            if (ImGui::DragFloat3("##Scale", scale, 0.1f, 0.01f, 100.0f))
-            {
-                modified = true;
-            }
+            ImGui::OpenPopup("AddComponentPopup");
+            m_componentFilter.clear();
+            m_focusFilter = true;
         }
 
-        ImGui::Unindent();
+        // Anchor the popup under the button, same width as the button.
+        const Vec2 bmin = ImGui::GetItemRectMin();
+        const Vec2 bmax = ImGui::GetItemRectMax();
+        ImGui::SetNextWindowPos(Vec2(bmin.x, bmax.y));
+        ImGui::SetNextWindowSizeConstraints(Vec2(bmax.x - bmin.x, 0), Vec2(bmax.x - bmin.x, 320));
 
-        return modified;
+        if (!ImGui::BeginPopup("AddComponentPopup"))
+            return;
+
+        if (m_focusFilter)
+        {
+            ImGui::SetKeyboardFocusHere();
+            m_focusFilter = false;
+        }
+        ImGui::SetNextItemWidth(-1);
+        ImGui::InputTextWithHint("##filter", "Search components...", &m_componentFilter);
+        ImGui::Separator();
+
+        // Components the entity already has (one per type) are greyed out.
+        std::unordered_set<std::string> have;
+        for (auto &c: m_entity->components | views::values)
+            if (c)
+                have.emplace(c->GetTypeName());
+
+        std::vector<const std::string *> names;
+        for (const auto &name: Component::Registry() | views::keys)
+            if (ContainsNoCase(name, m_componentFilter))
+                names.push_back(&name);
+        ranges::sort(names, [](auto *a, auto *b) { return *a < *b; });
+
+        const std::string *picked = nullptr;
+        const bool enter          = ImGui::IsKeyPressed(ImGuiKey_Enter) || ImGui::IsKeyPressed(ImGuiKey_KeypadEnter);
+
+        ImGui::BeginChild("##complist", Vec2(0, 200));
+        for (const std::string *name: names)
+        {
+            const bool exists = have.contains(*name);
+            ImGui::BeginDisabled(exists);
+            if (ImGui::Selectable(name->c_str()) || (enter && !picked && !exists))
+                picked = name;
+            ImGui::EndDisabled();
+        }
+        if (names.empty())
+            ImGui::TextDisabled("No matches");
+        ImGui::EndChild();
+
+        if (picked)
+        {
+            if (auto comp = Component::Create(*picked))
+            {
+                if (Component *raw = m_entity->AddComponent(std::move(comp)))
+                    OnComponentEdited(*raw);
+            }
+            ImGui::CloseCurrentPopup();
+        }
+
+        ImGui::EndPopup();
     }
 
-    void InspectorPanel::SetEntity(SF::Engine::Entity *entity)
+    void InspectorPanel::SetEntity(Entity *entity)
     {
         m_entity = entity;
         if (entity)

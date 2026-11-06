@@ -32,15 +32,61 @@
 // see the note at the bottom of this file) if you'd rather not maintain
 // a second serialization backend.
 //
+#include <Math/Vectors/Vector.hpp>
 #include <cstdint>
 #include <memory>
 #include <string>
+#include <typeindex>
 #include <unordered_map>
 #include <vector>
 #include "ReflectContext.hpp"
 
+#ifdef Bool
+    #undef Bool
+#endif
+
 namespace SF::Reflection
 {
+    using namespace std;
+    enum class FieldKind : uint8_t
+    {
+        Object,
+        Float,
+        Int,
+        UInt,
+        Bool,
+        String,
+        Vec2,
+        Vec3,
+        Vec4,
+        Enum
+    };
+
+    template<typename T>
+    constexpr FieldKind KindOf()
+    {
+        if constexpr (is_same_v<T, float>)
+            return FieldKind::Float;
+        else if constexpr (is_same_v<T, int32_t>)
+            return FieldKind::Int;
+        else if constexpr (is_same_v<T, uint32_t>)
+            return FieldKind::UInt;
+        else if constexpr (is_same_v<T, bool>)
+            return FieldKind::Bool;
+        else if constexpr (is_same_v<T, string>)
+            return FieldKind::String;
+        else if constexpr (is_same_v<T, Engine::Vec2>)
+            return FieldKind::Vec2;
+        else if constexpr (is_same_v<T, Engine::Vec3>)
+            return FieldKind::Vec3;
+        else if constexpr (is_same_v<T, Engine::Vec4>)
+            return FieldKind::Vec4;
+        else if constexpr (is_enum_v<T>)
+            return FieldKind::Enum;
+        else
+            return FieldKind::Object;
+    }
+
     template<typename T, typename = void>
     struct ReflectedTypeName
     {
@@ -98,6 +144,18 @@ namespace SF::Reflection
         vector<unique_ptr<class IFieldBinding>> fields;
     };
 
+    struct FieldMeta
+    {
+        const char *displayName = nullptr; // defaults to field name
+        const char *tooltip     = nullptr;
+        const char *format      = nullptr; // "%.2f", "%.1f deg"
+        const char *enumItems   = nullptr; // "Point\0Spot\0Directional\0"
+        float min = 0, max = 0, speed = 0.1f;
+        float resetVec[3] = {0, 0, 0};
+        bool hasRange = false, slider = false, color = false, hidden = false, readOnly = false;
+        function<bool(const void *)> visible; // null = always
+    };
+
     class IFieldBinding
     {
     public:
@@ -106,6 +164,13 @@ namespace SF::Reflection
         [[nodiscard]] virtual TypeId GetFieldTypeId() const                                             = 0;
         virtual void Save(const void *instance, IWriter &writer, const SerializeContext &context) const = 0;
         virtual void Load(void *instance, IReader &reader, const SerializeContext &context) const       = 0;
+
+        [[nodiscard]] virtual FieldKind Kind() const              = 0;
+        virtual void *GetPtr(void *instance) const                = 0;
+        [[nodiscard]] virtual bool IsEnum() const                 = 0;
+        virtual int32_t GetEnum(const void *instance) const       = 0;
+        virtual void SetEnum(void *instance, int32_t value) const = 0;
+        FieldMeta meta;
     };
 
     template<typename FieldT>
@@ -135,6 +200,23 @@ namespace SF::Reflection
             DeserializeValue<FieldT>(reader, m_name, obj->*m_member, context);
         }
 
+        [[nodiscard]] bool IsEnum() const override { return is_enum_v<FieldT>; }
+
+        [[nodiscard]] FieldKind Kind() const override { return KindOf<FieldT>(); }
+        void *GetPtr(void *i) const override { return &(static_cast<ClassT *>(i)->*m_member); }
+        int32_t GetEnum(const void *i) const override
+        {
+            if constexpr (is_enum_v<FieldT>)
+                return static_cast<int32_t>(static_cast<const ClassT *>(i)->*m_member);
+            else
+                return 0;
+        }
+        void SetEnum(void *i, int32_t v) const override
+        {
+            if constexpr (is_enum_v<FieldT>)
+                static_cast<ClassT *>(i)->*m_member = static_cast<FieldT>(v);
+        }
+
     private:
         const char *m_name;
         FieldT ClassT::*m_member;
@@ -146,7 +228,7 @@ namespace SF::Reflection
     public:
         ClassBuilder(ClassData &data) : m_data(data) {}
 
-        ClassBuilder &Version(uint32_t version)
+        ClassBuilder &Version(const uint32_t version)
         {
             m_data.version = version;
             return *this;
@@ -161,7 +243,86 @@ namespace SF::Reflection
 
         ClassBuilder *operator->() { return this; }
 
+        ClassBuilder &Range(const float lo, const float hi)
+        {
+            M().min      = lo;
+            M().max      = hi;
+            M().hasRange = true;
+            return *this;
+        }
+
+        ClassBuilder &Slider(const float lo, const float hi)
+        {
+            Range(lo, hi);
+            M().slider = true;
+            return *this;
+        }
+
+        ClassBuilder &Speed(const float s)
+        {
+            M().speed = s;
+            return *this;
+        }
+
+        ClassBuilder &Format(const char *f)
+        {
+            M().format = f;
+            return *this;
+        }
+
+        ClassBuilder &Color()
+        {
+            M().color = true;
+            return *this;
+        }
+
+        ClassBuilder &Tooltip(const char *t)
+        {
+            M().tooltip = t;
+            return *this;
+        }
+
+        ClassBuilder &DisplayName(const char *n)
+        {
+            M().displayName = n;
+            return *this;
+        }
+
+        ClassBuilder &Enum(const char *items)
+        {
+            M().enumItems = items;
+            return *this;
+        }
+
+        ClassBuilder &Hidden()
+        {
+            M().hidden = true;
+            return *this;
+        }
+
+        ClassBuilder &ReadOnly()
+        {
+            M().readOnly = true;
+            return *this;
+        }
+
+        ClassBuilder &ResetTo(const float x, const float y, const float z)
+        {
+            M().resetVec[0] = x;
+            M().resetVec[1] = y;
+            M().resetVec[2] = z;
+            return *this;
+        }
+
+        template<typename F>
+        ClassBuilder &ShowIf(F &&f)
+        {
+            M().visible = [f = std::forward<F>(f)](const void *o) { return f(*static_cast<const T *>(o)); };
+            return *this;
+        }
+
     private:
+        [[nodiscard]] FieldMeta &M() const { return m_data.fields.back()->meta; }
         ClassData &m_data;
     };
 
@@ -180,16 +341,23 @@ namespace SF::Reflection
         {
             static_assert(IsReflectable<T>::value, "T needs SF_TYPE_INFO (or SF_RTTI/SF_RTTI_BASE) to be reflected, "
                                                    "or use SF_REFLECT_EXTERNAL_TYPE(T) for external/POD types.");
-            TypeId id       = GetTypeId<T>();
-            ClassData &data = m_classes[id];
-            data.typeId     = id;
-            data.name       = ReflectedTypeName<T>::Get();
+            const TypeId id                   = GetTypeId<T>();
+            ClassData &data                   = m_classes[id];
+            m_stdTypes[type_index(typeid(T))] = id;
+            data.typeId                       = id;
+            data.name                         = ReflectedTypeName<T>::Get();
             return ClassBuilder<T>(data);
         }
 
-        const ClassData *FindClassData(TypeId id) const
+        const TypeId *FindTypeId(const type_index ti) const
         {
-            auto it = m_classes.find(id);
+            const auto it = m_stdTypes.find(ti);
+            return it != m_stdTypes.end() ? &it->second : nullptr;
+        }
+
+        const ClassData *FindClassData(const TypeId id) const
+        {
+            const auto it = m_classes.find(id);
             return it != m_classes.end() ? &it->second : nullptr;
         }
 
@@ -219,6 +387,7 @@ namespace SF::Reflection
 
     private:
         unordered_map<TypeId, ClassData> m_classes;
+        unordered_map<std::type_index, TypeId> m_stdTypes;
     };
 
     template<typename FieldT>

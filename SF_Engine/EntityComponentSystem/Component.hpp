@@ -31,9 +31,6 @@ namespace SF::Engine
 
         [[nodiscard]] virtual std::unique_ptr<Component> Clone() const { return nullptr; }
 
-        // TODO: yeah so like do something with this and replace the declare widgets file
-        virtual void DrawEditorFields() {}
-
     private:
         bool started  = false;
         bool enabled  = true;
@@ -52,7 +49,7 @@ namespace SF::Engine
 
         void Deserialize(const XMLNode &node) override
         {
-            XMLNode component = node.GetChild("Component");
+            const XMLNode component = node.GetChild("Component");
             component.GetAttribute("started", started);
             component.GetAttribute("enabled", enabled);
             component.GetAttribute("removed", removed);

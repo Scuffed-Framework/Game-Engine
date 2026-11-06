@@ -184,7 +184,7 @@ namespace SF::Engine
         {
             static bool reflected = []
             {
-                auto &ctx = ::SF::Reflection::SerializeContext::Instance();
+                auto &ctx = Reflection::SerializeContext::Instance();
 
                 ctx.Class<VkExtent3D>()
                         ->Version(1)

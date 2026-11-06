@@ -6,6 +6,7 @@
 #pragma GCC diagnostic ignored "-Wunused-function"
 namespace SF::Engine
 {
+    class WidgetBuilder;
     struct ScopedId
     {
         ScopedId(const char *scope, const string &name)
@@ -45,22 +46,22 @@ namespace SF::Engine
         bool changed = ImGui::InputText(id, buf, bufSize, flags);
         if (buf[0] == '\0' && !ImGui::IsItemActive())
         {
-            ImDrawList *dl         = ImGui::GetWindowDrawList();
-            ::SF::Engine::Vec2 pos = ImGui::GetItemRectMin();
+            ImDrawList *dl = ImGui::GetWindowDrawList();
+            Vec2 pos       = ImGui::GetItemRectMin();
             pos.x += ImGui::GetStyle().FramePadding.x;
             pos.y += ImGui::GetStyle().FramePadding.y;
             dl->AddText(pos, ImGui::GetColorU32(ImGuiCol_TextDisabled), hint);
         }
         return changed;
     }
-    static bool InputTextWithHint(const char *id, const std::string *hint, std::string *str,
-                                  ImGuiInputTextFlags flags = 0)
+
+    static bool InputTextWithHint(const char *id, const string *hint, string *str, ImGuiInputTextFlags flags = 0)
     {
         bool changed = ImGui::InputText(id, str, flags);
         if (str->empty() && !ImGui::IsItemActive())
         {
-            ImDrawList *dl         = ImGui::GetWindowDrawList();
-            ::SF::Engine::Vec2 pos = ImGui::GetItemRectMin();
+            ImDrawList *dl = ImGui::GetWindowDrawList();
+            Vec2 pos       = ImGui::GetItemRectMin();
             pos.x += ImGui::GetStyle().FramePadding.x;
             pos.y += ImGui::GetStyle().FramePadding.y;
             dl->AddText(pos, ImGui::GetColorU32(ImGuiCol_TextDisabled), hint->c_str());
@@ -71,18 +72,17 @@ namespace SF::Engine
     static void HorizontalSpacer(float width)
     {
         ImGui::SameLine();
-        ImGui::Dummy(::SF::Engine::Vec2(width, 0.0f));
+        ImGui::Dummy(Vec2(width, 0.0f));
         ImGui::SameLine();
     }
 
     // Done this way because I think it is easier to read
-    inline std::string InputStringPopup(const std::string &WindowName, const std::string &WindowComment,
-                                        const std::string &FallBackName)
+    inline string InputStringPopup(const string &WindowName, const string &WindowComment, const string &FallBackName)
     {
         ImGui::SetNextWindowSize(Vec2(450, 250));
 
-        std::string retValue;
-        std::string storageValue;
+        string retValue;
+        string storageValue;
 
         if (ImGui::Begin(WindowName.c_str()))
         {

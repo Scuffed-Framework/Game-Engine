@@ -116,6 +116,31 @@ namespace SF::Engine
         }
 
         /**
+         * @brief Type-erased add, for components built at runtime (e.g. Component::Create(name)).
+         *        Keyed by the concrete type, the same key the templated overload uses.
+         *        Returns nullptr (and keeps the existing one) if that type is already present.
+         */
+        Component *AddComponent(std::unique_ptr<Component> component)
+        {
+            if (!component)
+                return nullptr;
+
+            const Component &ref = *component; // keeps typeid from evaluating a dereference expression
+            const std::type_index key(typeid(ref));
+
+            if (components.contains(key))
+            {
+                Log::Warning("Entity '{}' already has component '{}'.", name, component->GetTypeName());
+                return nullptr;
+            }
+
+            component->SetOwner(this);
+            Component *raw = component.get();
+            components.emplace(key, std::move(component));
+            return raw;
+        }
+        
+        /**
          * @brief Factory hook so derived entity types clone as themselves.
          *        Override in subclasses (and copy any extra members there).
          */

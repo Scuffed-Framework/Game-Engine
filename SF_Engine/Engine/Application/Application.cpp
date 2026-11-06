@@ -1,5 +1,4 @@
 #include "Application.hpp"
-#include <Configuration/Default/ImGuiDefaultWidgets.hpp>
 #include <Engine/Engine.hpp>
 #include <Platform/Windowing/WindowManager.hpp>
 #include <Rendering/RHI/Viewport/Viewport.hpp>
@@ -135,7 +134,6 @@ namespace SF::Engine
         for (auto &vp: viewports)
             reg = UIRegistry::Get().Register([p = vp.get()] { DrawViewport(p); });
 
-        RegisterDefaultComponentWidgets();
         return InitializationReturn::Success;
     }
 

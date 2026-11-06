@@ -6,13 +6,23 @@
 #include <Gui/ImGui/ocornut/imgui.h>
 #include <functional>
 #include <string>
+
+namespace SF::Reflection
+{
+    struct ClassData;
+    struct FieldMeta;
+} // namespace SF::Reflection
+
 namespace SF::Engine
 {
+    class WidgetBuilder;
     class EntityRegistry;
 
     class InspectorPanel : public StaticSingleInstancePanel<InspectorPanel>
     {
     public:
+        using DrawFn = bool (*)(WidgetBuilder &, void *value, const Reflection::FieldMeta &);
+
         InspectorPanel()
         {
             reg = UIRegistry::Get().Register([this] { Draw(); });
@@ -25,15 +35,18 @@ namespace SF::Engine
         void Refresh();
 
     private:
-        void DrawEntityProperties();
+        void DrawEntityProperties() const;
         void DrawComponents();
         void DrawAddComponentMenu();
-        bool DrawComponentField(const std::string &label, Component *component);
+        void OnComponentEdited(Component &component);
 
         Entity *m_entity           = nullptr;
         EntityId m_entityId        = 0;
         EntityRegistry *m_registry = nullptr;
         bool m_needsRefresh        = true;
         size_t reg;
+
+        string m_componentFilter;
+        bool m_focusFilter = false;
     };
 } // namespace SF::Engine

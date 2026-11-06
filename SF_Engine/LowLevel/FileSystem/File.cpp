@@ -1,43 +1,40 @@
 #include "File.hpp"
 
 #include <fcntl.h>
+#include <sys/stat.h>
 #include <system_error>
 #include <unistd.h>
 #include <utility>
-#include <sys/stat.h>
 
 #ifdef _PLATFORM_WINDOWS
     #include <windows.h>
 #elif defined _PLATFORM_LINUX
-    #include <sys/mman.h>
-    #include <cstring>
     #include <cerrno>
+    #include <cstring>
+    #include <sys/mman.h>
 #endif
 namespace SF::Engine
 {
 
     // File class implementation
-    File::File(const File &other)
-        : m_path(other.m_path), m_cachedSize(other.m_cachedSize) {}
+    File::File(const File &other) : m_path(other.m_path), m_cachedSize(other.m_cachedSize) {}
 
-    File::File(File &&other) noexcept
-        : m_path(std::move(other.m_path)), m_stream(std::move(other.m_stream)), m_cachedSize(other.m_cachedSize), m_isOpen(other.m_isOpen)
+    File::File(File &&other) noexcept :
+        m_path(std::move(other.m_path)), m_stream(std::move(other.m_stream)), m_cachedSize(other.m_cachedSize),
+        m_isOpen(other.m_isOpen)
     {
-        other.m_isOpen = false;
+        other.m_isOpen     = false;
         other.m_cachedSize = 0;
     }
 
-    File::~File()
-    {
-        Close();
-    }
+    File::~File() { Close(); }
 
     File &File::operator=(const File &other)
     {
         if (this != &other)
         {
             Close();
-            m_path = other.m_path;
+            m_path       = other.m_path;
             m_cachedSize = other.m_cachedSize;
         }
         return *this;
@@ -48,12 +45,12 @@ namespace SF::Engine
         if (this != &other)
         {
             Close();
-            m_path = std::move(other.m_path);
-            m_stream = std::move(other.m_stream);
+            m_path       = std::move(other.m_path);
+            m_stream     = std::move(other.m_stream);
             m_cachedSize = other.m_cachedSize;
-            m_isOpen = other.m_isOpen;
+            m_isOpen     = other.m_isOpen;
 
-            other.m_isOpen = false;
+            other.m_isOpen     = false;
             other.m_cachedSize = 0;
         }
         return *this;
@@ -63,18 +60,18 @@ namespace SF::Engine
     {
         switch (mode)
         {
-        case FileMode::Read:
-            return std::ios::in | std::ios::binary;
-        case FileMode::Write:
-            return std::ios::out | std::ios::binary;
-        case FileMode::Append:
-            return std::ios::app | std::ios::binary;
-        case FileMode::ReadWrite:
-            return std::ios::in | std::ios::out | std::ios::binary;
-        case FileMode::ReadAppend:
-            return std::ios::in | std::ios::app | std::ios::binary;
-        default:
-            return std::ios::in | std::ios::binary;
+            case FileMode::Read:
+                return std::ios::in | std::ios::binary;
+            case FileMode::Write:
+                return std::ios::out | std::ios::binary;
+            case FileMode::Append:
+                return std::ios::app | std::ios::binary;
+            case FileMode::ReadWrite:
+                return std::ios::in | std::ios::out | std::ios::binary;
+            case FileMode::ReadAppend:
+                return std::ios::in | std::ios::app | std::ios::binary;
+            default:
+                return std::ios::in | std::ios::binary;
         }
     }
 
@@ -105,10 +102,7 @@ namespace SF::Engine
         m_isOpen = false;
     }
 
-    bool File::IsOpen() const
-    {
-        return m_isOpen;
-    }
+    bool File::IsOpen() const { return m_isOpen; }
 
     std::string File::ReadAllText()
     {
@@ -155,7 +149,7 @@ namespace SF::Engine
         }
 
         m_stream.seekg(0, std::ios::end);
-        size_t size = static_cast<size_t>(m_stream.tellg());
+        size_t size = m_stream.tellg();
         m_stream.seekg(0, std::ios::beg);
 
         std::vector<uint8_t> data(size);
@@ -221,7 +215,7 @@ namespace SF::Engine
         size_t pos = static_cast<size_t>(m_stream.tellp());
         m_stream.write(static_cast<const char *>(data), static_cast<std::streamsize>(size));
 
-        size_t newPos = static_cast<size_t>(m_stream.tellp());
+        size_t newPos       = static_cast<size_t>(m_stream.tellp());
         size_t bytesWritten = newPos - pos;
 
         if (newPos > m_cachedSize)
@@ -232,35 +226,17 @@ namespace SF::Engine
         return bytesWritten;
     }
 
-    void File::WriteAllText(const std::string &text)
-    {
-        Write(text.data(), text.size());
-    }
+    void File::WriteAllText(const std::string &text) { Write(text.data(), text.size()); }
 
-    void File::WriteAllBytes(const std::vector<uint8_t> &data)
-    {
-        Write(data.data(), data.size());
-    }
+    void File::WriteAllBytes(const std::vector<uint8_t> &data) { Write(data.data(), data.size()); }
 
-    void File::WriteInt64(int64_t value)
-    {
-        Write(&value, sizeof(int64_t));
-    }
+    void File::WriteInt64(int64_t value) { Write(&value, sizeof(int64_t)); }
 
-    void File::WriteInt32(int32_t value)
-    {
-        Write(&value, sizeof(int32_t));
-    }
+    void File::WriteInt32(int32_t value) { Write(&value, sizeof(int32_t)); }
 
-    void File::WriteDouble(double value)
-    {
-        Write(&value, sizeof(double));
-    }
+    void File::WriteDouble(double value) { Write(&value, sizeof(double)); }
 
-    void File::WriteFloat(float value)
-    {
-        Write(&value, sizeof(float));
-    }
+    void File::WriteFloat(float value) { Write(&value, sizeof(float)); }
 
     size_t File::GetPosition()
     {
@@ -277,17 +253,17 @@ namespace SF::Engine
         std::ios::seekdir dir;
         switch (seek)
         {
-        case FileSeek::Begin:
-            dir = std::ios::beg;
-            break;
-        case FileSeek::Current:
-            dir = std::ios::cur;
-            break;
-        case FileSeek::End:
-            dir = std::ios::end;
-            break;
-        default:
-            dir = std::ios::beg;
+            case FileSeek::Begin:
+                dir = std::ios::beg;
+                break;
+            case FileSeek::Current:
+                dir = std::ios::cur;
+                break;
+            case FileSeek::End:
+                dir = std::ios::end;
+                break;
+            default:
+                dir = std::ios::beg;
         }
 
         m_stream.seekg(static_cast<std::streamoff>(position), dir);
@@ -304,17 +280,17 @@ namespace SF::Engine
         std::ios::seekdir dir;
         switch (seek)
         {
-        case FileSeek::Begin:
-            dir = std::ios::beg;
-            break;
-        case FileSeek::Current:
-            dir = std::ios::cur;
-            break;
-        case FileSeek::End:
-            dir = std::ios::end;
-            break;
-        default:
-            dir = std::ios::cur;
+            case FileSeek::Begin:
+                dir = std::ios::beg;
+                break;
+            case FileSeek::Current:
+                dir = std::ios::cur;
+                break;
+            case FileSeek::End:
+                dir = std::ios::end;
+                break;
+            default:
+                dir = std::ios::cur;
         }
 
         m_stream.seekg(static_cast<std::streamoff>(offset), dir);
@@ -343,8 +319,7 @@ namespace SF::Engine
         if (overwrite)
         {
             fs::copy_file(source, destination, fs::copy_options::overwrite_existing, ec);
-        }
-        else
+        } else
         {
             fs::copy_file(source, destination, ec);
         }
@@ -390,10 +365,7 @@ namespace SF::Engine
         return !ec;
     }
 
-    bool File::Rename(const std::string &oldPath, const std::string &newPath)
-    {
-        return Move(oldPath, newPath);
-    }
+    bool File::Rename(const std::string &oldPath, const std::string &newPath) { return Move(oldPath, newPath); }
 
     bool File::Rename(const std::string &newName)
     {
@@ -401,15 +373,9 @@ namespace SF::Engine
         return MoveTo(newPath.string());
     }
 
-    std::string File::GetNameWithoutExtension() const
-    {
-        return m_path.stem().string();
-    }
+    std::string File::GetNameWithoutExtension() const { return m_path.stem().string(); }
 
-    std::string File::GetDirectory() const
-    {
-        return m_path.parent_path().string();
-    }
+    std::string File::GetDirectory() const { return m_path.parent_path().string(); }
 
     FileType File::GetType() const
     {
@@ -440,9 +406,9 @@ namespace SF::Engine
             {
                 // Convert file_time_type to system_clock::time_point
                 auto sctp = std::chrono::time_point_cast<std::chrono::system_clock::duration>(
-                    ftime - fs::file_time_type::clock::now() + std::chrono::system_clock::now());
-                times.lastWriteTime = sctp;
-                times.creationTime = sctp;   // Fallback: use last write time
+                        ftime - fs::file_time_type::clock::now() + std::chrono::system_clock::now());
+                times.lastWriteTime  = sctp;
+                times.creationTime   = sctp; // Fallback: use last write time
                 times.lastAccessTime = sctp; // Fallback: use last write time
             }
         }
@@ -450,10 +416,7 @@ namespace SF::Engine
         return times;
     }
 
-    bool File::IsSymbolicLink() const
-    {
-        return fs::is_symlink(m_path);
-    }
+    bool File::IsSymbolicLink() const { return fs::is_symlink(m_path); }
 
     bool File::CreateDirectory(const std::string &path)
     {
@@ -468,8 +431,7 @@ namespace SF::Engine
         if (recursive)
         {
             return fs::remove_all(path, ec) > 0;
-        }
-        else
+        } else
         {
             return fs::remove(path, ec);
         }
@@ -483,7 +445,7 @@ namespace SF::Engine
         {
             if (recursive)
             {
-                for (const auto &entry : fs::recursive_directory_iterator(directory))
+                for (const auto &entry: fs::recursive_directory_iterator(directory))
                 {
                     if (entry.is_regular_file())
                     {
@@ -493,10 +455,9 @@ namespace SF::Engine
                         }
                     }
                 }
-            }
-            else
+            } else
             {
-                for (const auto &entry : fs::directory_iterator(directory))
+                for (const auto &entry: fs::directory_iterator(directory))
                 {
                     if (entry.is_regular_file())
                     {
@@ -507,8 +468,7 @@ namespace SF::Engine
                     }
                 }
             }
-        }
-        catch (const std::exception &)
+        } catch (const std::exception &)
         {
             // Directory might not exist or we don't have permissions
         }
@@ -524,17 +484,16 @@ namespace SF::Engine
         {
             if (recursive)
             {
-                for (const auto &entry : fs::recursive_directory_iterator(directory))
+                for (const auto &entry: fs::recursive_directory_iterator(directory))
                 {
                     if (entry.is_directory())
                     {
                         directories.emplace_back(entry.path());
                     }
                 }
-            }
-            else
+            } else
             {
-                for (const auto &entry : fs::directory_iterator(directory))
+                for (const auto &entry: fs::directory_iterator(directory))
                 {
                     if (entry.is_directory())
                     {
@@ -542,8 +501,7 @@ namespace SF::Engine
                     }
                 }
             }
-        }
-        catch (const std::exception &)
+        } catch (const std::exception &)
         {
             // Directory might not exist or we don't have permissions
         }
@@ -551,10 +509,7 @@ namespace SF::Engine
         return directories;
     }
 
-    std::string File::GetCurrentDirectory()
-    {
-        return fs::current_path().string();
-    }
+    std::string File::GetCurrentDirectory() { return fs::current_path().string(); }
 
     bool File::SetCurrentDirectory(const std::string &path)
     {
@@ -563,16 +518,13 @@ namespace SF::Engine
         return !ec;
     }
 
-    std::string File::GetTempDirectory()
-    {
-        return fs::temp_directory_path().string();
-    }
+    std::string File::GetTempDirectory() { return fs::temp_directory_path().string(); }
 
     File File::CreateTempFile()
     {
-        std::string tempDir = GetTempDirectory();
+        std::string tempDir  = GetTempDirectory();
         std::string tempName = "tmp_" + std::to_string(std::chrono::system_clock::now().time_since_epoch().count());
-        fs::path tempPath = fs::path(tempDir) / tempName;
+        fs::path tempPath    = fs::path(tempDir) / tempName;
 
         File tempFile(tempPath);
         tempFile.Open(FileMode::Write);
@@ -584,8 +536,7 @@ namespace SF::Engine
         if (fs::exists(m_path))
         {
             m_cachedSize = static_cast<size_t>(fs::file_size(m_path));
-        }
-        else
+        } else
         {
             m_cachedSize = 0;
         }
@@ -597,22 +548,15 @@ namespace SF::Engine
         try
         {
             m_iterator = fs::recursive_directory_iterator(path);
-        }
-        catch (const std::exception &)
+        } catch (const std::exception &)
         {
             m_iterator = fs::recursive_directory_iterator();
         }
     }
 
-    File::DirectoryIterator File::DirectoryIterator::begin() const
-    {
-        return *this;
-    }
+    File::DirectoryIterator File::DirectoryIterator::begin() const { return *this; }
 
-    File::DirectoryIterator File::DirectoryIterator::end() const
-    {
-        return {};
-    }
+    File::DirectoryIterator File::DirectoryIterator::end() const { return {}; }
 
     bool File::DirectoryIterator::operator!=(const DirectoryIterator &other) const
     {
@@ -625,10 +569,7 @@ namespace SF::Engine
         return *this;
     }
 
-    File File::DirectoryIterator::operator*() const
-    {
-        return {m_iterator->path()};
-    }
+    File File::DirectoryIterator::operator*() const { return {m_iterator->path()}; }
 
     File::DirectoryIterator File::begin() const
     {
@@ -639,10 +580,7 @@ namespace SF::Engine
         return {};
     }
 
-    File::DirectoryIterator File::end() const
-    {
-        return {};
-    }
+    File::DirectoryIterator File::end() const { return {}; }
 
     // Stream operators
     File &File::operator>>(std::string &str)
@@ -682,41 +620,20 @@ namespace SF::Engine
     }
 
     // FileReader implementation
-    FileReader::FileReader(File file) : m_file(std::move(file))
-    {
-        m_file.Open(FileMode::Read);
-    }
+    FileReader::FileReader(File file) : m_file(std::move(file)) { m_file.Open(FileMode::Read); }
 
-    FileReader::FileReader(const std::string &path) : m_file(path)
-    {
-        m_file.Open(FileMode::Read);
-    }
+    FileReader::FileReader(const std::string &path) : m_file(path) { m_file.Open(FileMode::Read); }
 
-    bool FileReader::IsEOF()
-    {
-        return m_file.GetPosition() >= m_file.GetSize();
-    }
+    bool FileReader::IsEOF() { return m_file.GetPosition() >= m_file.GetSize(); }
 
-    size_t FileReader::GetPosition()
-    {
-        return m_file.GetPosition();
-    }
+    size_t FileReader::GetPosition() { return m_file.GetPosition(); }
 
-    size_t FileReader::GetSize() const
-    {
-        return m_file.GetSize();
-    }
+    size_t FileReader::GetSize() const { return m_file.GetSize(); }
 
     // FileWriter implementation
-    FileWriter::FileWriter(File file, FileMode mode) : m_file(std::move(file))
-    {
-        m_file.Open(mode);
-    }
+    FileWriter::FileWriter(File file, FileMode mode) : m_file(std::move(file)) { m_file.Open(mode); }
 
-    FileWriter::FileWriter(const std::string &path, FileMode mode) : m_file(path)
-    {
-        m_file.Open(mode);
-    }
+    FileWriter::FileWriter(const std::string &path, FileMode mode) : m_file(path) { m_file.Open(mode); }
 
     void FileWriter::Flush()
     {
@@ -731,25 +648,16 @@ namespace SF::Engine
         Open(path, offset, length);
     }
 
-    MemoryMappedFile::~MemoryMappedFile()
-    {
-        Close();
-    }
+    MemoryMappedFile::~MemoryMappedFile() { Close(); }
 
-    bool MemoryMappedFile::Open(const std::string& path, size_t offset, size_t length)
+    bool MemoryMappedFile::Open(const std::string &path, size_t offset, size_t length)
     {
         Close();
 
-    #ifdef _PLATFORM_WINDOWS
+#ifdef _PLATFORM_WINDOWS
 
-        HANDLE file = CreateFileA(
-            path.c_str(),
-            GENERIC_READ | GENERIC_WRITE,
-            FILE_SHARE_READ,
-            nullptr,
-            OPEN_EXISTING,
-            FILE_ATTRIBUTE_NORMAL,
-            nullptr);
+        HANDLE file = CreateFileA(path.c_str(), GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ, nullptr, OPEN_EXISTING,
+                                  FILE_ATTRIBUTE_NORMAL, nullptr);
 
         if (file == INVALID_HANDLE_VALUE)
             return false;
@@ -767,8 +675,7 @@ namespace SF::Engine
             return false;
         }
 
-        size_t available =
-            static_cast<size_t>(fileSize.QuadPart) - offset;
+        size_t available = static_cast<size_t>(fileSize.QuadPart) - offset;
 
         if (length == 0)
             length = available;
@@ -788,25 +695,15 @@ namespace SF::Engine
         SYSTEM_INFO systemInfo;
         GetSystemInfo(&systemInfo);
 
-        const size_t granularity =
-            systemInfo.dwAllocationGranularity;
+        const size_t granularity = systemInfo.dwAllocationGranularity;
 
-        const size_t alignedOffset =
-            offset / granularity * granularity;
+        const size_t alignedOffset = offset / granularity * granularity;
 
-        const size_t offsetDelta =
-            offset - alignedOffset;
+        const size_t offsetDelta = offset - alignedOffset;
 
-        const size_t mappingSize =
-            length + offsetDelta;
+        const size_t mappingSize = length + offsetDelta;
 
-        HANDLE mapping = CreateFileMappingA(
-            file,
-            nullptr,
-            PAGE_READWRITE,
-            0,
-            0,
-            nullptr);
+        HANDLE mapping = CreateFileMappingA(file, nullptr, PAGE_READWRITE, 0, 0, nullptr);
 
         if (!mapping)
         {
@@ -814,18 +711,11 @@ namespace SF::Engine
             return false;
         }
 
-        const DWORD offsetHigh =
-            static_cast<DWORD>(alignedOffset >> 32);
+        const DWORD offsetHigh = static_cast<DWORD>(alignedOffset >> 32);
 
-        const DWORD offsetLow =
-            static_cast<DWORD>(alignedOffset & 0xFFFFFFFF);
+        const DWORD offsetLow = static_cast<DWORD>(alignedOffset & 0xFFFFFFFF);
 
-        void* mappingData = MapViewOfFile(
-            mapping,
-            FILE_MAP_READ | FILE_MAP_WRITE,
-            offsetHigh,
-            offsetLow,
-            mappingSize);
+        void *mappingData = MapViewOfFile(mapping, FILE_MAP_READ | FILE_MAP_WRITE, offsetHigh, offsetLow, mappingSize);
 
         if (!mappingData)
         {
@@ -834,24 +724,24 @@ namespace SF::Engine
             return false;
         }
 
-        m_fileHandle = file;
+        m_fileHandle    = file;
         m_mappingHandle = mapping;
 
-        m_mappingData = static_cast<uint8_t*>(mappingData);
+        m_mappingData = static_cast<uint8_t *>(mappingData);
         m_mappingSize = mappingSize;
 
-        m_data = m_mappingData + offsetDelta;
-        m_size = length;
+        m_data   = m_mappingData + offsetDelta;
+        m_size   = length;
         m_offset = offset;
 
-    #else
+#else
 
         int fd = open(path.c_str(), O_RDWR);
 
         if (fd == -1)
             return false;
 
-        struct stat fileInfo {};
+        struct stat fileInfo{};
 
         if (fstat(fd, &fileInfo) == -1)
         {
@@ -859,8 +749,7 @@ namespace SF::Engine
             return false;
         }
 
-        const size_t fileSize =
-            static_cast<size_t>(fileInfo.st_size);
+        const size_t fileSize = static_cast<size_t>(fileInfo.st_size);
 
         if (offset > fileSize)
         {
@@ -887,23 +776,14 @@ namespace SF::Engine
             return false;
         }
 
-        const size_t alignedOffset =
-            offset / static_cast<size_t>(pageSize)
-            * static_cast<size_t>(pageSize);
+        const size_t alignedOffset = offset / static_cast<size_t>(pageSize) * static_cast<size_t>(pageSize);
 
-        const size_t offsetDelta =
-            offset - alignedOffset;
+        const size_t offsetDelta = offset - alignedOffset;
 
-        const size_t mappingSize =
-            length + offsetDelta;
+        const size_t mappingSize = length + offsetDelta;
 
-        void* mappingData = mmap(
-            nullptr,
-            mappingSize,
-            PROT_READ | PROT_WRITE,
-            MAP_SHARED,
-            fd,
-            static_cast<off_t>(alignedOffset));
+        void *mappingData =
+                mmap(nullptr, mappingSize, PROT_READ | PROT_WRITE, MAP_SHARED, fd, static_cast<off_t>(alignedOffset));
 
         if (mappingData == MAP_FAILED)
         {
@@ -913,14 +793,14 @@ namespace SF::Engine
 
         m_fileDescriptor = fd;
 
-        m_mappingData = static_cast<uint8_t*>(mappingData);
+        m_mappingData = static_cast<uint8_t *>(mappingData);
         m_mappingSize = mappingSize;
 
-        m_data = m_mappingData + offsetDelta;
-        m_size = length;
+        m_data   = m_mappingData + offsetDelta;
+        m_size   = length;
         m_offset = offset;
 
-    #endif
+#endif
 
         return true;
     }
@@ -934,25 +814,13 @@ namespace SF::Engine
         }
     }
 
-    bool MemoryMappedFile::IsOpen() const
-    {
-        return m_data != nullptr;
-    }
+    bool MemoryMappedFile::IsOpen() const { return m_data != nullptr; }
 
-    size_t MemoryMappedFile::GetSize() const
-    {
-        return m_size;
-    }
+    size_t MemoryMappedFile::GetSize() const { return m_size; }
 
-    const uint8_t *MemoryMappedFile::GetData() const
-    {
-        return m_data;
-    }
+    const uint8_t *MemoryMappedFile::GetData() const { return m_data; }
 
-    uint8_t *MemoryMappedFile::GetData()
-    {
-        return m_data;
-    }
+    uint8_t *MemoryMappedFile::GetData() { return m_data; }
 
     void MemoryMappedFile::Flush()
     {
@@ -984,9 +852,7 @@ namespace SF::Engine
         // MS_SYNC blocks until changes are written back.
         if (msync(m_data, m_size, MS_SYNC) == -1)
         {
-            throw std::runtime_error(
-                std::string("Failed to flush memory mapped file: ") +
-                std::strerror(errno));
+            throw std::runtime_error(std::string("Failed to flush memory mapped file: ") + std::strerror(errno));
         }
 
 #endif
@@ -1004,30 +870,29 @@ namespace SF::Engine
             if (fs::exists(path))
             {
                 WatchInfo info;
-                info.path = path;
-                info.exists = true;
-                auto ftime = fs::last_write_time(info.path);
+                info.path          = path;
+                info.exists        = true;
+                auto ftime         = fs::last_write_time(info.path);
                 info.lastWriteTime = std::chrono::time_point_cast<std::chrono::system_clock::duration>(
-                    ftime - fs::file_time_type::clock::now() + std::chrono::system_clock::now());
+                        ftime - fs::file_time_type::clock::now() + std::chrono::system_clock::now());
                 m_watches.push_back(info);
 
                 if (recursive && fs::is_directory(path))
                 {
-                    for (const auto &entry : fs::recursive_directory_iterator(path))
+                    for (const auto &entry: fs::recursive_directory_iterator(path))
                     {
                         WatchInfo subInfo;
-                        subInfo.path = entry.path().string();
-                        subInfo.exists = true;
-                        auto ftime = fs::last_write_time(subInfo.path);
+                        subInfo.path          = entry.path().string();
+                        subInfo.exists        = true;
+                        auto ftime            = fs::last_write_time(subInfo.path);
                         subInfo.lastWriteTime = std::chrono::time_point_cast<std::chrono::system_clock::duration>(
-                            ftime - fs::file_time_type::clock::now() + std::chrono::system_clock::now());
+                                ftime - fs::file_time_type::clock::now() + std::chrono::system_clock::now());
 
                         m_watches.push_back(subInfo);
                     }
                 }
             }
-        }
-        catch (const std::exception &)
+        } catch (const std::exception &)
         {
             // Ignore errors
         }
@@ -1035,17 +900,12 @@ namespace SF::Engine
 
     void FileWatcher::Unwatch(const std::string &path)
     {
-        m_watches.erase(
-            std::remove_if(m_watches.begin(), m_watches.end(),
-                           [&](const WatchInfo &info)
-                           { return info.path == path; }),
-            m_watches.end());
+        m_watches.erase(std::remove_if(m_watches.begin(), m_watches.end(),
+                                       [&](const WatchInfo &info) { return info.path == path; }),
+                        m_watches.end());
     }
 
-    void FileWatcher::SetCallback(Callback callback)
-    {
-        m_callback = std::move(callback);
-    }
+    void FileWatcher::SetCallback(Callback callback) { m_callback = std::move(callback); }
 
     void FileWatcher::Update(float deltaTime)
     {
@@ -1057,7 +917,7 @@ namespace SF::Engine
             return;
         timeAccumulator = 0.0f;
 
-        for (auto &watch : m_watches)
+        for (auto &watch: m_watches)
         {
             try
             {
@@ -1067,16 +927,15 @@ namespace SF::Engine
                 {
                     if (exists)
                     {
-                        watch.exists = true;
-                        auto ftime = fs::last_write_time(watch.path);
+                        watch.exists        = true;
+                        auto ftime          = fs::last_write_time(watch.path);
                         watch.lastWriteTime = std::chrono::time_point_cast<std::chrono::system_clock::duration>(
-                            ftime - fs::file_time_type::clock::now() + std::chrono::system_clock::now());
+                                ftime - fs::file_time_type::clock::now() + std::chrono::system_clock::now());
                         if (m_callback)
                         {
                             m_callback(watch.path, ChangeType::Created);
                         }
-                    }
-                    else
+                    } else
                     {
                         watch.exists = false;
                         if (m_callback)
@@ -1084,12 +943,11 @@ namespace SF::Engine
                             m_callback(watch.path, ChangeType::Deleted);
                         }
                     }
-                }
-                else if (exists)
+                } else if (exists)
                 {
-                    auto ftime = fs::last_write_time(watch.path);
+                    auto ftime       = fs::last_write_time(watch.path);
                     auto currentTime = std::chrono::time_point_cast<std::chrono::system_clock::duration>(
-                        ftime - fs::file_time_type::clock::now() + std::chrono::system_clock::now());
+                            ftime - fs::file_time_type::clock::now() + std::chrono::system_clock::now());
                     if (currentTime != watch.lastWriteTime)
                     {
                         watch.lastWriteTime = currentTime;
@@ -1099,8 +957,7 @@ namespace SF::Engine
                         }
                     }
                 }
-            }
-            catch (const std::exception &)
+            } catch (const std::exception &)
             {
                 // File might have been deleted or permissions changed
             }

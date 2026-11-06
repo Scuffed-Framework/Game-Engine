@@ -7,6 +7,8 @@
 #include <Scene/SceneSerialization.hpp>
 #include <glm/gtx/euler_angles.hpp>
 
+#include <LowLevel/Reflection/RTTI/SerializeContext.hpp>
+
 namespace SF::Engine
 {
     /**
@@ -14,7 +16,24 @@ namespace SF::Engine
      */
     class Transform : public Component::Registrar<Transform>
     {
-        inline static const bool Registered = Register("Transform");
+        static bool Reflect()
+        {
+            Reflection::SerializeContext::Instance()
+                    .Class<Transform>()
+                    ->Version(1)
+                    ->Field("Position", &Transform::position)
+                    ->Speed(0.05f)
+                    ->ResetTo(0, 0, 0)
+                    ->Field("Rotation", &Transform::rotation)
+                    ->Speed(0.5f)
+                    ->ResetTo(0, 0, 0)
+                    ->Field("Scale", &Transform::scale)
+                    ->Speed(0.01f)
+                    ->ResetTo(1, 1, 1);
+            return true;
+        }
+
+        inline static const bool Registered = (Register("Transform"), Reflect());
 
     public:
         /**
@@ -24,7 +43,7 @@ namespace SF::Engine
          * @param scale The scale.
          */
         Transform(const Vec3 &position = {}, const Vec3 &rotation = {}, const Vec3 &scale = Vec3(1.0f));
-        ~Transform() = default;
+        ~Transform() override = default;
 
         std::string_view GetTypeName() const override { return "Transform"; }
 
@@ -78,9 +97,10 @@ namespace SF::Engine
 
         Mat4 ToMatrix() const
         {
-            Mat4 T = glm::translate(Mat4(1.0f), position);
-            Mat4 R = glm::yawPitchRoll(glm::radians(rotation.y), glm::radians(rotation.x), glm::radians(rotation.z));
-            Mat4 S = glm::scale(Mat4(1.0f), scale);
+            const Mat4 T = translate(Mat4(1.0f), position);
+            const Mat4 R =
+                    glm::yawPitchRoll(glm::radians(rotation.y), glm::radians(rotation.x), glm::radians(rotation.z));
+            const Mat4 S = glm::scale(Mat4(1.0f), scale);
             return T * R * S;
         }
 
@@ -91,6 +111,6 @@ namespace SF::Engine
             scale    = {1.0f, 1.0f, 1.0f};
         }
 
-        std::unique_ptr<Component> Clone() const override { return std::make_unique<Transform>(*this); }
+        unique_ptr<Component> Clone() const override { return std::make_unique<Transform>(*this); }
     };
 } // namespace SF::Engine
