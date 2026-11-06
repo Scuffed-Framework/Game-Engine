@@ -1,17 +1,13 @@
 #include "MicrophoneController.hpp"
 #include <Engine/Log/Log.hpp>
 #include <SDL3/SDL.h>
+#include <UtilityClasses/StlExtensions.hpp>
 
 #include <algorithm>
 #include <cmath>
 
 namespace SF::Engine
 {
-    namespace
-    {
-        std::string SafeStr(const char *s) { return s ? std::string(s) : std::string(); }
-    } // namespace
-    
     bool Microphone::Open(const uint32_t id)
     {
         Close();
@@ -26,7 +22,7 @@ namespace SF::Engine
         stream = SDL_OpenAudioDeviceStream(target, &spec, nullptr, nullptr);
         if (!stream)
         {
-            Log::Out("Failed to open microphone: ", SDL_GetError(), '\n');
+            Log::Error("Failed to open microphone: {}", SDL_GetError());
             return false;
         }
 
@@ -38,7 +34,7 @@ namespace SF::Engine
         SDL_SetAudioStreamGain(stream, gain);
         Pause(mode == MicrophoneRecordMode::Mute);
 
-        Log::Out("Microphone opened: '", deviceName, "' (", deviceSampleRate, " Hz, ", deviceChannels, " ch)\n");
+        Log::Out("Microphone opened: '{}' ({} Hz, {} ch)\n", deviceName, deviceSampleRate, deviceChannels);
         onDeviceChanged();
         return true;
     }
@@ -259,8 +255,11 @@ namespace SF::Engine
                 MicrophoneDeviceInfo info;
                 info.id   = event.adevice.which;
                 info.name = added ? SafeStr(SDL_GetAudioDeviceName(info.id)) : std::string();
-                Log::Out("Microphone device ", added ? "added: '" : "removed (id ",
-                         added ? info.name : std::to_string(info.id), added ? "'\n" : ")\n");
+                if (added)
+                    Log::Out("Microphone device added: '{}'\n", info.name);
+                else
+                    Log::Out("Microphone device removed (id {})\n", info.id);
+
                 onDeviceListChanged(info, added);
 
                 // Our explicitly chosen device vanished: fall back to the system default.

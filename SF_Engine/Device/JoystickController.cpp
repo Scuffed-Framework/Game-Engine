@@ -85,16 +85,12 @@ namespace SF::Engine
         std::string SafeStr(const char *s) { return s ? std::string(s) : std::string(); }
     } // namespace
 
-    // ------------------------------------------------------------------------
-    // Joystick
-    // ------------------------------------------------------------------------
-
     bool Joystick::Open(const uint32_t id, const JoystickPort slot)
     {
         handle = SDL_OpenJoystick(id);
         if (!handle)
         {
-            Log::Out("Failed to open joystick ", id, ": ", SDL_GetError(), '\n');
+            Log::Out("Failed to open joystick {} : {}", id, SDL_GetError());
             return false;
         }
 
@@ -350,7 +346,7 @@ namespace SF::Engine
         if (constexpr uint32_t flags = SDL_INIT_GAMEPAD | SDL_INIT_JOYSTICK | SDL_INIT_HAPTIC;
             !SDL_InitSubSystem(flags))
         {
-            Log::Out("Failed to init SDL joystick subsystem: ", SDL_GetError(), '\n');
+            Log::Out("Failed to init SDL joystick subsystem: {}", SDL_GetError());
             return;
         }
 
@@ -395,12 +391,12 @@ namespace SF::Engine
             if (!joystick.Open(instanceId, static_cast<JoystickPort>(i)))
                 return;
 
-            Log::Out("Joystick connected: '", joystick.info.name, "' to port ", i + 1, '\n');
+            Log::Out("Joystick connected: {} to port {}", joystick.info.name, i + 1);
             joystick.onConnect(true);
             return;
         }
 
-        Log::Out("No free joystick port for '", SafeStr(SDL_GetJoystickNameForID(instanceId)), "'\n");
+        Log::Out("No free joystick port for {}", SafeStr(SDL_GetJoystickNameForID(instanceId)));
     }
 
     void JoystickController::RemoveJoystick(const uint32_t instanceId)
@@ -409,7 +405,7 @@ namespace SF::Engine
         if (!joystick)
             return;
 
-        Log::Out("Joystick disconnected from port ", static_cast<int>(joystick->port) + 1, '\n');
+        Log::Out("Joystick disconnected from port {}", static_cast<int>(joystick->port) + 1);
         joystick->connected = false; // observers see it as gone during the callback
         joystick->onConnect(false);
         joystick->Close();
@@ -496,7 +492,7 @@ namespace SF::Engine
 
         const SDL_JoystickID id = SDL_AttachVirtualJoystick(&sdlDesc);
         if (id == 0)
-            Log::Out("Failed to attach virtual joystick: ", SDL_GetError(), '\n');
+            Log::Out("Failed to attach virtual joystick: {}", SDL_GetError());
         return id;
     }
 

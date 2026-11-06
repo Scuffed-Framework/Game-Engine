@@ -218,4 +218,6 @@ namespace SF::Engine
         s.erase(s.find_last_not_of(" \t\n\r\f\v") + 1); // trailing whitespace (npos + 1 == 0 -> clears all-blank)
         return s;
     }
+
+    inline string SafeStr(const char *s) { return s ? string(s) : string(); }
 } // namespace SF::Engine
