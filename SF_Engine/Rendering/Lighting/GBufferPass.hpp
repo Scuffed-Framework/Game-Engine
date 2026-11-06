@@ -46,7 +46,8 @@ namespace SF::Engine
 
         void Render(const CommandBuffer &commandBuffer) override;
 
-        RhiRenderPipeline &GetPipeline() { return *pipeline_; }
+        [[nodiscard]] RhiRenderPipeline &GetPipeline() const { return *pipeline_; }
+        void BeginFrame() { drawList_.clear(); }
 
     private:
         void WriteFrameDescriptors();

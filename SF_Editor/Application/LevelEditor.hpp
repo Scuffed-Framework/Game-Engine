@@ -28,8 +28,11 @@ namespace SF::Engine
         {
         }
 
-        InitializationReturn OnInit(Engine &) override
+        InitializationReturn OnInit(Engine &engine) override
         {
+            if (const auto r = Application::OnInit(engine); r != Success)
+                return r;
+
             SetOnSceneReplaced(
                     [this]
                     {
@@ -43,14 +46,12 @@ namespace SF::Engine
                         gizmos->SetTarget(entity);
                         hierarchy->SetSelectedEntity(nullptr);
                     });
-
             gizmos->SetViewportProvider(
                     []
                     {
                         const ImGuiViewport *vp = ImGui::GetMainViewport();
                         return Vec4{vp->Pos.x, vp->Pos.y, vp->Size.x, vp->Size.y};
                     });
-
             return Success;
         }
 

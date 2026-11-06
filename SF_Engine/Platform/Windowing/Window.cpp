@@ -326,19 +326,6 @@ namespace SF::Engine
                 break;
             case SDL_EVENT_WINDOW_EXPOSED:
             {
-                // Guard against reentrance: OS paint messages can fire during Vulkan allocations (vmaCreateImage etc.),
-                // re-entering this path before the first frame completes.
-                static bool s_inRefresh = false;
-                if (s_inRefresh)
-                    break;
-                s_inRefresh = true;
-
-                if (auto *rs = RenderSystem::Get(); rs && rs->GetRenderer() && rs->GetRenderer()->IsStarted())
-                {
-                    Update();
-                    rs->Update();
-                }
-                s_inRefresh = false;
                 break;
             }
 

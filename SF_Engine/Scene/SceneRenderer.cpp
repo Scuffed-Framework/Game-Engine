@@ -253,6 +253,7 @@ namespace SF::Engine
         // converted to per-planet data like AtmosphereController.
         Vec3 planetCentre = {0.0f, -6371000.0f, 0.0f};
 
+        gbuffer_->BeginFrame();
         for (auto &obj: scene->objects_)
         {
             if (obj->enabled && obj->mesh)

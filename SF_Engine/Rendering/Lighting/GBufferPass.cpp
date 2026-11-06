@@ -156,7 +156,5 @@ namespace SF::Engine
 
             dc.mesh->Draw(commandBuffer);
         }
-
-        drawList_.clear();
     }
 } // namespace SF::Engine
