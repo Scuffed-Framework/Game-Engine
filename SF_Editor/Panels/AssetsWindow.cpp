@@ -15,7 +15,7 @@
 #include <Scene/Scene.hpp>
 #include <Scene/SceneManager.hpp>
 
-#include <UtilityClasses/ConstantExpression.hpp>
+#include <UtilityClasses/StlExtensions.hpp>
 
 #include "../Wizards/Shaders.hpp"
 #include "Panels.hpp"
