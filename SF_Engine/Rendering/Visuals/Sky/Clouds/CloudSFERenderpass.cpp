@@ -8,23 +8,19 @@
 #include <Rendering/Visuals/Sky/Atmosphere/LUT/AtmoLUTs.hpp>
 
 #include "CloudSFERenderpass.hpp"
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wpragmas"
-#include <glm/gtc/constants.hpp>
-#pragma GCC diagnostic pop
 
 namespace SF::Engine
 {
     bool CloudSFERenderpass::isWindowOpen = true;
 
-    CloudSFERenderpass::CloudSFERenderpass(const Pipeline::Stage &stage, AtmosphereData &data) :
-        EngineRenderpass(stage), data_(data)
+    CloudSFERenderpass::CloudSFERenderpass(const Pipeline::Stage &stage, const std::shared_ptr<AtmosphereData> &data) :
+        EngineRenderpass(stage), data_(std::make_shared<AtmosphereData>(*data))
     {
         SetOrder(100);
         uiHandle = UIRegistry::Get().Register([this] { DrawImGuiPanel(); });
 
-        atmoUBO_  = std::make_unique<UniformBuffer>(sizeof(AtmosphereFrameUBO));
-        cloudUBO_ = std::make_unique<UniformBuffer>(sizeof(CloudUBO));
+        atmoUBO_   = std::make_unique<UniformBuffer>(sizeof(AtmosphereFrameUBO));
+        CloudData_ = std::make_unique<UniformBuffer>(sizeof(CloudData));
 
         cloudNoise_ = std::make_unique<CloudNoiseLUTs>(128, 128, 128);
         {
@@ -33,7 +29,7 @@ namespace SF::Engine
             cmd.SubmitIdle();
         }
 
-        UVec2 fullRes = UVec2(GetScreenSize().x, GetScreenSize().y);
+        auto fullRes = UVec2(GetScreenSize());
         UVec2 quarterRes{fullRes.x / 4, fullRes.y / 4};
 
         raymarchPipeline_    = std::make_unique<ComputePipeline>("Shaders/Clouds/RaymarchClouds.shader");
@@ -64,7 +60,8 @@ namespace SF::Engine
             clearColor.float32[1] = 0.0f;
             clearColor.float32[2] = 0.0f;
             clearColor.float32[3] = 1.0f;
-            VkImageSubresourceRange range{VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
+            const VkImageSubresourceRange range{VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
+
             vkCmdClearColorImage(cmd, dummyTexture_->GetImage(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &clearColor, 1,
                                  &range);
 
@@ -139,7 +136,7 @@ namespace SF::Engine
         isWindowOpen = true;
     }
 
-    void CloudSFERenderpass::BindDescriptors()
+    void CloudSFERenderpass::BindDescriptors() const
     {
         // --- Raymarch set ---
         auto raymarchWrites =
@@ -158,7 +155,7 @@ namespace SF::Engine
                                               AtmoLUTs::Get().GetSkyViewLUT()->GetTexture()->GetSampler(),
                                               VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
                         .Image(22, cloudFogRT_->GetView(), VK_IMAGE_LAYOUT_GENERAL, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE)
-                        .Buffer(21, cloudUBO_->GetBuffer())
+                        .Buffer(21, CloudData_->GetBuffer())
                         .CombinedImageSampler(27, AtmoLUTs::Get().GetMultiScatterLUT()->GetTexture()->GetView(),
                                               SharedSamplers::GetLinearClampSampler(),
                                               VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
@@ -175,7 +172,7 @@ namespace SF::Engine
                             .Image(3, cloudRenderRT_->GetView(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
                             .Image(15, cloudDepthRT_->GetView(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
                             .Image(23, cloudFogRT_->GetView(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
-                            .Buffer(21, cloudUBO_->GetBuffer())
+                            .Buffer(21, CloudData_->GetBuffer())
                             .Buffer(29, atmoUBO_->GetBuffer())
                             // Initialize write targets with GENERAL layout
                             .Image(12, reconColor_[i]->GetView(), VK_IMAGE_LAYOUT_GENERAL,
@@ -197,7 +194,7 @@ namespace SF::Engine
                     DescriptorSetWriteBuilder(*compositeSet_[i])
                             .Image(10, AtmoLUTs::Get().GetTransmittanceLUT()->GetTexture()->GetView(),
                                    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
-                            .Buffer(21, cloudUBO_->GetBuffer())
+                            .Buffer(21, CloudData_->GetBuffer())
                             .CombinedImageSampler(27, AtmoLUTs::Get().GetMultiScatterLUT()->GetTexture()->GetView(),
                                                   SharedSamplers::GetLinearClampSampler(),
                                                   VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
@@ -211,22 +208,22 @@ namespace SF::Engine
     void CloudSFERenderpass::SetFrameData(const Mat4 &invProj, const Mat4 &invView, const Vec3 &cameraPos,
                                           const Vec3 &planetPos, const Vec3 &sunDir, Vec2 screenSize)
     {
-        const Vec3 sd = glm::length(sunDir) > 1e-6f ? normalize(sunDir) : Vec3(0.577f, 0.577f, 0.577f);
+        const Vec3 sd = length(sunDir) > 1e-6f ? normalize(sunDir) : Vec3(0.577f, 0.577f, 0.577f);
         cachedSunDir_ = sd;
 
-        const float ruToM = data_.params.bottomRadius / data_.params.renderUnitRadius;
+        const float ruToM = data_->params.bottomRadius / data_->params.renderUnitRadius;
         const Vec3 pos    = (cameraPos - planetPos) * ruToM;
 
-        data_.ubo.invProj          = invProj;
-        data_.ubo.invView          = invView;
-        data_.ubo.cameraPos        = Vec4(pos, 0.0f);
-        data_.ubo.planetPos        = Vec4(0.0f);
-        data_.ubo.sunDir           = Vec4(sd, data_.params.sunIntensity);
-        data_.ubo.bottomRadius     = data_.params.bottomRadius;
-        data_.ubo.topRadius        = data_.params.topRadius;
-        data_.ubo.renderUnitRadius = data_.params.renderUnitRadius;
-        data_.ubo.screenSize       = screenSize;
-        data_.ubo.sunCol           = Vec4(1);
+        data_->ubo.invProj          = invProj;
+        data_->ubo.invView          = invView;
+        data_->ubo.cameraPos        = Vec4(pos, 0.0f);
+        data_->ubo.planetPos        = Vec4(0.0f);
+        data_->ubo.sunDir           = Vec4(sd, data_->params.sunIntensity);
+        data_->ubo.bottomRadius     = data_->params.bottomRadius;
+        data_->ubo.topRadius        = data_->params.topRadius;
+        data_->ubo.renderUnitRadius = data_->params.renderUnitRadius;
+        data_->ubo.screenSize       = screenSize;
+        data_->ubo.sunCol           = Vec4(1);
     }
 
     void CloudSFERenderpass::PreRender(const CommandBuffer &cmd)
@@ -234,7 +231,7 @@ namespace SF::Engine
         if (!enabled)
             return;
 
-        auto *rs        = RenderSystem::Get();
+        const auto *rs  = RenderSystem::Get();
         auto *depthDesc = rs->GetAttachment("gbuf_depth");
         auto *colorDesc = rs->GetAttachment("hdr");
         auto *depthImg  = dynamic_cast<const ImageDepth *>(depthDesc);
@@ -247,8 +244,7 @@ namespace SF::Engine
         const bool hasHistory = (framesSinceStart_ > 0);
 
         {
-            VkImageLayout currentColorLayout = colorImg->GetLayout();
-            if (currentColorLayout == VK_IMAGE_LAYOUT_UNDEFINED)
+            if (colorImg->GetLayout() == VK_IMAGE_LAYOUT_UNDEFINED)
             {
                 Image::InsertImageMemoryBarrier(cmd, const_cast<Image2d *>(colorImg)->GetImage(), 0,
                                                 VK_ACCESS_SHADER_WRITE_BIT | VK_ACCESS_SHADER_READ_BIT,
@@ -296,8 +292,8 @@ namespace SF::Engine
         }
 
         totalTime_ += 0.016f;
-        atmoUBO_->Update(data_.ubo);
-        UpdateCloudUBO();
+        atmoUBO_->Update(data_->ubo);
+        UpdateCloudData();
 
         auto qext = cloudRenderRT_->GetExtent();
         auto fext = colorImg->GetExtent();
@@ -308,11 +304,10 @@ namespace SF::Engine
             // Pre-write barriers: transition to GENERAL
             for (auto &quarterImage: quarterImages)
             {
-                VkImageLayout currentLayout = quarterImage->GetLayout();
 
                 Image::InsertImageMemoryBarrier(
                         cmd, quarterImage->GetImage(), VK_ACCESS_SHADER_READ_BIT, VK_ACCESS_SHADER_WRITE_BIT,
-                        currentLayout, VK_IMAGE_LAYOUT_GENERAL, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+                        quarterImage->GetLayout(), VK_IMAGE_LAYOUT_GENERAL, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
                         VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_IMAGE_ASPECT_COLOR_BIT, 1, 0, 1, 0);
                 quarterImage->SetLayout(VK_IMAGE_LAYOUT_GENERAL);
             }
@@ -348,7 +343,7 @@ namespace SF::Engine
             Image2d *reconTargets[3] = {reconColor_[cur].get(), reconDepth_[cur].get(), reconFog_[cur].get()};
             for (auto &reconTarget: reconTargets)
             {
-                VkImageLayout currentLayout = reconTarget->GetLayout();
+                const VkImageLayout currentLayout = reconTarget->GetLayout();
 
                 Image::InsertImageMemoryBarrier(
                         cmd, reconTarget->GetImage(), VK_ACCESS_SHADER_READ_BIT, VK_ACCESS_SHADER_WRITE_BIT,
@@ -381,7 +376,7 @@ namespace SF::Engine
 
             auto addBufferWrite = [&](uint32_t binding, VkBuffer buffer)
             {
-                uint32_t bufIdx            = writeCount - 9;
+                const uint32_t bufIdx      = writeCount - 9;
                 bufferInfos[bufIdx].buffer = buffer;
                 bufferInfos[bufIdx].offset = 0;
                 bufferInfos[bufIdx].range  = VK_WHOLE_SIZE;
@@ -431,7 +426,7 @@ namespace SF::Engine
             }
 
             // Uniform buffers
-            addBufferWrite(21, cloudUBO_->GetBuffer());
+            addBufferWrite(21, CloudData_->GetBuffer());
             addBufferWrite(29, atmoUBO_->GetBuffer());
 
             DescriptorSet::Update(std::vector<VkWriteDescriptorSet>(writes, writes + writeCount));
@@ -507,12 +502,12 @@ namespace SF::Engine
 
     void CloudSFERenderpass::Render(const CommandBuffer &) {}
 
-    void CloudSFERenderpass::UpdateCloudUBO()
+    void CloudSFERenderpass::UpdateCloudData()
     {
-        CloudUBO ubo{};
+        CloudData ubo{};
 
-        ubo.cloudBottomRadius = data_.params.bottomRadius + minAlt;
-        ubo.cloudTopRadius    = data_.params.bottomRadius + maxAlt;
+        ubo.cloudBottomRadius = data_->params.bottomRadius + minAlt;
+        ubo.cloudTopRadius    = data_->params.bottomRadius + maxAlt;
         ubo.stepCount         = static_cast<float>(marchSteps);
         ubo.lightStepCount    = static_cast<float>(lightMarchSteps);
 
@@ -531,7 +526,7 @@ namespace SF::Engine
         frameCounter_  = (frameCounter_ + 1) % 256;
         ubo.frameIndex = static_cast<int>(frameCounter_);
 
-        cloudUBO_->Update(ubo);
+        CloudData_->Update(ubo);
     }
 
     void CloudSFERenderpass::DrawImGuiPanel()

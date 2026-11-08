@@ -7,6 +7,7 @@
 #include <Rendering/RenderSystem.hpp>
 #include <Scene/Scene.hpp>
 #include <chrono>
+#include <tracy/Tracy.hpp>
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wpragmas"
@@ -74,20 +75,19 @@ namespace SF::Engine
                 AddSFERenderpass<FullscreenPass>(Pipeline::Stage{2, 0}, "hdr", "Shaders/CompositeSampler.shader");
 
         atmoController = std::make_unique<AtmosphereController>(
-                Pipeline::Stage{1, 0}, [this](const Pipeline::Stage &s, const AtmosphereParams &p)
-                { return AddSFERenderpass<AtmosphereSFERenderpass>(s, p); });
+                Pipeline::Stage{1, 0}, Pipeline::Stage{1, 0},
+                [this](const Pipeline::Stage &s, const AtmosphereParams &p)
+                { return AddSFERenderpass<AtmosphereSFERenderpass>(s, p); },
+                [this](const Pipeline::Stage &s, const std::shared_ptr<AtmosphereData> &p)
+                { return AddSFERenderpass<CloudSFERenderpass>(s, p); });
 
         if (config_.enableAtmosphere)
         {
             const Vec3 earthPos = {0.0f, -config_.atmosphereParams.bottomRadius, 0.0f};
             // TODO: load from xml
             atmoController->AddAtmosphere("Earth", earthData, earthPos);
-
-            cloudPass_ = AddSFERenderpass<CloudSFERenderpass>(Pipeline::Stage{1, 0}, earthData);
-
-            // disable cloud pass cuz its broken
-            cloudPass_->SetEnabled(false);
-            // disable cloud pass cuz its broken
+            // Disable clouds cuz broken
+            // atmoController->Find("Earth")->clouds->SetEnabled(false);
         }
 
         GetSFERenderpassManager()->RunInitCallbacks();
@@ -141,13 +141,14 @@ namespace SF::Engine
 
     Image2d *SceneRenderer::GetHdrColorTarget()
     {
-        auto *rs  = RenderSystem::Get();
-        auto *hdr = dynamic_cast<const Image2d *>(rs->GetAttachment("swapchain"));
+        const auto *rs = RenderSystem::Get();
+        auto *hdr      = dynamic_cast<const Image2d *>(rs->GetAttachment("swapchain"));
         return const_cast<Image2d *>(hdr);
     }
 
     void SceneRenderer::RenderScene(Scene *scene)
     {
+        ZoneScopedN("SceneRenderer::RenderScene");
         if (!gbuffer_ || !lightManager_ || !scene)
             return;
 
@@ -171,14 +172,17 @@ namespace SF::Engine
 
         CameraController *cameraController = scene->GetCamera();
         cameraController->SetFrameInput(wnd, io.WantCaptureMouse, io.WantCaptureKeyboard);
-        cameraController->Update(dt);
+        {
+            ZoneScopedN("CameraController::Update");
+            cameraController->Update(dt);
+        }
         Camera *cam = cameraController->GetActive();
 
         float aspect    = wnd ? wnd->GetAspectRatio() : 1.0f;
         Vec2 screenSize = wnd ? Vec2(wnd->GetSize().x, wnd->GetSize().y) : Vec2(800.0f, 600.0f);
 
-        uint32_t curW = static_cast<uint32_t>(screenSize.x);
-        uint32_t curH = static_cast<uint32_t>(screenSize.y);
+        auto curW = static_cast<uint32_t>(screenSize.x);
+        auto curH = static_cast<uint32_t>(screenSize.y);
         if ((curW != lastScreenW_ || curH != lastScreenH_) && clusterCull_)
         {
             clusterCull_->MarkDirty();
@@ -189,8 +193,14 @@ namespace SF::Engine
         Mat4 view = cam->GetView();
         Mat4 proj = cam->GetProjection(aspect);
 
-        scene->SyncLightTransforms();
-        scene->RebuildLightManager();
+        {
+            ZoneScopedN("Scene::SyncLightTransforms");
+            scene->SyncLightTransforms();
+        }
+        {
+            ZoneScopedN("Scene::RebuildLightManager");
+            scene->RebuildLightManager();
+        }
 
         Lighting::GpuFrameData fd{};
         fd.view          = view;
@@ -210,8 +220,8 @@ namespace SF::Engine
         fd.lightCount    = lightManager_->GetLightCount();
         fd.frameIndex    = scene->frameIndex_++;
 
-        Vec3 sunDir   = normalize(Vec3(0.0f, 0.0f, 0.0f));
-        Vec3 sunColor = Vec3(1.0f, 1.0f, 1.0f);
+        auto sunDir   = normalize(Vec3(0.0f, 0.0f, 0.0f));
+        auto sunColor = Vec3(1.0f, 1.0f, 1.0f);
         float sunInt  = 1.0f;
         if (!scene->lights_.empty() &&
             scene->lights_[0]->GetComponent<Light>()->type == Lighting::LightType::Directional)
@@ -237,7 +247,10 @@ namespace SF::Engine
             fd.ambientGroundColor = Vec4(0.2f, 0.18f, 0.15f, 0.0f);
         }
 
-        lightManager_->Upload(fd);
+        {
+            ZoneScopedN("LightManager::Upload");
+            lightManager_->Upload(fd);
+        }
 
         // Reflection probe: capture the sky from the atmosphere when one exists (it is created and
         // destroyed at runtime by the controller, so look it up every frame); otherwise it falls
@@ -249,16 +262,16 @@ namespace SF::Engine
                 probe_->SetAnalyticSky(ssr_->ambientSkyColor, ssr_->ambientIntensity, ssr_->ambientGroundColor);
         }
 
-        // Legacy single-planet centre, still used by CloudSFERenderpass until it's
-        // converted to per-planet data like AtmosphereController.
-        Vec3 planetCentre = {0.0f, -6371000.0f, 0.0f};
-
         gbuffer_->BeginFrame();
-        for (auto &obj: scene->objects_)
         {
-            if (obj->enabled && obj->mesh)
-                gbuffer_->Submit(obj->mesh, *obj->GetComponent<MeshMaterial>(),
-                                 obj->GetComponent<Transform>()->ToWorldMatrix());
+            ZoneScopedN("Submit draw list");
+            ZoneValue(scene->objects_.size());
+            for (auto &obj: scene->objects_)
+            {
+                if (obj->enabled && obj->mesh)
+                    gbuffer_->Submit(obj->mesh, *obj->GetComponent<MeshMaterial>(),
+                                     obj->GetComponent<Transform>()->ToWorldMatrix());
+            }
         }
 
         if (atmoController && !atmoController->Empty())
@@ -267,26 +280,10 @@ namespace SF::Engine
             if (!scene->lights_.empty() &&
                 scene->lights_[0]->GetComponent<Light>()->type == Lighting::LightType::Directional)
             {
-                Vec3 ld = normalize(scene->lights_[0]->GetComponent<Light>()->direction);
-                if (glm::length(ld) > 0.5f)
+                if (Vec3 ld = normalize(scene->lights_[0]->GetComponent<Light>()->direction); glm::length(ld) > 0.5f)
                     atmoSun = -ld;
             }
             atmoController->SetFrameData(inverse(proj), inverse(view), cam->GetPosition(), atmoSun, screenSize);
-        }
-
-        if (cloudPass_)
-        {
-            Vec3 cloudSun = sunDir;
-            if (!scene->lights_.empty() &&
-                scene->lights_[0]->GetComponent<Light>()->type == Lighting::LightType::Directional)
-            {
-                Vec3 ld = normalize(scene->lights_[0]->GetComponent<Light>()->direction);
-                if (glm::length(ld) > 0.5f)
-                    cloudSun = -ld;
-            }
-
-            cloudPass_->SetFrameData(inverse(proj), inverse(view), cam->GetPosition(), planetCentre, cloudSun,
-                                     screenSize);
         }
     }
 } // namespace SF::Engine

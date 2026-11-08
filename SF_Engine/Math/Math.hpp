@@ -43,7 +43,7 @@
 
 // cuz syntax highlights ig
 #define Std430
-#define Std140
+#define Std140 alignas(16)
 
 namespace SF::Engine
 {

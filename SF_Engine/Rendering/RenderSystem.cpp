@@ -6,6 +6,7 @@
 
 #include <cstring>
 
+#include <tracy/Tracy.hpp>
 #include <Platform/Windowing/WindowManager.hpp>
 #include "SharedSamplers.hpp"
 
@@ -93,6 +94,7 @@ namespace SF::Engine
 
     static void UpdateSharedCameraData()
     {
+        ZoneScopedN("UpdateSharedCameraData");
         const float raw_nano          = static_cast<float>(GetDeltaTime().count());
         SharedCameraData.screenHeight = static_cast<int>(GetScreenSize().y);
         SharedCameraData.screenWidth  = static_cast<int>(GetScreenSize().x);
@@ -110,6 +112,7 @@ namespace SF::Engine
 
     void RenderSystem::Update()
     {
+        ZoneScopedN("RenderSystem::Update");
         const auto mainWindow = WindowManager::Get()->GetWindow(0);
 
         // Early return if window is closing, iconified, or invalid size
@@ -126,15 +129,24 @@ namespace SF::Engine
             renderer->started = true;
         }
 
-        renderer->Update();
+        {
+            ZoneScopedN("renderer->Update");
+            renderer->Update();
+        }
 
         UpdateSharedCameraData();
 
         if (auto *bindless = GetBindlessManager())
+        {
+            ZoneScopedN("Bindless::Tick");
             bindless->Tick();
+        }
 
-        for (const auto &renderStage: renderer->renderStages)
-            renderStage->Update();
+        {
+            ZoneScopedN("RenderStages Update");
+            for (const auto &renderStage: renderer->renderStages)
+                renderStage->Update();
+        }
 
         bool anyOutOfDate = false;
         for (const auto &renderStage: renderer->renderStages)
@@ -148,6 +160,7 @@ namespace SF::Engine
 
         if (anyOutOfDate)
         {
+            ZoneScopedNC("RecreatePass (out of date)", 0xFF4040);
             // Rebuild ALL stages (and the swapchain if needed) for the new window size, then fall
             // through and render + present THIS frame at the new size. Previously this returned
             // without presenting, so during an interactive resize (a rebuild nearly every Update)
@@ -166,9 +179,13 @@ namespace SF::Engine
             // The UINT64_MAX wait here had no such escape hatch: if the fence's paired
             // Submit() was ever skipped (see the StartRenderpass failure case below,
             // pre-fix), this call would hang forever with the window fully frozen.
-            const auto acquireResult =
-                    swapchain->AcquireNextImage(perSurfaceBuffer->presentCompletes[perSurfaceBuffer->currentFrame],
-                                                perSurfaceBuffer->flightFences[perSurfaceBuffer->currentFrame]);
+            VkResult acquireResult;
+            {
+                ZoneScopedN("AcquireNextImage");
+                acquireResult = swapchain->AcquireNextImage(
+                        perSurfaceBuffer->presentCompletes[perSurfaceBuffer->currentFrame],
+                        perSurfaceBuffer->flightFences[perSurfaceBuffer->currentFrame]);
+            }
 
             static int s_consecutiveTimeouts = 0;
             if (acquireResult == VK_TIMEOUT)
@@ -214,18 +231,26 @@ namespace SF::Engine
 
             for (auto &renderStage: renderer->renderStages)
             {
+                ZoneScopedN("RenderStage record");
+                ZoneValue(static_cast<uint64_t>(stage.first));
                 auto &commandBuffer = perSurfaceBuffer->commandBuffers[perSurfaceBuffer->currentFrame];
 
                 if (!commandBuffer->IsRunning())
                     commandBuffer->Begin(VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT);
 
                 if (id == 0) // once per frame, not once per surface
-                    onRecordViewports.Broadcast(*commandBuffer, perSurfaceBuffer->currentFrame);
-
-                for (const auto &subpass: renderStage->GetSubpasses())
                 {
-                    stage.second = subpass.GetBinding();
-                    renderer->PassManager.PreRenderStage(stage, *commandBuffer);
+                    ZoneScopedN("onRecordViewports");
+                    onRecordViewports.Broadcast(*commandBuffer, perSurfaceBuffer->currentFrame);
+                }
+
+                {
+                    ZoneScopedN("PassManager.PreRenderStage");
+                    for (const auto &subpass: renderStage->GetSubpasses())
+                    {
+                        stage.second = subpass.GetBinding();
+                        renderer->PassManager.PreRenderStage(stage, *commandBuffer);
+                    }
                 }
                 stage.second = 0;
 
@@ -235,7 +260,10 @@ namespace SF::Engine
                 // begins. Barriers can't be recorded once vkCmdBeginRenderPass has run, so this
                 // has to happen here, not inside any individual pass. A no-op for any render
                 // stage with no passes registered in the frame graph.
-                renderer->GetFrameGraph().EmitPendingBarriers(stage.first, *commandBuffer);
+                {
+                    ZoneScopedN("FrameGraph.EmitPendingBarriers");
+                    renderer->GetFrameGraph().EmitPendingBarriers(stage.first, *commandBuffer);
+                }
 
                 if (!StartRenderpass(id, *renderStage))
                 {
@@ -243,13 +271,16 @@ namespace SF::Engine
                     break;
                 }
 
-                for (const auto &subpass: renderStage->GetSubpasses())
                 {
-                    stage.second = subpass.GetBinding();
-                    renderer->PassManager.RenderStage(stage, *commandBuffer);
+                    ZoneScopedN("PassManager.RenderStage");
+                    for (const auto &subpass: renderStage->GetSubpasses())
+                    {
+                        stage.second = subpass.GetBinding();
+                        renderer->PassManager.RenderStage(stage, *commandBuffer);
 
-                    if (subpass.GetBinding() != renderStage->GetSubpasses().back().GetBinding())
-                        vkCmdNextSubpass(*commandBuffer, VK_SUBPASS_CONTENTS_INLINE);
+                        if (subpass.GetBinding() != renderStage->GetSubpasses().back().GetBinding())
+                            vkCmdNextSubpass(*commandBuffer, VK_SUBPASS_CONTENTS_INLINE);
+                    }
                 }
 
                 EndRenderpass(id, *renderStage);
@@ -433,6 +464,7 @@ namespace SF::Engine
 
     void RenderSystem::RecreateSwapchain()
     {
+        ZoneScopedNC("RecreateSwapchain", 0xFF4040);
         const auto window = WindowManager::Get()->GetWindow(0);
         while (!window->ShouldClose() && (window->GetSize().x == 0 || window->GetSize().y == 0))
             WindowManager::Get()->WaitEvents();
@@ -513,6 +545,7 @@ namespace SF::Engine
 
     void RenderSystem::RecreatePass()
     {
+        ZoneScopedNC("RecreatePass", 0xFF4040);
         const VkExtent2D displayExtent = {.width  = WindowManager::Get()->GetWindow(0)->GetSize().x,
                                           .height = WindowManager::Get()->GetWindow(0)->GetSize().y};
 
@@ -560,6 +593,7 @@ namespace SF::Engine
 
     bool RenderSystem::StartRenderpass(const size_t surfaceId, const RhiRenderStage &renderStage) const
     {
+        ZoneScopedN("StartRenderpass");
         // Staleness is now handled up-front in Update(), so this should never
         // be true here. Kept as a safety net only; no RecreatePass call,
         // since calling it mid-loop is what caused the resize deadlock.
@@ -612,6 +646,7 @@ namespace SF::Engine
 
     void RenderSystem::EndRenderpass(const size_t surfaceId, const RhiRenderStage &renderStage) const
     {
+        ZoneScopedN("EndRenderpass");
         const auto presentQueue      = logicalDevice->GetPresentQueue();
         const auto &swapchain        = swapchains[surfaceId];
         const auto &perSurfaceBuffer = perSurfaceBuffers[surfaceId];
@@ -624,14 +659,21 @@ namespace SF::Engine
 
         const uint32_t imageIndex = swapchain->GetActiveImageIndex();
 
-        commandBuffer->End();
-        commandBuffer->Submit(perSurfaceBuffer->presentCompletes[perSurfaceBuffer->currentFrame],
-                              perSurfaceBuffer->renderCompletes[imageIndex],
-                              perSurfaceBuffer->flightFences[perSurfaceBuffer->currentFrame]);
+        {
+            ZoneScopedN("CommandBuffer End+Submit");
+            commandBuffer->End();
+            commandBuffer->Submit(perSurfaceBuffer->presentCompletes[perSurfaceBuffer->currentFrame],
+                                  perSurfaceBuffer->renderCompletes[imageIndex],
+                                  perSurfaceBuffer->flightFences[perSurfaceBuffer->currentFrame]);
+        }
 
-        if (const auto presentResult =
-                    swapchain->QueuePresent(presentQueue, perSurfaceBuffer->renderCompletes[imageIndex]);
-            presentResult == VK_ERROR_OUT_OF_DATE_KHR || presentResult == VK_SUBOPTIMAL_KHR ||
+        VkResult presentResult;
+        {
+            ZoneScopedN("QueuePresent");
+            presentResult = swapchain->QueuePresent(presentQueue, perSurfaceBuffer->renderCompletes[imageIndex]);
+        }
+
+        if (presentResult == VK_ERROR_OUT_OF_DATE_KHR || presentResult == VK_SUBOPTIMAL_KHR ||
             presentResult == VK_ERROR_SURFACE_LOST_KHR)
         {
             perSurfaceBuffer->framebufferResized = true;

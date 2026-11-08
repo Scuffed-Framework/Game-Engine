@@ -1,6 +1,7 @@
 #pragma once
 
 #include <EntityComponentSystem/Component.hpp>
+#include <LowLevel/Reflection/RTTI/SerializeContext.hpp>
 #include <Math/Math.hpp>
 #include <Physics/Frustum.hpp>
 #include <Physics/Ray.hpp>
@@ -16,6 +17,20 @@ namespace SF::Engine
 
     class Camera : public Component::Registrar<Camera>
     {
+        static bool Reflect()
+        {
+            Reflection::SerializeContext::Instance()
+                    .Class<Camera>()
+                    ->Version(1)
+                    ->Field("Position", &Camera::position)
+                    ->Speed(0.05f)
+                    ->ResetTo(0, 0, 0)
+                    ->Field("FOV", &Camera::fovDeg)
+                    ->Speed(0.05f)
+                    ->ResetTo(0, 0, 0);
+            return true;
+        }
+
     public:
         using Component::Update;
         Camera() :
@@ -132,7 +147,7 @@ namespace SF::Engine
 
         Mat4 viewMatrix{};
         Mat4 projectionMatrix{};
-        Mat4 prevViewProjection{1.0f}; // last frame's VP, snapshotted before this frame's update
+        Mat4 prevViewProjection{1.0f};    // last frame's VP, snapshotted before this frame's update
         float lastAspect_ = 16.0f / 9.0f; // aspect of the window this camera last updated against
 
         Frustum viewFrustum;
@@ -231,7 +246,7 @@ namespace SF::Engine
         float maxFov = 120.0f;
     };
 
-    Std140 struct CameraUBO
+    struct Std140 CameraUBO
     {
         // 16 bytes
         float aspectRatio;

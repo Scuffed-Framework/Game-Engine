@@ -31,8 +31,9 @@
 // existing ADL SaveAssetPayload/LoadAssetPayload customization points --
 // see the note at the bottom of this file) if you'd rather not maintain
 // a second serialization backend.
-//
+
 #include <Math/Vectors/Vector.hpp>
+#include <UtilityClasses/StlExtensions.hpp>
 #include <cstdint>
 #include <memory>
 #include <string>
@@ -59,7 +60,8 @@ namespace SF::Reflection
         Vec2,
         Vec3,
         Vec4,
-        Enum
+        Enum,
+        DnD
     };
 
     template<typename T>
@@ -83,6 +85,8 @@ namespace SF::Reflection
             return FieldKind::Vec4;
         else if constexpr (is_enum_v<T>)
             return FieldKind::Enum;
+        else if constexpr (Engine::has_dnd_tag_v<T>)
+            return FieldKind::DnD;
         else
             return FieldKind::Object;
     }

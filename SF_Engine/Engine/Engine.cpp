@@ -4,6 +4,8 @@
 #include <GameScript/LuaEngine.hpp>
 #include <Scene/SceneManager.hpp>
 #include <ranges>
+#include <string_view>
+#include <tracy/Tracy.hpp>
 
 #ifdef Always
     #undef Always
@@ -132,10 +134,14 @@ namespace SF::Engine
             elapsedRender.SetInterval(Milliseconds(1.0f / fpsLimit));
 
             // Always-Update (window/event polling lives in here).
-            UpdateStage(Module::Stage::Always);
+            {
+                ZoneScopedN("Stage::Always");
+                UpdateStage(Module::Stage::Always);
+            }
 
             if (elapsedUpdate.GetElapsed() != 0)
             {
+                ZoneScopedN("Update tick");
                 // Resets the timer.
                 ups.Update(ClockNow());
 
@@ -155,12 +161,14 @@ namespace SF::Engine
             // Renders when needed.
             if (elapsedRender.GetElapsed() != 0)
             {
+                ZoneScopedN("Render tick");
                 fps.Update(ClockNow());
 
                 UpdateStage(Module::Stage::Render); // RenderSystem
 
                 deltaRender.Update();
             }
+            FrameMark;
         }
 
         // Drain the GPU BEFORE anything is torn down. The loop exits with up to a few frames still
@@ -250,7 +258,13 @@ namespace SF::Engine
         for (auto &moduleId: stageIt->second)
         {
             if (auto modIt = modules.find(moduleId); modIt != modules.end() && modIt->second)
+            {
+                ZoneScopedN("Module::Update");
+                decltype(auto) modName = modIt->second->GetName();
+                const std::string_view modNameView(modName);
+                ZoneText(modNameView.data(), modNameView.size());
                 modIt->second->Update();
+            }
         }
     }
 

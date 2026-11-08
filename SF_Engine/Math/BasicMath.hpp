@@ -17,6 +17,13 @@ namespace SF::Engine
     using glm::max;
     using glm::min;
 
+    using glm::abs;
+    using glm::acos;
+    using glm::acosh;
+    using glm::asin;
+    using glm::asinh;
+    using glm::length;
+
     using glm::rotate;
     using glm::translate;
 

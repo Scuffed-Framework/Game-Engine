@@ -11,7 +11,7 @@ Switch to SDL, redo Windowing and Input
 7. Full PBR
 8. fix atmosphere dual/tri color bands in night area
 9. HDR rendering (and in hdr window (might need fullscreen))
-10. Terrain
+10. Terrain & Water Rendering
 11. Bindless shader resources
 12. multi window support
 13. Lumen-style Radiance Cache with Screen Probe Gather GI (Diffuse & Specular). (https://github.com/qiutang98/chord) "Simple RadianceCache with ScreenProbe GI"
@@ -30,10 +30,10 @@ Switch to SDL, redo Windowing and Input
 #QOL
 
 #Editor:
-1. finish panels, cmd (add python), explorer, black profiler bar, profiler
+1. finish panels, cmd (add python), explorer, black profiler bar
 2. fix duplication and reparenting, add **FOLDERS and their color / icon menus**
 3. asset importers (sponza, Amazon Lumberyard café)
-4. undo redo
+4. undo & redo
 5. ideas for scene logo: world made of led dots, like the dot matrix splash screen
 
 
@@ -51,4 +51,5 @@ Todo maybe: before feature-ssr merge, rename every SF:: to ScuffedFramework::
 2. Fake environments to build for other CPU architectures and platforms
 3. Get GitHub to build binaries automagically
 
-C++ private module file defining constexpr build steps that gets compiled into the parser or something
+C++ private module file defining constexpr build steps that gets compiled into the parser or something and header parser
+that autogenerates reflection stuff

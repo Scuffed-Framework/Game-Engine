@@ -1,18 +1,18 @@
 #pragma once
-
-//  Quick start:
-//    VkDump::Dumper dump(device, physicalDevice, queue, queueFamilyIndex, commandPool);
+// TODO: remove, renderdoc exists
+//   Quick start:
+//     VkDump::Dumper dump(device, physicalDevice, queue, queueFamilyIndex, commandPool);
 //
-//    // Dump a texture as PNG
-//    dump.dumpImage(myTexture, VK_FORMAT_R8G8B8A8_UNORM, 512, 512,
-//                  VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, "out/texture.png");
+//     // Dump a texture as PNG
+//     dump.dumpImage(myTexture, VK_FORMAT_R8G8B8A8_UNORM, 512, 512,
+//                   VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, "out/texture.png");
 //
-//    // Dump a compute output buffer as CSV floats
-//    dump.dumpBuffer(myBuffer, numElements * sizeof(float),
-//                   VkDump::Format::Float32, "out/compute_out.csv");
+//     // Dump a compute output buffer as CSV floats
+//     dump.dumpBuffer(myBuffer, numElements * sizeof(float),
+//                    VkDump::Format::Float32, "out/compute_out.csv");
 //
-//    // Dump raw device memory
-//    dump.dumpMemory(myMemory, 0, byteSize, "out/raw.bin");
+//     // Dump raw device memory
+//     dump.dumpMemory(myMemory, 0, byteSize, "out/raw.bin");
 
 #pragma once
 #pragma GCC diagnostic push

@@ -52,8 +52,7 @@ namespace SF::Engine::Lighting
         uint32_t count;
     };
 
-    // std140 : must be multiple of 16 bytes
-    struct alignas(16) GpuFrameData
+    struct Std140 GpuFrameData
     {
         Mat4 view;
         Mat4 proj;

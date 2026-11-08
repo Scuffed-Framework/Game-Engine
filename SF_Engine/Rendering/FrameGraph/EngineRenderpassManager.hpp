@@ -44,7 +44,6 @@ namespace SF::Engine
         [[nodiscard]] int GetOrder() const { return order; }
         void SetOrder(int o) { order = o; }
 
-    private:
         bool enabled = true;
         Pipeline::Stage stage;
         int order = 0;

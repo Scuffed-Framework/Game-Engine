@@ -8,6 +8,7 @@
 #include <Device/JoystickController.hpp>
 #include <Device/MicrophoneController.hpp>
 #include <Engine/Engine.hpp>
+#include <tracy/Tracy.hpp>
 
 namespace SF::Engine
 {
@@ -70,6 +71,7 @@ namespace SF::Engine
 
     void WindowManager::PollEvents()
     {
+        ZoneScopedN("WindowManager::PollEvents");
         SDL_Event event;
         while (SDL_PollEvent(&event))
             ProcessEvent(event);

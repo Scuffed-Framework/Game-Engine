@@ -14,7 +14,7 @@ namespace SF::Engine
     struct AtmosphereEntry
     {
         std::string name                    = "Earth";
-        AtmosphereData data                 = {};
+        shared_ptr<AtmosphereData> data     = nullptr;
         AtmosphereSFERenderpass *atmosphere = nullptr;
         CloudSFERenderpass *clouds          = nullptr;
         Vec3 planetPos                      = {0.0f, 0.0f, 0.0f};
@@ -24,21 +24,33 @@ namespace SF::Engine
     class AtmosphereController : public StaticController<AtmosphereController>
     {
     public:
-        using PassFactory = std::function<AtmosphereSFERenderpass *(Pipeline::Stage, const AtmosphereParams &)>;
+        using AtmoFactory  = std::function<AtmosphereSFERenderpass *(Pipeline::Stage, const AtmosphereParams &)>;
+        using CloudFactory = function<CloudSFERenderpass *(Pipeline::Stage, shared_ptr<AtmosphereData> &)>;
 
-        explicit AtmosphereController(Pipeline::Stage stage, PassFactory factory) :
-            stage_(std::move(stage)), factory_(std::move(factory))
+        explicit AtmosphereController(Pipeline::Stage atmoStage, Pipeline::Stage cloudStage, AtmoFactory atmo,
+                                      CloudFactory cloud) :
+            atmoStage_(std::move(atmoStage)), cloudStage_(std::move(cloudStage)), atmoFactory_(std::move(atmo)),
+            cloudFactory_(std::move(cloud))
         {
         }
 
-        explicit AtmosphereController(Pipeline::Stage stage, PassFactory factory,
-                                      const vector<KeyValuePair<std::string, AtmosphereData>> &params) :
-            stage_(std::move(stage)), factory_(std::move(factory))
+        explicit AtmosphereController(Pipeline::Stage atmoStage, Pipeline::Stage cloudStage, AtmoFactory factory,
+                                      CloudFactory cloud,
+                                      const vector<KeyValuePair<std::string, shared_ptr<AtmosphereData>>> &params) :
+            atmoStage_(std::move(atmoStage)), cloudStage_(std::move(cloudStage)), atmoFactory_(std::move(factory)),
+            cloudFactory_(std::move(cloud))
         {
             entries_.reserve(params.size());
-            for (const auto &[name, data]: params)
-                entries_.emplace_back(
-                        AtmosphereEntry{name, data, factory_(stage_, data.params), nullptr, {0.0f, 0.0f, 0.0f}, true});
+            for (const auto &[name, d]: params)
+            {
+                auto data = std::make_shared<AtmosphereData>(*d);
+                entries_.emplace_back(AtmosphereEntry{name,
+                                                      data,
+                                                      atmoFactory_(atmoStage_, data->params),
+                                                      cloudFactory_(cloudStage_, data),
+                                                      {0.0f, 0.0f, 0.0f},
+                                                      true});
+            }
         }
 
         void Update(float /*DeltaTime*/) override
@@ -47,7 +59,7 @@ namespace SF::Engine
         }
 
         void SetFrameData(const Mat4 &invProj, const Mat4 &invView, const Vec3 &cameraPos, const Vec3 &sunDir,
-                          const Vec2 &screenSize)
+                          const Vec2 &screenSize) const
         {
             for (auto &entry: entries_)
             {
@@ -55,10 +67,13 @@ namespace SF::Engine
                     continue;
 
                 entry.atmosphere->SetFrameData(invProj, invView, cameraPos, entry.planetPos, sunDir, screenSize);
+
+                if (entry.clouds != nullptr)
+                    entry.clouds->SetFrameData(invProj, invView, cameraPos, entry.planetPos, sunDir, screenSize);
             }
         }
 
-        void SetActive(const std::string &name, bool active)
+        void SetActive(const std::string &name, const bool active)
         {
             if (AtmosphereEntry *entry = Find(name))
                 entry->active = active;
@@ -72,9 +87,11 @@ namespace SF::Engine
 
         void AddAtmosphere(const std::string &name, const AtmosphereData &data, const Vec3 &planetPos = {})
         {
+            auto sharedData = std::make_shared<AtmosphereData>(data);
             entries_.emplace_back(AtmosphereEntry{.name       = name,
-                                                  .data       = data,
-                                                  .atmosphere = factory_(stage_, data.params),
+                                                  .data       = sharedData,
+                                                  .atmosphere = atmoFactory_(atmoStage_, sharedData->params),
+                                                  .clouds     = cloudFactory_(cloudStage_, sharedData),
                                                   .planetPos  = planetPos,
                                                   .active     = true});
         }
@@ -88,7 +105,6 @@ namespace SF::Engine
 
         [[nodiscard]] bool Empty() const { return entries_.empty(); }
 
-    private:
         AtmosphereEntry *Find(const std::string &name)
         {
             for (auto &entry: entries_)
@@ -97,8 +113,11 @@ namespace SF::Engine
             return nullptr;
         }
 
-        Pipeline::Stage stage_;
-        PassFactory factory_;
+    private:
+        Pipeline::Stage atmoStage_;
+        Pipeline::Stage cloudStage_;
+        AtmoFactory atmoFactory_;
+        CloudFactory cloudFactory_;
         vector<AtmosphereEntry> entries_;
     };
 } // namespace SF::Engine

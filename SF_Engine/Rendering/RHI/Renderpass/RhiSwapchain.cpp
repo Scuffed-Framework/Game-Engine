@@ -124,6 +124,33 @@ namespace SF::Engine
         imageViews.resize(imageCount);
         RenderSystem::CheckVkResult(vkGetSwapchainImagesKHR(logicalDevice, swapchain, &imageCount, images.data()));
 
+        {
+            const auto modeName = [](const VkPresentModeKHR m) -> const char *
+            {
+                switch (m)
+                {
+                    case VK_PRESENT_MODE_IMMEDIATE_KHR:
+                        return "IMMEDIATE";
+                    case VK_PRESENT_MODE_MAILBOX_KHR:
+                        return "MAILBOX";
+                    case VK_PRESENT_MODE_FIFO_KHR:
+                        return "FIFO";
+                    case VK_PRESENT_MODE_FIFO_RELAXED_KHR:
+                        return "FIFO_RELAXED";
+                    default:
+                        return "OTHER";
+                }
+            };
+            std::string available;
+            for (const auto m: physicalPresentModes)
+            {
+                available += modeName(m);
+                available += ' ';
+            }
+            Log::Info("Swapchain: present mode {} (driver offers: {}), {} images, extent {}x{}", modeName(presentMode),
+                      available, imageCount, this->extent.width, this->extent.height);
+        }
+
         for (uint32_t i = 0; i < imageCount; i++)
         {
             Image::CreateImageView(images.at(i), imageViews.at(i), VK_IMAGE_VIEW_TYPE_2D, surfaceFormat.format,

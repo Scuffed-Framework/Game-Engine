@@ -1,5 +1,6 @@
 #include "UIRegistry.hpp"
 #include <Gui/ImGui/ocornut/imgui.h>
+#include <tracy/Tracy.hpp>
 
 namespace SF::Engine
 {
@@ -16,7 +17,12 @@ namespace SF::Engine
 
     void UIRegistry::DrawAll()
     {
+        ZoneScopedN("UIRegistry::DrawAll");
         for (auto &[handle, fn]: drawFns_)
+        {
+            ZoneScopedN("UI draw fn");
+            ZoneValue(static_cast<uint64_t>(handle));
             fn();
+        }
     }
 }

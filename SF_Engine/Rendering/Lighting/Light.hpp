@@ -36,8 +36,7 @@ namespace SF::Engine
                     ->Field("Radius", &Light::radius)
                     ->Field("InnerConeAngleDeg", &Light::innerConeAngleDeg)
                     ->Field("OuterConeAngleDeg", &Light::outerConeAngleDeg)
-                    ->Field("Type", &Light::type)
-                    ->ResetTo(1, 1, 1);
+                    ->Field("Type", &Light::type);
             return true;
         }
 

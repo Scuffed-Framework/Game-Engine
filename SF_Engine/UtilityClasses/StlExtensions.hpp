@@ -1,22 +1,33 @@
 #pragma once
 
+#include <algorithm>
 #include <cctype>
 #include <cstdint>
+#include <cstring>
 #include <memory>
 #include <optional>
+#include <ranges>
 #include <utility>
 #include <vector>
 
 namespace SF::Engine
 {
     using namespace std;
+
+    struct DragAndDropObjectTag
+    {
+    };
+
+    template<typename T>
+    constexpr bool has_dnd_tag_v = is_base_of_v<DragAndDropObjectTag, T>;
+
     template<typename T>
     struct is_optional : false_type
     {
     };
 
     template<typename T>
-    struct is_optional<std::optional<T>> : true_type
+    struct is_optional<optional<T>> : true_type
     {
     };
 
@@ -29,7 +40,7 @@ namespace SF::Engine
     };
 
     template<typename T, typename U>
-    struct is_pair<std::pair<T, U>> : true_type
+    struct is_pair<pair<T, U>> : true_type
     {
     };
 
@@ -42,7 +53,7 @@ namespace SF::Engine
     };
 
     template<typename T, typename A>
-    struct is_vector<std::vector<T, A>> : true_type
+    struct is_vector<vector<T, A>> : true_type
     {
     };
 
@@ -55,11 +66,31 @@ namespace SF::Engine
     };
 
     template<typename T>
-    struct is_map<T, std::void_t<typename T::key_type, typename T::mapped_type,
-                                 decltype(std::declval<T &>()[std::declval<const typename T::key_type &>()])>>
-        : std::true_type
+    struct is_map<T, void_t<typename T::key_type, typename T::mapped_type,
+                            decltype(declval<T &>()[declval<const typename T::key_type &>()])>> : true_type
     {
     };
+
+    template<ranges::input_range R1, ranges::input_range R2, typename Compare = ranges::less>
+    constexpr bool LexicographicalCompare(R1 &&a, R2 &&b, Compare comp = {})
+    {
+        auto it1 = ranges::begin(a);
+        auto it2 = ranges::begin(b);
+
+        const auto end1 = ranges::end(a);
+        const auto end2 = ranges::end(b);
+
+        for (; it1 != end1 && it2 != end2; ++it1, ++it2)
+        {
+            if (comp(*it1, *it2))
+                return true;
+
+            if (comp(*it2, *it1))
+                return false;
+        }
+
+        return it1 == end1 && it2 != end2;
+    }
 
     template<typename T>
     inline constexpr bool is_map_v = is_map<T>::value;
@@ -70,7 +101,7 @@ namespace SF::Engine
     };
 
     template<typename T, typename D>
-    struct is_unique_ptr<std::unique_ptr<T, D>> : true_type
+    struct is_unique_ptr<unique_ptr<T, D>> : true_type
     {
     };
 
@@ -83,7 +114,7 @@ namespace SF::Engine
     };
 
     template<typename T>
-    struct is_shared_ptr<std::shared_ptr<T>> : true_type
+    struct is_shared_ptr<shared_ptr<T>> : true_type
     {
     };
 
@@ -96,7 +127,7 @@ namespace SF::Engine
     };
 
     template<typename T>
-    struct is_weak_ptr<std::weak_ptr<T>> : true_type
+    struct is_weak_ptr<weak_ptr<T>> : true_type
     {
     };
 
@@ -105,7 +136,7 @@ namespace SF::Engine
 
     template<typename T>
     inline constexpr bool is_ptr_access_v =
-            std::is_pointer_v<T> || is_unique_ptr_v<T> || is_shared_ptr_v<T> || is_weak_ptr_v<T>;
+            is_pointer_v<T> || is_unique_ptr_v<T> || is_shared_ptr_v<T> || is_weak_ptr_v<T>;
 
     template<typename T>
     struct is_smart_pointer : false_type
@@ -139,13 +170,13 @@ namespace SF::Engine
     }
 
     template<typename T>
-    static T *to_address(const std::shared_ptr<T> &obj) noexcept
+    static T *to_address(const shared_ptr<T> &obj) noexcept
     {
         return obj.get();
     }
 
     template<typename T>
-    static T *to_address(const std::unique_ptr<T> &obj) noexcept
+    static T *to_address(const unique_ptr<T> &obj) noexcept
     {
         return obj.get();
     }
@@ -163,21 +194,21 @@ namespace SF::Engine
     }
 
     template<typename T>
-    static const T &to_reference(const std::shared_ptr<T> &obj) noexcept
+    static const T &to_reference(const shared_ptr<T> &obj) noexcept
     {
         return *obj.get();
     }
 
     template<typename T>
-    static const T &to_reference(const std::unique_ptr<T> &obj) noexcept
+    static const T &to_reference(const unique_ptr<T> &obj) noexcept
     {
         return *obj.get();
     }
 
-    static constexpr std::string ToHex(uint32_t value)
+    static constexpr string ToHex(uint32_t value)
     {
         static constexpr char digits[] = "0123456789ABCDEF";
-        std::string s;
+        string s;
         do
         {
             s.insert(s.begin(), digits[value & 0xF]);
@@ -206,8 +237,8 @@ namespace SF::Engine
 
     constexpr bool LessNoCase(const string &a, const string &b)
     {
-        return ranges::lexicographical_compare(a, b, [](const unsigned char x, const unsigned char y)
-                                               { return tolower(x) < tolower(y); });
+        return LexicographicalCompare(a, b, [](const unsigned char x, const unsigned char y)
+                                      { return tolower(x) < tolower(y); });
     }
 
     constexpr string CleanFileName(string s)

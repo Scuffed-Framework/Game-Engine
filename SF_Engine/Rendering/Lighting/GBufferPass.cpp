@@ -1,6 +1,7 @@
 #include "GBufferPass.hpp"
 #include <Rendering/RenderSystem.hpp>
 #include <Rendering/SharedSamplers.hpp>
+#include <tracy/Tracy.hpp>
 namespace SF::Engine
 {
     //  helpers (same pattern as LitMeshSFERenderpass)
@@ -133,15 +134,23 @@ namespace SF::Engine
     //  Render
     void GBufferPass::Render(const CommandBuffer &commandBuffer)
     {
+        ZoneScopedN("GBufferPass::Render");
         if (drawList_.empty())
             return;
 
+        ZoneValue(static_cast<uint64_t>(drawList_.size()));
         pipeline_->BindPipeline(commandBuffer);
 
         for (auto &dc: drawList_)
         {
-            WriteMaterialDescriptors(dc.material);
-            descSet_->BindDescriptor(commandBuffer);
+            {
+                ZoneScopedN("GBuffer WriteMaterialDescriptors");
+                WriteMaterialDescriptors(dc.material);
+            }
+            {
+                ZoneScopedN("GBuffer BindDescriptor");
+                descSet_->BindDescriptor(commandBuffer);
+            }
             LitPushConstants pc{};
             pc.model           = dc.transform;
             pc.baseColor       = dc.material.baseColor;
@@ -154,7 +163,10 @@ namespace SF::Engine
                                VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(LitPushConstants),
                                &pc);
 
-            dc.mesh->Draw(commandBuffer);
+            {
+                ZoneScopedN("GBuffer mesh->Draw");
+                dc.mesh->Draw(commandBuffer);
+            }
         }
     }
 } // namespace SF::Engine

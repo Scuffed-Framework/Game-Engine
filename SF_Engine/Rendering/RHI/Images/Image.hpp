@@ -26,11 +26,12 @@ SF_REFLECT_EXTERNAL_TYPE(ImTextureID)
 
 namespace SF::Engine
 {
+    struct DragAndDropObjectTag;
     class DescriptorSet;
     /**
      * @brief A representation of a Vulkan image, sampler, and view.
      */
-    class Image : public Descriptor, public Serializable
+    class Image : public Descriptor, public Serializable, public DragAndDropObjectTag
     {
         SF_RTTI(Image, Serializable)
     public:

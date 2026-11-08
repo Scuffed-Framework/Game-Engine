@@ -17,6 +17,26 @@ namespace SF::Engine
      */
     class AudioClip : public Component::Registrar<AudioClip>
     {
+        static bool Reflect()
+        {
+            Reflection::SerializeContext::Instance()
+                    .Class<AudioClip>()
+                    ->Version(1)
+                    ->Field("Position", &AudioClip::position)
+                    ->Speed(0.05f)
+                    ->ResetTo(0, 0, 0)
+                    ->Field("Direction", &AudioClip::direction)
+                    ->Speed(0.05f)
+                    ->ResetTo(0, 0, 0)
+                    ->Field("Velocity", &AudioClip::velocity)
+                    ->Speed(0.05f)
+                    ->ResetTo(0, 0, 0)
+                    ->Speed(0.05f)
+                    ->Field("Type", &AudioClip::type)
+                    ->Field("Gain", &AudioClip::gain)
+                    ->Field("Pitch", &AudioClip::pitch);
+            return true;
+        }
         inline static const bool Registered = Register("audioClip");
 
     public:
@@ -96,4 +116,4 @@ namespace SF::Engine
                     });
         }
     };
-}
+} // namespace SF::Engine

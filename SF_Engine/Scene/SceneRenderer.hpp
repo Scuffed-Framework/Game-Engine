@@ -16,6 +16,8 @@
 
 namespace SF::Engine
 {
+    using namespace std;
+
     class Scene;
 
     struct SceneRendererConfig
@@ -38,34 +40,34 @@ namespace SF::Engine
         explicit SceneRenderer(const SceneRendererConfig &cfg = {}) : config_(cfg)
         {
             // todo: replace this shit with a render graph
-            AddRenderStage(std::make_unique<RhiRenderStage>(
-                    std::vector<RhiAttachment>{
+            AddRenderStage(make_unique<RhiRenderStage>(
+                    vector{
                             RhiAttachment{0, "gbuf_depth", RhiAttachment::Type::Depth},
                             RhiAttachment{1, "gbuf_albedo", RhiAttachment::Type::Image, false,
                                           VK_FORMAT_R8G8B8A8_UNORM},
                             RhiAttachment{2, "gbuf_normal", RhiAttachment::Type::Image, false, VK_FORMAT_R16G16_SNORM},
                             RhiAttachment{3, "gbuf_pbr", RhiAttachment::Type::Image, false, VK_FORMAT_R8G8B8A8_UNORM},
                     },
-                    std::vector<RhiSubpassType>{
+                    vector{
                             RhiSubpassType{0, {0, 1, 2, 3}},
                     }));
 
-            AddRenderStage(std::make_unique<RhiRenderStage>(
-                    std::vector<RhiAttachment>{
+            AddRenderStage(make_unique<RhiRenderStage>(
+                    vector<RhiAttachment>{
                             RhiAttachment{0, "hdr", RhiAttachment::Type::Image, false, VK_FORMAT_R16G16B16A16_SFLOAT,
                                           Color{0.0f, 0.0f, 0.0f, 1.0f}},
                     },
-                    std::vector<RhiSubpassType>{
+                    vector<RhiSubpassType>{
                             RhiSubpassType{0, {0}}, // deferred lighting (+ atmosphere/clouds) → hdr
                             RhiSubpassType{1, {0}}, // SSR composite (additive blend) → hdr
                             RhiSubpassType{2, {0}}, // forward transparent → hdr
                     }));
 
-            AddRenderStage(std::make_unique<RhiRenderStage>(
-                    std::vector<RhiAttachment>{
+            AddRenderStage(make_unique<RhiRenderStage>(
+                    vector<RhiAttachment>{
                             RhiAttachment{0, "swapchain", RhiAttachment::Type::Swapchain},
                     },
-                    std::vector<RhiSubpassType>{
+                    vector<RhiSubpassType>{
                             RhiSubpassType{0, {0}},
                     }));
         }
@@ -84,22 +86,20 @@ namespace SF::Engine
         LightManager *GetLightManager() const { return lightManager_.get(); }
         GBufferPass *GetGBuffer() const { return gbuffer_; }
         SSRSFERenderpass *GetSSR() const { return ssr_; }
-        CloudSFERenderpass *GetCloudPass() const { return cloudPass_; }
         AtmosphereController *GetAtmosphereController() const { return atmoController.get(); }
         ClusterCullSFERenderpass *GetClusterCull() const { return clusterCull_; }
 
-        std::unique_ptr<AtmosphereController> atmoController;
+        unique_ptr<AtmosphereController> atmoController;
 
     private:
         SceneRendererConfig config_;
-        AtmosphereData earthData{config_.atmosphereParams, {}};
+        AtmosphereData earthData{.params = config_.atmosphereParams, .ubo = {}};
 
-        std::unique_ptr<LightManager> lightManager_;
+        unique_ptr<LightManager> lightManager_;
         GBufferPass *gbuffer_                  = nullptr;
         SSRSFERenderpass *ssr_                 = nullptr;
         HiZSFERenderpass *hiz_                 = nullptr;
         ReflectionProbeSFERenderpass *probe_   = nullptr;
-        CloudSFERenderpass *cloudPass_         = nullptr;
         ClusterCullSFERenderpass *clusterCull_ = nullptr;
 
         bool uiCallbackSet_   = false;

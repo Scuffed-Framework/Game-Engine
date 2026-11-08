@@ -7,6 +7,7 @@
 #include <Rendering/RenderSystem.hpp>
 
 #include <SDL3/SDL.h>
+#include <tracy/Tracy.hpp>
 
 #include <Configuration/Default/ImGuiDefault.hpp>
 #include <stdexcept>
@@ -128,6 +129,7 @@ namespace SF::Engine
 
     void ImGuiSFERenderpass::BuildUI()
     {
+        ZoneScopedN("ImGui BuildUI");
         if (drawCallback_)
             drawCallback_();
     }
@@ -137,16 +139,28 @@ namespace SF::Engine
         if (!initialized_)
             return;
 
-        ImGui_ImplVulkan_NewFrame();
-        ImGui_ImplSDL3_NewFrame();
-        ImGui::NewFrame();
-        ImGuizmo::BeginFrame();
+        {
+            ZoneScopedN("ImGui NewFrame");
+            ImGui_ImplVulkan_NewFrame();
+            ImGui_ImplSDL3_NewFrame();
+            ImGui::NewFrame();
+            ImGuizmo::BeginFrame();
+        }
 
-        ImGui::DockSpaceOverViewport(0u, ImGui::GetMainViewport(), ImGuiDockNodeFlags_PassthruCentralNode);
+        {
+            ZoneScopedN("ImGui DockSpace");
+            ImGui::DockSpaceOverViewport(0u, ImGui::GetMainViewport(), ImGuiDockNodeFlags_PassthruCentralNode);
+        }
         BuildUI();
 
-        ImGui::Render();
+        {
+            ZoneScopedN("ImGui::Render");
+            ImGui::Render();
+        }
         if (ImDrawData *drawData = ImGui::GetDrawData(); drawData && drawData->TotalVtxCount > 0)
+        {
+            ZoneScopedN("ImGui_ImplVulkan_RenderDrawData");
             ImGui_ImplVulkan_RenderDrawData(drawData, commandBuffer);
+        }
     }
 } // namespace SF::Engine

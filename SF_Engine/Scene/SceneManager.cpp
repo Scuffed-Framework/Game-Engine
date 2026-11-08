@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include <cctype>
+#include <tracy/Tracy.hpp>
 
 namespace SF::Engine
 {
@@ -98,19 +99,32 @@ namespace SF::Engine
         // Initialize deferred GPU resources (renderer, meshes, LightManager)
         // on the first Update() after all modules including RenderSystem are ready.
         if (!scene->initialized_)
+        {
+            ZoneScopedN("Scene::Initialize");
             scene->Initialize();
+        }
 
         // Scene file loads run here: between frames, before systems update or anything renders.
-        ApplyPendingOpen();
+        {
+            ZoneScopedN("SceneManager::ApplyPendingOpen");
+            ApplyPendingOpen();
+        }
 
         if (!scene->started_)
         {
+            ZoneScopedN("Scene::Start");
             scene->Start();
             scene->started_ = true;
         }
 
-        scene->Update();
-        scene->Render();
+        {
+            ZoneScopedN("Scene::Update");
+            scene->Update();
+        }
+        {
+            ZoneScopedN("Scene::Render");
+            scene->Render();
+        }
     }
 
     const fs::path &CurrentScenePath()

@@ -26,6 +26,9 @@
 #include <Gui/ImGui/UIRegistry.hpp>
 #include <Scene/SceneManager.hpp>
 #include <utility>
+#include <cstring>
+#include <typeinfo>
+#include <tracy/Tracy.hpp>
 
 namespace SF::Engine
 {
@@ -380,13 +383,22 @@ namespace SF::Engine
 
     void Scene::Update()
     {
+        ZoneScopedN("Scene::Update systems");
         systems.ForEach(
                 [](auto, auto system)
                 {
                     if (system->IsEnabled())
+                    {
+                        ZoneScopedN("System::Update");
+                        const char *sysName = typeid(*system).name();
+                        ZoneText(sysName, std::strlen(sysName));
                         system->Update();
+                    }
                 });
-        entities.CleanupRemovedEntities();
+        {
+            ZoneScopedN("CleanupRemovedEntities");
+            entities.CleanupRemovedEntities();
+        }
     }
 
     void Scene::Render()
