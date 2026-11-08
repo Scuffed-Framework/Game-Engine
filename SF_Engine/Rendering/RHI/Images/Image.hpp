@@ -774,7 +774,6 @@ namespace SF::Engine
 
     inline void BindStorageImage(DescriptorSet &ds, Image *img);
 
-    // 2-D transitions
     inline void TransitionToGeneral(const CommandBuffer &cmd, Image2d *img)
     {
         Image::InsertImageMemoryBarrier(cmd, img->GetImage(), VK_ACCESS_SHADER_READ_BIT, VK_ACCESS_SHADER_WRITE_BIT,

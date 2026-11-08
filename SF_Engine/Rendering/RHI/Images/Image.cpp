@@ -2,9 +2,9 @@
 
 #include <cstring>
 
+#include <Engine/Engine.hpp>
 #include <Rendering/RHI/Memory/Buffer.hpp>
 #include <Rendering/RenderSystem.hpp>
-#include <Engine/Engine.hpp>
 #define VMA_IMPLEMENTATION
 #include "vk_mem_alloc.h"
 
@@ -567,7 +567,7 @@ namespace SF::Engine
         ::SF::Reflection::SerializeContext::Instance().Load(*this, reader);
     }
 
-    inline void BindStorageImage(DescriptorSet &ds, Image *img)
+    void BindStorageImage(DescriptorSet &ds, Image *img)
     {
         VkDescriptorImageInfo imgInfo{};
         imgInfo.sampler     = img->GetSampler();
