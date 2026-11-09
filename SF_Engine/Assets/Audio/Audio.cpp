@@ -13,7 +13,6 @@ namespace SF::Engine
 
     Audio::Audio() : impl(std::make_unique<_intern>())
     {
-        Log::Info("Audio::Audio() this={}", (void*)this);
         impl->device = alcOpenDevice(nullptr);
         if (!impl->device)
         {
@@ -50,7 +49,6 @@ namespace SF::Engine
 
     Audio::~Audio()
     {
-        Log::Info("Audio::~Audio() this={}", (void*)this);
         alcMakeContextCurrent(nullptr);
         if (impl->context)
             alcDestroyContext(impl->context);

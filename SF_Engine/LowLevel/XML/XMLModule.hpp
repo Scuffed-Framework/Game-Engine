@@ -11,9 +11,14 @@
 
 #include <LowLevel/Reflection/RTTI/RTTI.hpp>
 #include <UtilityClasses/UUID.hpp>
+#include <charconv>
+#include <concepts>
+#include <format>
+#include <sstream>
 
 namespace SF::Engine
 {
+    using namespace std;
     class XMLNode;
     class Serializable;
 
@@ -21,6 +26,12 @@ namespace SF::Engine
     {
         std::string name;
         std::string value;
+    };
+
+    template<typename T>
+    concept ComponentIndexable = requires(const T &v) {
+        { T::length() } -> convertible_to<int>;
+        { v[0] } -> convertible_to<float>;
     };
 
     class XMLNode
@@ -146,6 +157,33 @@ namespace SF::Engine
         static bool DeserializeValue(const std::string &str, std::string &out);
         static bool DeserializeValue(const std::string &str, UUID &out);
 
+        template<ComponentIndexable T>
+        static string SerializeValue(const T &value)
+        {
+            string out;
+            char buf[32];
+            for (int i = 0; i < static_cast<int>(T::length()); ++i)
+            {
+                if (i != 0)
+                    out += ' ';
+                const auto [end, ec] = to_chars(buf, buf + sizeof(buf), static_cast<float>(value[i]));
+                out.append(buf, end);
+            }
+            return out;
+        }
+
+        template<ComponentIndexable T>
+        static bool DeserializeValue(const string &str, T &out)
+        {
+            istringstream ss(str);
+            T tmp{};
+            for (int i = 0; i < static_cast<int>(T::length()); ++i)
+                if (!(ss >> tmp[i]))
+                    return false;
+            out = tmp;
+            return true;
+        }
+
         // Error handling
         [[nodiscard]] std::string GetLastError() const { return lastError; }
 
@@ -210,5 +248,4 @@ namespace SF::Engine
     }
 } // namespace SF::Engine
 
-// Include implementation
 #include "XMLModule.inl"

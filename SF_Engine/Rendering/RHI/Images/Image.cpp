@@ -564,7 +564,7 @@ namespace SF::Engine
     {
         EnsureReflected();
         XmlNodeReader reader(node);
-        ::SF::Reflection::SerializeContext::Instance().Load(*this, reader);
+        Reflection::SerializeContext::Instance().Load(*this, reader);
     }
 
     void BindStorageImage(DescriptorSet &ds, Image *img)
@@ -617,7 +617,7 @@ namespace SF::Engine
             Log::Error("Failed to save image asset to file!");
     }
 
-    template void ImageAsset<Image2d>::Save();
+    template void ImageAsset</*Image2d*/>::Save();
     template void ImageAsset<Cubemap>::Save();
     template void ImageAsset<Image2dArray>::Save();
     template void ImageAsset<Image3d>::Save();

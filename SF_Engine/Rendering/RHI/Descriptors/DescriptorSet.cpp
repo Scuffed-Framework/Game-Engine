@@ -4,18 +4,19 @@
 
 namespace SF::Engine
 {
-    DescriptorSet::DescriptorSet(const Pipeline &pipeline)
-        : pipelineLayout(pipeline.GetPipelineLayout()), pipelineBindPoint(pipeline.GetPipelineBindPoint()), descriptorPool(pipeline.GetDescriptorPool())
+    DescriptorSet::DescriptorSet(const Pipeline &pipeline) :
+        pipelineLayout(pipeline.GetPipelineLayout()), pipelineBindPoint(pipeline.GetPipelineBindPoint()),
+        descriptorPool(pipeline.GetDescriptorPool())
     {
-        auto logicalDevice = RenderSystem::Get()->GetLogicalDevice();
+        const auto logicalDevice = RenderSystem::Get()->GetLogicalDevice();
 
-        VkDescriptorSetLayout layouts[1] = {pipeline.GetDescriptorSetLayout()};
+        const VkDescriptorSetLayout layouts[1] = {pipeline.GetDescriptorSetLayout()};
 
         VkDescriptorSetAllocateInfo info{};
-        info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-        info.descriptorPool = descriptorPool;
+        info.sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+        info.descriptorPool     = descriptorPool;
         info.descriptorSetCount = 1;
-        info.pSetLayouts = layouts;
+        info.pSetLayouts        = layouts;
         RenderSystem::CheckVkResult(vkAllocateDescriptorSets(*logicalDevice, &info, &descriptorSet));
     }
 
@@ -39,14 +40,12 @@ namespace SF::Engine
     void DescriptorSet::Update(const std::vector<VkWriteDescriptorSet> &descriptorWrites)
     {
         auto logicalDevice = RenderSystem::Get()->GetLogicalDevice();
-        vkUpdateDescriptorSets(*logicalDevice,
-                               static_cast<uint32_t>(descriptorWrites.size()),
-                               descriptorWrites.data(), 0, nullptr);
+        vkUpdateDescriptorSets(*logicalDevice, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(),
+                               0, nullptr);
     }
 
     void DescriptorSet::BindDescriptor(const CommandBuffer &commandBuffer) const
     {
-        vkCmdBindDescriptorSets(commandBuffer, pipelineBindPoint,
-                                pipelineLayout, 0, 1, &descriptorSet, 0, nullptr);
+        vkCmdBindDescriptorSets(commandBuffer, pipelineBindPoint, pipelineLayout, 0, 1, &descriptorSet, 0, nullptr);
     }
-}
+} // namespace SF::Engine

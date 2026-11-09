@@ -177,7 +177,7 @@ namespace SF::Engine
             glm::mat4 local = world;
             if (Entity *p = target->GetParent())
                 if (const Transform *pt = p->GetComponent<Transform>())
-                    local = glm::inverse(pt->ToWorldMatrix()) * world;
+                    local = inverse(pt->ToWorldMatrix()) * world;
 
             switch (operation)
             {
@@ -198,18 +198,15 @@ namespace SF::Engine
                     if (s.x < 1e-6f || s.y < 1e-6f || s.z < 1e-6f)
                         return;
 
-                    glm::mat4 rotM{1.f};
-                    rotM[0] = Vec4(Vec3(local[0]) / s.x, 0.f);
-                    rotM[1] = Vec4(Vec3(local[1]) / s.y, 0.f);
-                    rotM[2] = Vec4(Vec3(local[2]) / s.z, 0.f);
+                    glm::mat3 rotM{Vec3(local[0]) / s.x, Vec3(local[1]) / s.y, Vec3(local[2]) / s.z};
 
-                    float yaw, pitch, roll;
-                    glm::extractEulerAngleYXZ(rotM, yaw, pitch, roll);
-                    const Vec3 next{glm::degrees(pitch), glm::degrees(yaw), glm::degrees(roll)};
+                    Quaternion next = glm::quat_cast(rotM);
 
-                    const Vec3 cur = t->GetLocalRotation();
-                    auto nearest   = [](const float c, const float n) { return c + std::remainder(n - c, 360.f); };
-                    t->SetLocalRotation({nearest(cur.x, next.x), nearest(cur.y, next.y), nearest(cur.z, next.z)});
+                    // q and -q are the same orientation; keep the sign continuous so it never flips mid-drag
+                    if (glm::dot(next, t->GetLocalRotation().Quat()) < 0.0f)
+                        next = -next;
+
+                    t->SetLocalRotation(next); // implicit Rotation(Quaternion), normalizes
                     break;
                 }
 

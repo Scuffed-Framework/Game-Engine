@@ -266,17 +266,17 @@ namespace SF::Engine
                 if (ImGui::MenuItem("Directional Light"))
                 {
                     scene->AddLight("Directional Light", Lighting::LightType::Directional, {1, 1, 1}, 10, {0, 0, 0},
-                                    {0, 0, 0});
+                                    {});
                     m_needsRefresh = true;
                 }
                 if (ImGui::MenuItem("Point Light"))
                 {
-                    scene->AddLight("Point Light", Lighting::LightType::Point, {1, 1, 1}, 10, {0, 0, 0}, {0, 0, 0});
+                    scene->AddLight("Point Light", Lighting::LightType::Point, {1, 1, 1}, 10, {0, 0, 0}, {});
                     m_needsRefresh = true;
                 }
                 if (ImGui::MenuItem("Spot Light"))
                 {
-                    scene->AddLight("Spot Light", Lighting::LightType::Spot, {1, 1, 1}, 10, {0, 0, 0}, {0, 0, 0});
+                    scene->AddLight("Spot Light", Lighting::LightType::Spot, {1, 1, 1}, 10, {0, 0, 0}, {});
                     m_needsRefresh = true;
                 }
                 ImGui::EndMenu();

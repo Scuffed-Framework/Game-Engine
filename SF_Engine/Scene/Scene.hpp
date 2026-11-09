@@ -9,12 +9,12 @@
 #include <Rendering/Mesh/Mesh.hpp>
 #include <Rendering/Visuals/Sky/Atmosphere/AtmosphereSFERenderpass.hpp>
 
+#include <Assets/AssetPipeline.hpp>
 #include <LowLevel/XML/XMLModule.hpp>
 #include <Rendering/Visuals/Sky/Clouds/CloudSFERenderpass.hpp>
 #include <Scene/SceneRenderer.hpp>
 #include <Scene/Types.hpp>
 #include "SceneSerialization.hpp"
-#include <Assets/AssetPipeline.hpp>
 
 #include <Controllers/CameraController.hpp>
 #include <Rendering/RHI/Images/Image.hpp>
@@ -36,6 +36,7 @@ namespace SF::Engine
         friend class SceneRenderer;
 
     public:
+        // can't we just screw everyone over who made their project in a past version? (or auto upgrade them)
         static constexpr int kSceneVersion = 2;
 
         // populateDefaults = false lets subclasses start from an empty scene instead of
@@ -74,7 +75,7 @@ namespace SF::Engine
         Entity *GetEntity(const EntityId &id);
         Entity *CreateEntity();
         EntityHolder *GetEntities() { return &entities; }
-        std::vector<Entity *> QueryAllEntities();
+        std::vector<Entity *> QueryAllEntities() const;
 
         // Also purges SceneObject / SceneLight caches for the entity and its whole subtree.
         void RemoveEntity(Entity *entity);
@@ -116,7 +117,7 @@ namespace SF::Engine
 
         virtual bool IsPaused() const = 0;
 
-        LightManager *GetLightManager() { return sceneRenderer_ ? sceneRenderer_->GetLightManager() : nullptr; }
+        LightManager *GetLightManager() const { return sceneRenderer_ ? sceneRenderer_->GetLightManager() : nullptr; }
         SceneRenderer *GetRenderer() const { return sceneRenderer_; }
 
         template<typename T, typename... Args>
@@ -135,7 +136,7 @@ namespace SF::Engine
         }
 
         // Atomic save (temp file + rename).
-        bool SaveXML(const std::string &filename = "scene.xml");
+        bool SaveXML(const std::string &filename = "scene.xml") const;
         // Returns false if the file couldn't be parsed or was written by a newer version.
         // Prefer OpenScene() (deferred, safe mid-frame) over calling this directly on a live scene.
         bool ReadXML(const std::string &filename = "scene.xml");
@@ -209,22 +210,19 @@ namespace SF::Engine
 
         // NOTE: uses the local Transform::position / rotation. For parented lights this is
         // wrong if Transform is local-space; swap in the world-space accessor if you have one.
-        void SyncLightTransforms()
+        void SyncLightTransforms() const
         {
             for (auto &sl: lights_)
             {
-                sl->GetComponent<Light>()->position = sl->GetComponent<Transform>()->position;
-                if (sl->GetComponent<Light>()->type == Lighting::LightType::Directional)
-                {
-                    Vec3 rot                             = glm::radians(sl->GetComponent<Transform>()->rotation);
-                    Mat4 m                               = glm::rotate(Mat4(1.0f), rot.y, {0, 1, 0});
-                    m                                    = glm::rotate(m, rot.x, {1, 0, 0});
-                    m                                    = glm::rotate(m, rot.z, {0, 0, 1});
-                    sl->GetComponent<Light>()->direction = normalize(Vec3(m * Vec4(0, -1, 0, 0)));
-                }
+                auto *light      = sl->GetComponent<Light>();
+                const Mat4 world = sl->GetComponent<Transform>()->ToWorldMatrix();
+
+                light->position = Vec3(world[3]);
+                if (light->type == Lighting::LightType::Directional)
+                    light->direction =
+                            glm::normalize(Vec3(world * Vec4(0.f, -1.f, 0.f, 0.f))); // w=0: ignores translation
             }
         }
-
         void RebuildLightManager()
         {
             if (!GetLightManager())
@@ -253,12 +251,12 @@ namespace SF::Engine
         static const ImageDepth *GetDepthTexture();
 
         SceneObject *AddObject(const std::string &name, Entity *parent = nullptr);
-        SceneObject *AddObject(const std::string &name, Transform &transform, Entity *parent = nullptr);
-        SceneLight *AddLight(const std::string &name, Lighting::LightType type, const Vec3 &color, float intensity,
-                             const Vec3 &position, const Vec3 &rotation, Entity *parent = nullptr);
+        SceneObject *AddObject(const std::string &name, const Transform &transform, Entity *parent = nullptr);
+        SceneLight *AddLight(const string &name, Lighting::LightType type, const Vec3 &color, float intensity,
+                             const Vec3 &position, Rotation rotation, Entity *parent = nullptr);
 
         SceneLight *AddLight(const std::string &name, Lighting::LightType type, const Vec3 &color, float intensity,
-                             Transform &transform, Entity *parent = nullptr);
+                             const Transform &transform, Entity *parent = nullptr);
 
         void RemoveObject(SceneObject *obj);
         void RemoveLight(SceneLight *light);
@@ -291,7 +289,7 @@ namespace SF::Engine
         // Returns the nearest SceneObject/SceneLight ancestor (plain Entity ancestors are skipped,
         // since they are not serialized).
         // kind: 0 = root, 1 = objects_[index] is the parent, 2 = lights_[index] is the parent
-        static std::pair<int, int> FindParentRef(Entity *e, const IndexMap &idx);
+        static std::pair<int, int> FindParentRef(const Entity *e, const IndexMap &idx);
 
         void PurgeFromCaches(Entity *rootEntity);
         void RemoveEntitySubtree(Entity *rootEntity);

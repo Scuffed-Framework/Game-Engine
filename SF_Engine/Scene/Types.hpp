@@ -19,13 +19,13 @@ namespace SF::Engine
 
         // Asset references. Scenes store the stable asset UUID, never a path; Scene::ResolveBuiltinMesh
         // turns these into live resources once the renderer exists.
-        UUID meshAsset;      // MeshAsset providing `mesh` (null = builtin / none)
-        int meshPart = 0;    // index into MeshAsset::parts
-        UUID albedoAsset;    // ImageAsset<Image2d> used as MeshMaterial::albedo (null = none)
-        UUID audioAsset;     // AudioAsset played by this object's AudioClip (null = not an emitter)
-        bool audioLoop    = false;
-        float audioGain   = 1.0f;
-        float audioPitch  = 1.0f;
+        UUID meshAsset;   // MeshAsset providing `mesh` (null = builtin / none)
+        int meshPart = 0; // index into MeshAsset::parts
+        UUID albedoAsset; // ImageAsset<Image2d> used as MeshMaterial::albedo (null = none)
+        UUID audioAsset;  // AudioAsset played by this object's AudioClip (null = not an emitter)
+        bool audioLoop   = false;
+        float audioGain  = 1.0f;
+        float audioPitch = 1.0f;
 
         SceneObject(const std::string &objName) : Entity(objName) { AddComponent<MeshMaterial>(); }
 
@@ -51,10 +51,10 @@ namespace SF::Engine
             }
 
             XMLNode tNode = node.AddChild("transform");
-            Entity::GetComponent<Transform>()->Serialize(tNode);
+            GetComponent<Transform>()->Serialize(tNode);
 
             XMLNode matNode = node.AddChild("material");
-            Entity::GetComponent<MeshMaterial>()->Serialize(matNode);
+            GetComponent<MeshMaterial>()->Serialize(matNode);
         }
 
         void Deserialize(const XMLNode &node) override
@@ -74,11 +74,11 @@ namespace SF::Engine
 
             XMLNode tNode = node.GetChild("transform");
             if (tNode.IsValid())
-                Entity::GetComponent<Transform>()->Deserialize(tNode);
+                GetComponent<Transform>()->Deserialize(tNode);
 
             XMLNode matNode = node.GetChild("material");
             if (matNode.IsValid())
-                Entity::GetComponent<MeshMaterial>()->Deserialize(matNode);
+                GetComponent<MeshMaterial>()->Deserialize(matNode);
         }
     };
 
@@ -91,10 +91,10 @@ namespace SF::Engine
             node.SetAttribute("name", GetName());
 
             XMLNode tNode = node.AddChild("transform");
-            Entity::GetComponent<Transform>()->Serialize(tNode);
+            GetComponent<Transform>()->Serialize(tNode);
 
             XMLNode lNode = node.AddChild("light");
-            Entity::GetComponent<Light>()->Serialize(lNode);
+            GetComponent<Light>()->Serialize(lNode);
         }
 
         void Deserialize(const XMLNode &node) override
@@ -105,11 +105,11 @@ namespace SF::Engine
 
             XMLNode tNode = node.GetChild("transform");
             if (tNode.IsValid())
-                Entity::GetComponent<Transform>()->Deserialize(tNode);
+                GetComponent<Transform>()->Deserialize(tNode);
 
             XMLNode lNode = node.GetChild("light");
             if (lNode.IsValid())
-                Entity::GetComponent<Light>()->Deserialize(lNode);
+                GetComponent<Light>()->Deserialize(lNode);
         }
     };
 } // namespace SF::Engine

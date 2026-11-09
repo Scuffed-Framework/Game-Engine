@@ -130,6 +130,32 @@ namespace SF::Engine
             reconFog_[i]->SetLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
         }
 
+        // Private composite target (premultiplied cloud colour). Render() blends it into "hdr".
+        // Compositing straight onto "hdr" from PreRender is wiped by stage 1's render-pass clear.
+        cloudCompositeRT_ = std::make_unique<Image2d>(fullRes, VK_FORMAT_R16G16B16A16_SFLOAT, VK_IMAGE_LAYOUT_GENERAL,
+                                                      VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
+        {
+            CommandBuffer cmd(true);
+            Image::InsertImageMemoryBarrier(cmd, cloudCompositeRT_->GetImage(), 0, VK_ACCESS_SHADER_READ_BIT,
+                                            VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                            VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+                                            VK_IMAGE_ASPECT_COLOR_BIT, 1, 0, 1, 0);
+            cmd.SubmitIdle();
+        }
+        cloudCompositeRT_->SetLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+
+        blitPipeline_ = std::make_unique<RhiRenderPipeline>(
+                stage, "Shaders/Clouds/CloudBlit.shader", std::vector<Shader::VertexInput>{},
+                std::vector<Shader::Define>{}, RhiRenderPipeline::Mode::Polygon, RhiRenderPipeline::Depth::None,
+                VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, VK_POLYGON_MODE_FILL, VK_CULL_MODE_NONE,
+                VK_FRONT_FACE_COUNTER_CLOCKWISE, false);
+        blitSet_ = std::make_unique<DescriptorSet>(*blitPipeline_);
+        DescriptorSetWriteBuilder(*blitSet_)
+                .CombinedImageSampler(1, cloudCompositeRT_->GetView(), cloudCompositeRT_->GetSampler(),
+                                      VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+                .Build()
+                .Apply();
+
         // NOW call BindDescriptors() since images are already in SHADER_READ_ONLY_OPTIMAL
         BindDescriptors();
 
@@ -189,19 +215,10 @@ namespace SF::Engine
             reconstructWrites.Apply();
             BindSharedCameraData(31, 1, reconstructSet_[i].get());
 
-            // --- Composite set: only static bindings ---
-            auto compositeWrites =
-                    DescriptorSetWriteBuilder(*compositeSet_[i])
-                            .Image(10, AtmoLUTs::Get().GetTransmittanceLUT()->GetTexture()->GetView(),
-                                   VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
-                            .Buffer(21, CloudData_->GetBuffer())
-                            .CombinedImageSampler(27, AtmoLUTs::Get().GetMultiScatterLUT()->GetTexture()->GetView(),
-                                                  SharedSamplers::GetLinearClampSampler(),
-                                                  VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
-                            .Buffer(29, atmoUBO_->GetBuffer())
-                            .Build();
-            compositeWrites.Apply();
-            BindSharedCameraData(31, 1, compositeSet_[i].get());
+            // --- Composite set: nothing static. The simplified Composite.shader no longer reads the
+            // transmittance/multiscatter LUTs, CloudData, AtmosphereFrameUBO or camera UBO, so those
+            // bindings are stripped from its layout and writing them is invalid. Per-frame writes
+            // (RT, depth, recon colour/fog) happen in PreRender.
         }
     }
 
@@ -242,30 +259,19 @@ namespace SF::Engine
         const uint32_t cur    = frameSlot_ % kFramesInFlight;
         const uint32_t hist   = (frameSlot_ + kFramesInFlight - 1) % kFramesInFlight;
         const bool hasHistory = (framesSinceStart_ > 0);
+        drawThisFrame_        = false;
 
-        {
-            if (colorImg->GetLayout() == VK_IMAGE_LAYOUT_UNDEFINED)
-            {
-                Image::InsertImageMemoryBarrier(cmd, const_cast<Image2d *>(colorImg)->GetImage(), 0,
-                                                VK_ACCESS_SHADER_WRITE_BIT | VK_ACCESS_SHADER_READ_BIT,
-                                                VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL,
-                                                VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-                                                VK_IMAGE_ASPECT_COLOR_BIT, 1, 0, 1, 0);
-            } else
-            {
-                Image::InsertImageMemoryBarrier(
-                        cmd, const_cast<Image2d *>(colorImg)->GetImage(), VK_ACCESS_SHADER_READ_BIT,
-                        VK_ACCESS_SHADER_WRITE_BIT | VK_ACCESS_SHADER_READ_BIT,
-                        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL,
-                        VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-                        VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_IMAGE_ASPECT_COLOR_BIT, 1, 0, 1, 0);
-            }
-        }
+        // Composite writes a private RT (never "hdr"): READ_ONLY -> GENERAL for the compute write.
+        Image::InsertImageMemoryBarrier(cmd, cloudCompositeRT_->GetImage(), VK_ACCESS_SHADER_READ_BIT,
+                                        VK_ACCESS_SHADER_WRITE_BIT, cloudCompositeRT_->GetLayout(),
+                                        VK_IMAGE_LAYOUT_GENERAL, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+                                        VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_IMAGE_ASPECT_COLOR_BIT, 1, 0, 1, 0);
+        cloudCompositeRT_->SetLayout(VK_IMAGE_LAYOUT_GENERAL);
 
         {
             VkDescriptorImageInfo colorInfo{};
             colorInfo.sampler     = VK_NULL_HANDLE;
-            colorInfo.imageView   = colorImg->GetView();
+            colorInfo.imageView   = cloudCompositeRT_->GetView();
             colorInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
 
             VkDescriptorImageInfo depthInfo{};
@@ -487,20 +493,32 @@ namespace SF::Engine
         compositeSet_[cur]->BindDescriptor(cmd);
         SharedSamplers::BindSharedSamplerSet(cmd, compositePipeline_->GetPipelineLayout(),
                                              VK_PIPELINE_BIND_POINT_COMPUTE);
-        compositePipeline_->Dispatch(cmd, UVec3(fext.x, fext.y, 1), {/*LOCAL_X=*/8, /*LOCAL_Y=*/8, /*LOCAL_Z=*/1});
+        {
+            const auto cext = cloudCompositeRT_->GetExtent();
+            compositePipeline_->Dispatch(cmd, UVec3(cext.x, cext.y, 1), {/*LOCAL_X=*/8, /*LOCAL_Y=*/8, /*LOCAL_Z=*/1});
+        }
 
-        // Transition scene color back to SHADER_READ_ONLY_OPTIMAL
-        Image::InsertImageMemoryBarrier(cmd, const_cast<Image2d *>(colorImg)->GetImage(), VK_ACCESS_SHADER_WRITE_BIT,
+        // Composite RT: GENERAL -> READ_ONLY for Render()'s fragment-shader blit.
+        Image::InsertImageMemoryBarrier(cmd, cloudCompositeRT_->GetImage(), VK_ACCESS_SHADER_WRITE_BIT,
                                         VK_ACCESS_SHADER_READ_BIT, VK_IMAGE_LAYOUT_GENERAL,
                                         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
                                         VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_IMAGE_ASPECT_COLOR_BIT, 1, 0, 1, 0);
-        const_cast<Image2d *>(colorImg)->SetLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+        cloudCompositeRT_->SetLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+        drawThisFrame_ = true;
 
         ++frameSlot_;
         ++framesSinceStart_;
     }
 
-    void CloudSFERenderpass::Render(const CommandBuffer &) {}
+    void CloudSFERenderpass::Render(const CommandBuffer &cmd)
+    {
+        if (!enabled || !drawThisFrame_)
+            return;
+
+        blitPipeline_->BindPipeline(cmd);
+        blitSet_->BindDescriptor(cmd);
+        vkCmdDraw(cmd, 3, 1, 0, 0);
+    }
 
     void CloudSFERenderpass::UpdateCloudData()
     {

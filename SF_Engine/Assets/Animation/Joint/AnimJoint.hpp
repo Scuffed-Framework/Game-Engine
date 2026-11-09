@@ -1,93 +1,58 @@
 #pragma once
 #include <LowLevel/Reflection/RTTISingle.hpp>
+#include <Math/BasicMath.hpp>
 #include <Math/Matrix/Matrix.hpp>
 #include <Math/Quaternion/Quaternion.hpp>
-#include <Math/BasicMath.hpp>
 
-namespace SF::Engine
+
+namespace SF::Engine::Animation
 {
     using namespace std;
-    namespace Animation
+    class Joint
     {
-        class Joint
+        SF_RTTI_BASE(Joint)
+    public:
+        // give no data cuz
+        explicit Joint(uint32_t index = 0, string name = "", const Mat4 &bindLocalTransform = Mat4(0)) :
+            index(index), name(std::move(name)), localBindTransform(bindLocalTransform)
         {
-            SF_RTTI_BASE(Joint)
-        public:
-            // give no data cuz
-            explicit Joint(uint32_t index = 0, string name = "", const Mat4 &bindLocalTransform = Mat4(0)) :
-                index(index), name(std::move(name)), localBindTransform(bindLocalTransform)
-            {
-            }
+        }
 
-            void CalculateInverseBindTransform(const Mat4 &parentBindTransform)
-            {
-                auto bindTransform   = parentBindTransform * localBindTransform;
-                inverseBindTransform = inverse(bindTransform);
+        virtual ~Joint() = default;
 
-                for (auto &child: children)
-                    child.CalculateInverseBindTransform(bindTransform);
-            }
-
-            [[nodiscard]] uint32_t GetIndex() const { return index; }
-            void SetIndex(uint32_t index) { this->index = index; }
-
-            [[nodiscard]] const string &GetName() const { return name; }
-            void SetName(const string &name) { this->name = name; }
-
-            [[nodiscard]] const vector<Joint> &GetChildren() const { return children; }
-
-            void AddChild(const Joint &child) { children.emplace_back(child); }
-
-            [[nodiscard]] const Mat4 &GetLocalBindTransform() const { return localBindTransform; }
-            void SetLocalBindTransform(const Mat4 &localBindTransform)
-            {
-                this->localBindTransform = localBindTransform;
-            }
-            [[nodiscard]] const Mat4 &GetInverseBindTransform() const { return inverseBindTransform; }
-            void SetInverseBindTransform(const Mat4 &inverseBindTransform)
-            {
-                this->inverseBindTransform = inverseBindTransform;
-            }
-
-        private:
-            uint32_t index = 0;
-            string name;
-            vector<Joint> children;
-
-            Mat4 localBindTransform;
-            Mat4 inverseBindTransform{};
-        };
-
-        class JointTransform
+        void CalculateInverseBindTransform(const Mat4 &parentBindTransform)
         {
-        public:
-            JointTransform() = default;
+            auto bindTransform   = parentBindTransform * localBindTransform;
+            inverseBindTransform = inverse(bindTransform);
 
-            JointTransform(const Vec3 &position, const Quaternion &rotation);
+            for (auto &child: children)
+                child.CalculateInverseBindTransform(bindTransform);
+        }
 
-            explicit JointTransform(const Mat4 &localTransform);
+        [[nodiscard]] uint32_t GetIndex() const { return index; }
+        void SetIndex(uint32_t index) { this->index = index; }
 
-            [[nodiscard]] Mat4 GetLocalTransform() const;
+        [[nodiscard]] const string &GetName() const { return name; }
+        void SetName(const string &name) { this->name = name; }
 
-            static JointTransform Interpolate(const JointTransform &frameA, const JointTransform &frameB,
-                                              float progression);
+        [[nodiscard]] const vector<Joint> &GetChildren() const { return children; }
 
-            static Vec3 Interpolate(const Vec3 &start, const Vec3 &end, float progression);
+        void AddChild(const Joint &child) { children.emplace_back(child); }
 
-            [[nodiscard]] const Vec3 &GetPosition() const { return position; }
-            void SetPosition(const Vec3 &position) { this->position = position; }
+        [[nodiscard]] const Mat4 &GetLocalBindTransform() const { return localBindTransform; }
+        void SetLocalBindTransform(const Mat4 &localBindTransform) { this->localBindTransform = localBindTransform; }
+        [[nodiscard]] const Mat4 &GetInverseBindTransform() const { return inverseBindTransform; }
+        void SetInverseBindTransform(const Mat4 &inverseBindTransform)
+        {
+            this->inverseBindTransform = inverseBindTransform;
+        }
 
-            [[nodiscard]] const Quaternion &GetRotation() const { return rotation; }
-            void SetRotation(const Quaternion &rotation) { this->rotation = rotation; }
+    private:
+        uint32_t index = 0;
+        string name;
+        vector<Joint> children;
 
-            bool operator==(const JointTransform &other) const
-            {
-                return position == other.position && rotation == other.rotation;
-            }
-
-        private:
-            Vec3 position;
-            Quaternion rotation;
-        };
-    } // namespace Animation
-} // namespace SF::Engine
+        Mat4 localBindTransform;
+        Mat4 inverseBindTransform{};
+    };
+} // namespace SF::Engine::Animation

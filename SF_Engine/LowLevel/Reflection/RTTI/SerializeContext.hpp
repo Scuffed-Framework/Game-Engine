@@ -32,6 +32,7 @@
 // see the note at the bottom of this file) if you'd rather not maintain
 // a second serialization backend.
 
+#include <Math/Quaternion/Quaternion.hpp>
 #include <Math/Vectors/Vector.hpp>
 #include <UtilityClasses/StlExtensions.hpp>
 #include <cstdint>
@@ -46,6 +47,10 @@
     #undef Bool
 #endif
 
+namespace SF::Engine
+{
+    class Rotation;
+}
 namespace SF::Reflection
 {
     using namespace std;
@@ -61,32 +66,35 @@ namespace SF::Reflection
         Vec3,
         Vec4,
         Enum,
-        DnD
+        DnD,
+        Quat
     };
 
-    template<typename T>
+    template<class T>
     constexpr FieldKind KindOf()
     {
-        if constexpr (is_same_v<T, float>)
+        if constexpr (std::is_same_v<T, float>)
             return FieldKind::Float;
-        else if constexpr (is_same_v<T, int32_t>)
+        else if constexpr (std::is_same_v<T, int32_t>)
             return FieldKind::Int;
-        else if constexpr (is_same_v<T, uint32_t>)
+        else if constexpr (std::is_same_v<T, uint32_t>)
             return FieldKind::UInt;
-        else if constexpr (is_same_v<T, bool>)
+        else if constexpr (std::is_same_v<T, bool>)
             return FieldKind::Bool;
-        else if constexpr (is_same_v<T, string>)
+        else if constexpr (std::is_same_v<T, std::string>)
             return FieldKind::String;
-        else if constexpr (is_same_v<T, Engine::Vec2>)
+        else if constexpr (std::is_same_v<T, Engine::Vec2>)
             return FieldKind::Vec2;
-        else if constexpr (is_same_v<T, Engine::Vec3>)
+        else if constexpr (std::is_same_v<T, Engine::Vec3>)
             return FieldKind::Vec3;
-        else if constexpr (is_same_v<T, Engine::Vec4>)
+        else if constexpr (std::is_same_v<T, Engine::Vec4>)
             return FieldKind::Vec4;
-        else if constexpr (is_enum_v<T>)
+        else if constexpr (std::is_same_v<T, Engine::Quaternion>)
+            return FieldKind::Quat;
+        else if constexpr (std::is_same_v<T, Engine::Rotation>)
+            return FieldKind::Quat; // via Raw()
+        else if constexpr (std::is_enum_v<T>)
             return FieldKind::Enum;
-        else if constexpr (Engine::has_dnd_tag_v<T>)
-            return FieldKind::DnD;
         else
             return FieldKind::Object;
     }

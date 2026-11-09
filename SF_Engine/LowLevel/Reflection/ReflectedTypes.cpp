@@ -1,12 +1,43 @@
 #include "ReflectedTypes.hpp"
 #include <Gui/ImGui/Declare_Widget.hpp> // WidgetBuilder (strip the macros out of this header)
 #include <Gui/ImGui/ocornut/imgui_stdlib.h>
+#include <cstdint>
 
 namespace SF::Engine
 {
     using namespace Reflection;
     namespace
     {
+        struct EulerCache
+        {
+            Vec3 euler{};
+            Quaternion last{1, 0, 0, 0};
+            bool init = false;
+        };
+
+        bool DrawQuat(WidgetBuilder &wb, Quaternion &q, const FieldMeta &m)
+        {
+            static unordered_map<uint64_t, EulerCache> cache; // keyed by the PushID stack
+            EulerCache &c = cache[ImGui::GetID("##euler")];
+
+            // Re-derive Euler only if the quat changed from elsewhere (gizmo, undo, load)
+            if (!c.init || glm::abs(glm::dot(c.last, q)) < 1.0f - 1e-6f)
+            {
+                c.euler = glm::degrees(glm::eulerAngles(q));
+                c.last  = q;
+                c.init  = true;
+            }
+
+            static constexpr float kZero[3] = {0.0f, 0.0f, 0.0f};
+            const bool changed              = wb.VecRow("v", c.euler, kZero, m.speed > 0 ? m.speed : 0.5f, "%.2f");
+            if (changed)
+            {
+                q      = normalize(Quaternion(glm::radians(c.euler)));
+                c.last = q;
+            }
+            return changed;
+        }
+
         constexpr ImGuiColorEditFlags kColorFlags =
                 ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_Float | ImGuiColorEditFlags_PickerHueBar;
 
@@ -36,7 +67,7 @@ namespace SF::Engine
                 }
                 case FieldKind::UInt:
                 {
-                    uint32_t lo = (uint32_t) m.min, hi = (uint32_t) m.max;
+                    auto lo = static_cast<uint32_t>(m.min), hi = static_cast<uint32_t>(m.max);
                     return ImGui::DragScalar("##v", ImGuiDataType_U32, p, m.speed, m.hasRange ? &lo : nullptr,
                                              m.hasRange ? &hi : nullptr);
                 }
@@ -69,6 +100,8 @@ namespace SF::Engine
                     f.SetEnum(obj, v);
                     return true;
                 }
+                case FieldKind::Quat:
+                    return DrawQuat(wb, *static_cast<Quaternion *>(p), m);
                 default:
                     return false;
             }
@@ -118,7 +151,7 @@ namespace SF::Engine
 
     bool DrawReflected(std::type_index ti, void *obj, const char *id, float labelW)
     {
-        const auto &ctx           = SerializeContext::Instance();
+        const auto &ctx     = SerializeContext::Instance();
         const TypeId *tid   = ctx.FindTypeId(ti);
         const ClassData *cd = tid ? ctx.FindClassData(*tid) : nullptr;
         if (!cd)

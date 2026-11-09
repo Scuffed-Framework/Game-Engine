@@ -77,7 +77,7 @@ float worleyNoise(float3 uv, float freq)
             for(float z = -1.; z <= 1.; ++z)
             {
                 float3 offset = float3(x, y, z);
-            	float3 h = hash33(fmod(id + offset, float3(freq))) * .5 + .5;
+            	float3 h = hash33(fmod(id + offset + float3(freq), float3(freq))) * .5 + .5;
     			h += offset;
             	float3 d = p - h;
            		minDist = min(minDist, dot(d, d));

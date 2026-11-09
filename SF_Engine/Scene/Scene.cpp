@@ -25,10 +25,10 @@
 
 #include <Gui/ImGui/UIRegistry.hpp>
 #include <Scene/SceneManager.hpp>
-#include <utility>
 #include <cstring>
-#include <typeinfo>
 #include <tracy/Tracy.hpp>
+#include <typeinfo>
+#include <utility>
 
 namespace SF::Engine
 {
@@ -185,9 +185,8 @@ namespace SF::Engine
 
     void Scene::PopulateDefaults()
     {
-        AddLight("Sun", Lighting::LightType::Directional, {1.0f, 1.0f, 1.0f}, 3.0f, {0.0f, 5.0f, 0.0f},
-                 {0.0f, 0.0f, 0.0f});
-        AddLight("Point", Lighting::LightType::Point, {1, 1, 1}, 10.0, {0, 20, 0}, {0, 0, 0});
+        AddLight("Sun", Lighting::LightType::Directional, {1.0f, 1.0f, 1.0f}, 3.0f, {0.0f, 5.0f, 0.0f}, {});
+        AddLight("Point", Lighting::LightType::Point, {1, 1, 1}, 10.0, {0, 20, 0}, {});
 
         SceneObject *cube                                   = AddObject("Cube");
         cube->meshSourcePath                                = "__cube__";
@@ -262,7 +261,7 @@ namespace SF::Engine
         return ptr;
     }
 
-    SceneObject *Scene::AddObject(const std::string &name, Transform &transform, Entity *parent)
+    SceneObject *Scene::AddObject(const std::string &name, const Transform &transform, Entity *parent)
     {
         SceneObject *ptr = parent ? entities.CreateChildEntity<SceneObject>(parent, name)
                                   : entities.CreateEntity<SceneObject>(name);
@@ -276,8 +275,8 @@ namespace SF::Engine
         return ptr;
     }
 
-    SceneLight *Scene::AddLight(const std::string &name, Lighting::LightType type, const Vec3 &color, float intensity,
-                                const Vec3 &position, const Vec3 &rotation, Entity *parent)
+    SceneLight *Scene::AddLight(const string &name, Lighting::LightType type, const Vec3 &color, float intensity,
+                                const Vec3 &position, Rotation rotation, Entity *parent)
     {
         SceneLight *ptr =
                 parent ? entities.CreateChildEntity<SceneLight>(parent, name) : entities.CreateEntity<SceneLight>(name);
@@ -296,7 +295,7 @@ namespace SF::Engine
     }
 
     SceneLight *Scene::AddLight(const std::string &name, Lighting::LightType type, const Vec3 &color, float intensity,
-                                Transform &transform, Entity *parent)
+                                const Transform &transform, Entity *parent)
     {
         SceneLight *ptr =
                 parent ? entities.CreateChildEntity<SceneLight>(parent, name) : entities.CreateEntity<SceneLight>(name);
@@ -331,9 +330,9 @@ namespace SF::Engine
         for (Entity *e: subtree)
         {
             if (auto *obj = dynamic_cast<SceneObject *>(e))
-                objects_.erase(std::remove(objects_.begin(), objects_.end(), obj), objects_.end());
+                std::erase(objects_, obj);
             else if (auto *light = dynamic_cast<SceneLight *>(e))
-                lights_.erase(std::remove(lights_.begin(), lights_.end(), light), lights_.end());
+                std::erase(lights_, light);
         }
     }
 
@@ -368,7 +367,7 @@ namespace SF::Engine
             RemoveEntitySubtree(light);
     }
 
-    std::pair<int, int> Scene::FindParentRef(Entity *e, const IndexMap &idx)
+    std::pair<int, int> Scene::FindParentRef(const Entity *e, const IndexMap &idx)
     {
         // Walk up past plain (unserialized) entities to the nearest serialized ancestor,
         // so hierarchy survives a round trip instead of silently flattening to root.
@@ -416,25 +415,25 @@ namespace SF::Engine
         IndexMap idx;
         idx.reserve(objects_.size() + lights_.size());
         for (size_t i = 0; i < objects_.size(); i++)
-            idx[objects_[i]] = {1, (int) i};
+            idx[objects_[i]] = {1, static_cast<int>(i)};
         for (size_t i = 0; i < lights_.size(); i++)
-            idx[lights_[i]] = {2, (int) i};
+            idx[lights_[i]] = {2, static_cast<int>(i)};
 
-        for (size_t i = 0; i < objects_.size(); i++)
+        for (const auto object: objects_)
         {
             XMLNode n       = node.AddChild("Object");
-            auto [kind, pi] = FindParentRef(objects_[i], idx);
+            auto [kind, pi] = FindParentRef(object, idx);
             n.SetAttribute("parentKind", kind);
             n.SetAttribute("parentIndex", pi);
-            objects_[i]->Serialize(n);
+            object->Serialize(n);
         }
-        for (size_t i = 0; i < lights_.size(); i++)
+        for (const auto light: lights_)
         {
             XMLNode n       = node.AddChild("Light");
-            auto [kind, pi] = FindParentRef(lights_[i], idx);
+            auto [kind, pi] = FindParentRef(light, idx);
             n.SetAttribute("parentKind", kind);
             n.SetAttribute("parentIndex", pi);
-            lights_[i]->Serialize(n);
+            light->Serialize(n);
         }
     }
 
@@ -476,7 +475,7 @@ namespace SF::Engine
 
         for (XMLNode n: root.GetChildren("Object"))
         {
-            SceneObject *obj = entities.CreateEntity<SceneObject>(std::string()); // name set by Deserialize below
+            auto *obj = entities.CreateEntity<SceneObject>(string()); // name set by Deserialize below
             obj->Deserialize(n);
             if (initialized_) // GPU resources only once the renderer exists; Initialize() handles the rest
                 ResolveBuiltinMesh(obj);
@@ -491,7 +490,7 @@ namespace SF::Engine
 
         for (XMLNode n: root.GetChildren("Light"))
         {
-            SceneLight *light = entities.CreateEntity<SceneLight>(std::string());
+            auto *light = entities.CreateEntity<SceneLight>(string());
             light->Deserialize(n);
 
             int parentKind = 0, parentIndex = -1;
@@ -507,9 +506,9 @@ namespace SF::Engine
         for (auto &p: pending)
         {
             Entity *parent = nullptr;
-            if (p.kind == 1 && p.index >= 0 && p.index < (int) objects_.size())
+            if (p.kind == 1 && p.index >= 0 && p.index < static_cast<int>(objects_.size()))
                 parent = objects_[p.index];
-            else if (p.kind == 2 && p.index >= 0 && p.index < (int) lights_.size())
+            else if (p.kind == 2 && p.index >= 0 && p.index < static_cast<int>(lights_.size()))
                 parent = lights_[p.index];
 
             // Skip self-parenting and cycles from corrupt files.
@@ -526,7 +525,7 @@ namespace SF::Engine
         RebuildLightManager();
     }
 
-    bool Scene::SaveXML(const std::string &filename)
+    bool Scene::SaveXML(const std::string &filename) const
     {
         namespace fs = std::filesystem;
 
@@ -573,7 +572,7 @@ namespace SF::Engine
     Entity *Scene::GetEntity(const std::string &name) const { return entities.GetEntity(name); }
     Entity *Scene::GetEntity(const EntityId &id) { return entities.FindById(id); } // doesnt like const
     Entity *Scene::CreateEntity() { return entities.CreateEntity(); }
-    std::vector<Entity *> Scene::QueryAllEntities() { return entities.QueryAll(); }
+    std::vector<Entity *> Scene::QueryAllEntities() const { return entities.QueryAll(); }
 
     const ImageDepth *Scene::GetDepthTexture()
     {

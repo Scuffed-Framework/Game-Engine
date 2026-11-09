@@ -80,7 +80,7 @@ namespace SF::Engine
         float cloudBaseNoiseScale = 1.0f;
         float cloudCurlNoiseScale = 1.0f;
 
-        float cloudWeatherUVScale = 0.500f;
+        float cloudWeatherUVScale = 0.020f; // 1/km: one weather tile = 50 km
         float percipitationBias   = 1.0f;
         float FadeDistance2d      = 1.0f;
         float fadeSmoothDist      = 1.0f;
@@ -134,6 +134,13 @@ namespace SF::Engine
         bool firstFrame_           = true;
         // fahh
         unique_ptr<Image2d> dummyTexture_;
+
+        // Composite compute writes premultiplied cloud colour here; Render() blends it into "hdr".
+        // (Writing "hdr" from PreRender gets wiped by stage 1's render-pass clear.)
+        unique_ptr<Image2d> cloudCompositeRT_;
+        unique_ptr<RhiRenderPipeline> blitPipeline_;
+        unique_ptr<DescriptorSet> blitSet_;
+        bool drawThisFrame_ = false;
         size_t uiHandle;
     };
 

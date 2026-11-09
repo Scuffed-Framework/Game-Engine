@@ -38,7 +38,7 @@ namespace SF::Engine
                 }
             }
 
-            const VkSubpassDescription &GetSubpassDescription() const { return subpassDescription; }
+            [[nodiscard]] const VkSubpassDescription &GetSubpassDescription() const { return subpassDescription; }
 
         private:
             VkSubpassDescription subpassDescription = {};
@@ -51,7 +51,7 @@ namespace SF::Engine
         ~RhiRenderpass();
 
         operator const VkRenderPass &() const { return renderpass; }
-        const VkRenderPass &GetRenderpass() const { return renderpass; }
+        [[nodiscard]] const VkRenderPass &GetRenderpass() const { return renderpass; }
 
     private:
         const LogicalDevice &logicalDevice;

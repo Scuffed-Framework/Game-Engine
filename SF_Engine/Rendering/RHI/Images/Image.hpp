@@ -772,7 +772,7 @@ namespace SF::Engine
         }
     };
 
-    inline void BindStorageImage(DescriptorSet &ds, Image *img);
+    void BindStorageImage(DescriptorSet &ds, Image *img);
 
     inline void TransitionToGeneral(const CommandBuffer &cmd, Image2d *img)
     {

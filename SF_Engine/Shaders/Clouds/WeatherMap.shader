@@ -5,22 +5,28 @@ RWTexture2D<float4> outWeatherMap;
 
 cbuffer WeatherParams : register(b1)
 {
-    uint  resolution;      // e.g. 512-1024, this tiles across a huge world area
-    float coverageScale;   // frequency of the coverage blobs
-    float heightScale;     // usually << coverageScale, height varies more smoothly
-    float typeScale;       // lowest frequency of the three — whole regions share a type
-    float coverageBias;    // shifts overall coverage up/down, tune in your UI
+    uint  resolution;      // e.g. 512-1024; one tile of this map covers 1 / cloudWeatherUVScale km
+    float coverageScale;   // number of coverage cells across the tile (rounded to an integer so it tiles)
+    float heightScale;     // cells across the tile for height
+    float typeScale;       // cells across the tile for type (min 1)
+    float coverageBias;    // shifts overall coverage up/down
 };
 
-// Perlin-Worley FBM, same style as your PerlinWorleyNoiseLUT — reuse that noise
-// function directly rather than duplicating it here.
-float fbm(float2 p, int octaves)
+// Tileable 3-octave inverted-Worley FBM. `cells` must be an integer >= 1 so the pattern
+// wraps seamlessly across the texture. Raw output is NOT [0,1]: inverted squared-distance
+// Worley clusters around ~0.55..0.9, so callers must contrast-stretch (see stretch()).
+float worleyFbm2D(float2 uv, float cells, float z)
 {
-    float sum = 0.0, amp = 0.5, freq = 1.0;
-    sum += amp * PerlinWorleyFBM(float3(p * freq, 1), octaves);
-    freq *= 2.0;
-    amp *= 0.5;
-    return sum;
+    float c = max(1.0, round(cells));
+    return worleyNoise(float3(uv * c, z), c) * 0.625 +
+           worleyNoise(float3(uv * c * 2.0, z), c * 2.0) * 0.25 +
+           worleyNoise(float3(uv * c * 4.0, z), c * 4.0) * 0.125;
+}
+
+// Map the compressed raw range to a usable 0..1 spread (mean ~0.5), then bias.
+float stretch(float raw, float bias)
+{
+    return saturate((raw - 0.55) / 0.30 + bias);
 }
 
 [numthreads(8, 8, 1)]
@@ -30,19 +36,15 @@ void main(uint3 id : SV_DispatchThreadID)
 
     float2 uv = (float2(id.xy) + 0.5) / float(resolution);
 
-    // R: coverage — high-frequency FBM, worley-heavy for the round blobby clusters
-    // visible in your reference image. Erode toward zero so black gaps stay clear.
-    float coverage = fbm(uv * coverageScale, 5);
-    coverage = saturate(coverage + coverageBias);
-    coverage = pow(coverage, 1.4); // sharpen edges of the blobs vs a flat gradient
+    // R: coverage. Sharpen so there are real gaps and real dense clusters.
+    float coverage = stretch(worleyFbm2D(uv, coverageScale, 0.5), coverageBias);
+    coverage = pow(coverage, 1.4);
 
-    // G: height — much lower frequency than coverage, height doesn't jitter
-    // texel-to-texel the way coverage does, it varies over whole cloud systems.
-    float height = fbm(uv * heightScale, 3) * 0.5 + 0.5;
+    // G: height, lower frequency than coverage.
+    float height = stretch(worleyFbm2D(uv, heightScale, 0.25), 0.0);
 
-    // B: type — lowest frequency of all three. Large uniform regions of stratus
-    // vs cumulus, matching how whole weather fronts share a character.
-    float type = fbm(uv * typeScale, 2) * 0.5 + 0.5;
+    // B: type, lowest frequency. >0.5 selects the cumulus-leaning gradient.
+    float type = stretch(worleyFbm2D(uv, typeScale, 0.75), 0.0);
 
     outWeatherMap[id.xy] = float4(coverage, height, type, 1.0);
 }

@@ -25,7 +25,6 @@ void main(uint3 dispatchThreadID : SV_DispatchThreadID)
     // Get evaluate uv in full resolution.
     const float2 uv = (float2(fullResWorkPos) + float2(0.5f)) / float2(fullResSize);
 
-    // FIXED: Use the blue noise function you have available
     float blueNoise = BlueNoiseErrorDistrib(workPos.x, workPos.y, 0, 0u);
 
     // Offset retarget for new seeds each frame
@@ -35,12 +34,13 @@ void main(uint3 dispatchThreadID : SV_DispatchThreadID)
     offsetId.y = offsetId.y % texSize.y;
     float blueNoise2 = BlueNoiseErrorDistrib(offsetId.x, offsetId.y, 0, 0u);
 
-    float4 clipSpace = float4(uv.x * 2.0f - 1.0f, 1.0f - uv.y * 2.0f, 0.5, 1.0);
+    // Same unprojection as Composite.shader (reverse-z far plane).
+    // The old code divided by invProj[0][0]/[1][1] instead of multiplying, which skewed the
+    // vertical angle ~3x at 60deg FOV.
+    float4 clipSpace = float4(uv.x * 2.0f - 1.0f, 1.0f - uv.y * 2.0f, 0.0, 1.0);
     float4 viewPosH = mul(kAtmo.invProj, clipSpace);
-    float3 viewSpaceDir = normalize(float3(clipSpace.x / kAtmo.invProj[0][0],
-                                           clipSpace.y / kAtmo.invProj[1][1],
-                                           -1.0));
-    float3 rayDir = normalize(mul((float3x3)kAtmo.invView, viewSpaceDir));
+    float3 viewSpaceDir = viewPosH.xyz / viewPosH.w;
+    float3 rayDir = normalize(mul(kAtmo.invView, float4(viewSpaceDir, 0.0)).xyz);
 
     float depth = 0.0; // reverse z.
     float4 fogLighting = float4(0.0, 0.0, 0.0, 0.0);
