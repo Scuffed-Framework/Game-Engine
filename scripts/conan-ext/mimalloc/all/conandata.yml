@@ -1,0 +1,4 @@
+sources:
+  "3.6.1":
+    url: "https://github.com/microsoft/mimalloc/releases/download/v3.6.1/mimalloc-v3.6.1-source.tar.gz"
+    sha256: "7321fbe8e3d2bb447cba127603c44450db0d8ef35e8240bb4a56a7455eba0a68"

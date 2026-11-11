@@ -62,6 +62,7 @@ find_package(webm REQUIRED)
 find_package(OpenAPV REQUIRED)
 find_package(openh264 REQUIRED)
 find_package(TIFF REQUIRED)
+find_package(mimalloc REQUIRED)
 
 find_package(Tracy REQUIRED)
 
@@ -77,6 +78,15 @@ file(GLOB_RECURSE ENGINE_SOURCES CONFIGURE_DEPENDS
         "${CMAKE_CURRENT_SOURCE_DIR}/*.hpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/*.hxx"
 )
+
+set_source_files_properties(
+        SF_Engine/Gui/ImGui/ocornut/imgui_impl_vulkan.cpp
+        SF_Engine/Gui/ImGui/ocornut/imgui.cpp
+        SF_Engine/Gui/ImGui/ocornut/imgui_tables.cpp
+        SF_Engine/Gui/ImGui/ocornut/imgui_widgets.cpp
+        PROPERTIES COMPILE_OPTIONS "-Wno-sign-compare"
+)
+
 # Keep build output and generated files out of the glob.
 list(FILTER ENGINE_SOURCES EXCLUDE REGEX "/(build|cmake-build[^/]*|CMakeFiles)/")
 
@@ -257,7 +267,7 @@ target_link_libraries(SF_Engine PUBLIC
         openapv::openapv
         openh264::openh264
         TIFF::TIFF
-
+        mimalloc-static
         Tracy::TracyClient
 )
 

@@ -1,3 +1,6 @@
+// 0 = normal. 1 = ray dir, 2 = weather tex, 3 = base noise slice, 4 = cloudMap density at mid-layer
+// (x50; magenta = ray misses mid shell), 5 = kCloud (coverage, densityScale, steps/64), 6 = camera/radii sanity.
+#define CLOUD_DEBUG 0
 #include "Clouds/CloudCommon.si"
 #include "Noise/BlueNoise.si"
 
@@ -41,6 +44,35 @@ void main(uint3 dispatchThreadID : SV_DispatchThreadID)
     float4 viewPosH = mul(kAtmo.invProj, clipSpace);
     float3 viewSpaceDir = viewPosH.xyz / viewPosH.w;
     float3 rayDir = normalize(mul(kAtmo.invView, float4(viewSpaceDir, 0.0)).xyz);
+
+    #if CLOUD_DEBUG != 0
+    {
+        float3 dbg = float3(0.0, 0.0, 0.0);
+        float3 camP = kAtmo.cameraPos.xyz;
+#if CLOUD_DEBUG == 1
+        dbg = rayDir * 0.5 + 0.5;
+#elif CLOUD_DEBUG == 2
+        dbg = inWeatherTexture.SampleLevel(linearRepeatSampler, uv, 0).rgb;
+#elif CLOUD_DEBUG == 3
+        dbg = inBasicNoise.SampleLevel(linearRepeatSampler, float3(uv, 0.5), 0).xxx;
+#elif CLOUD_DEBUG == 4
+        float midR = 0.5 * (kCloud.cloudBottomRadius + kCloud.cloudTopRadius);
+        float tMid = raySphereIntersectInside(camP, rayDir, float3(0.0, 0.0, 0.0), midR);
+        if (tMid < 0.0)
+            dbg = float3(1.0, 0.0, 1.0);
+        else
+            dbg = cloudMap(camP + rayDir * tMid, 0.5).xxx * 50.0;
+#elif CLOUD_DEBUG == 5
+        dbg = float3(kCloud.cloudCoverage, kCloud.cloudDensityScale, kCloud.stepCount / 64.0);
+#elif CLOUD_DEBUG == 6
+        dbg = float3(camP.y / 6.4e6, length(camP) / 6.4e6, kCloud.cloudBottomRadius / 6.4e6);
+#endif
+        imageCloudRenderTexture[workPos] = float4(dbg, 1.0);
+        imageCloudDepthTexture[workPos] = float4(0.0, 0.0, 0.0, 0.0);
+        imageCloudFogRenderTexture[workPos] = float4(0.0, 0.0, 0.0, 1.0);
+        return;
+    }
+#endif
 
     float depth = 0.0; // reverse z.
     float4 fogLighting = float4(0.0, 0.0, 0.0, 0.0);

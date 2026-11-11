@@ -36,8 +36,6 @@ Switch to SDL, redo Windowing and Input
 4. undo & redo
 5. ideas for scene logo: world made of led dots, like the dot matrix splash screen
 
-
-
 #API Notes:
 Render() called on already active renderpass, PreRender() before active.
 Todo maybe: before feature-ssr merge, rename every SF:: to ScuffedFramework::

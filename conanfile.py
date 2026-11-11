@@ -30,6 +30,9 @@ class SfEngineConan(ConanFile):
     def requirements(self):
         android = self.settings.os == "Android"
 
+        # Memory
+        self.requires("mimalloc/3.6.1")
+
         # Audio
         self.requires("openal-soft/1.24.3")
         self.requires("opusfile/0.12")

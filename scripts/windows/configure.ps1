@@ -99,6 +99,7 @@ Write-Host "Using compiler: $($cl.Source)" -ForegroundColor DarkGray
 CreateConanPackage -path "openapv/all" -version "1.1.3.0"
 CreateConanPackage -path "SDL/all"     -version "3.4.18"
 CreateConanPackage -path "tracy/all"     -version "0.15"
+CreateConanPackage -path "mimalloc/all"     -version "3.6.1"
 
 Write-Host "==> Running conan install..." -ForegroundColor Cyan
 conan install . --profile=$conanProfile --build=missing
