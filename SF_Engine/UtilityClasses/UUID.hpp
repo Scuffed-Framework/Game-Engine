@@ -217,12 +217,7 @@ namespace SF::Engine
         // Check if null UUID (all zeros) - constexpr
         [[nodiscard]] constexpr bool IsNull() const
         {
-            for (auto byte: data)
-            {
-                if (byte != 0)
-                    return false;
-            }
-            return true;
+            return std::ranges::all_of(data, [](auto byte) { return byte == 0; });
         }
 
         // Convert to string (format: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)
@@ -272,7 +267,7 @@ namespace SF::Engine
         [[nodiscard]] std::string ToUpperString() const
         {
             auto str = ToString();
-            ranges::transform(str, str.begin(), ::toupper);
+            std::ranges::transform(str, str.begin(), ::toupper);
             return str;
         }
 
@@ -323,15 +318,12 @@ namespace SF::Engine
     constexpr auto UUID_Namespace_X500 = "6ba7b814-9dad-11d1-80b4-00c04fd430c8"_uuid;
 } // namespace SF::Engine
 
-namespace std
+template<>
+struct std::hash<SF::Engine::UUID>
 {
-    template<>
-    struct hash<SF::Engine::UUID>
+    size_t operator()(const SF::Engine::UUID &uuid) const noexcept
     {
-        size_t operator()(const SF::Engine::UUID &uuid) const noexcept
-        {
-            // Use the built-in Hash struct from UUID
-            return SF::Engine::UUID::Hash{}(uuid);
-        }
-    };
-} // namespace std
+        // Use the built-in Hash struct from UUID
+        return SF::Engine::UUID::Hash{}(uuid);
+    }
+}; // namespace std

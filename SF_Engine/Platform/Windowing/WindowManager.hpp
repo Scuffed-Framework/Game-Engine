@@ -7,7 +7,6 @@
 
 namespace SF::Engine
 {
-    using namespace std;
     /**
      * @brief Module used for managing a window.
      */
@@ -25,7 +24,7 @@ namespace SF::Engine
         const Window *GetWindow(WindowId id) const;
         Window *GetWindow(WindowId id);
 
-        const vector<unique_ptr<Monitor>> &GetMonitors() const { return monitors; };
+        const std::vector<std::unique_ptr<Monitor>> &GetMonitors() const { return monitors; };
 
         const Monitor *GetPrimaryMonitor() const;
 
@@ -59,11 +58,11 @@ namespace SF::Engine
          * Gets the Vulkan instance extensions SDL needs to create window surfaces.
          * The returned array is owned by SDL; do not free it.
          */
-        pair<const char *const *, uint32_t> GetInstanceExtensions() const;
+        std::pair<const char *const *, uint32_t> GetInstanceExtensions() const;
 
-        vector<unique_ptr<Window>> &GetWindows() { return windows; }
+        std::vector<std::unique_ptr<Window>> &GetWindows() { return windows; }
 
-        vector<unique_ptr<Monitor>> &GetMonitors() { return monitors; }
+        std::vector<std::unique_ptr<Monitor>> &GetMonitors() { return monitors; }
 
         void WaitEvents(int32_t timeoutMs = 100);
 
@@ -76,11 +75,11 @@ namespace SF::Engine
 
         static bool EventWatch(void *userdata, SDL_Event *event);
 
-        vector<unique_ptr<Window>> windows;
+        std::vector<std::unique_ptr<Window>> windows;
 
-        vector<unique_ptr<Monitor>> monitors;
+        std::vector<std::unique_ptr<Monitor>> monitors;
 
-        atomic<bool> inBackground{false};
+        std::atomic<bool> inBackground{false};
 
         rocket::signal<void(Window *, bool)> onAddWindow;
         rocket::signal<void(Monitor *, bool)> onMonitorConnect;

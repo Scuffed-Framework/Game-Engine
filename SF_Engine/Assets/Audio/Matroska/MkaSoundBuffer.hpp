@@ -3,7 +3,7 @@
 
 namespace SF::Engine
 {
-    using namespace std;
+
     class MkaSoundBuffer : public SoundBuffer::Registrar<MkaSoundBuffer>
     {
         inline static const bool Registered = Register(".mka");

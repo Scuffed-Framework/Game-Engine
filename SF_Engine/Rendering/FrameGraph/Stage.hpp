@@ -9,7 +9,7 @@
 
 namespace SF::Engine
 {
-    using namespace std;
+
     /**
      * @brief Class that represents an attachment in a renderpass.
      */
@@ -33,7 +33,7 @@ namespace SF::Engine
          * @param format The format that will be created (only applies to type ATTACHMENT_IMAGE).
          * @param clearColor The Color to clear to before rendering to it.
          */
-        RhiAttachment(uint32_t binding, string name, Type type, bool multisampled = false,
+        RhiAttachment(uint32_t binding, std::string name, Type type, bool multisampled = false,
                       VkFormat format = VK_FORMAT_R8G8B8A8_UNORM, const Color &clearColor = Color::Black) :
             binding(binding), name(std::move(name)), type(type), multisampled(multisampled), format(format),
             clearColor(clearColor)
@@ -41,7 +41,7 @@ namespace SF::Engine
         }
 
         [[nodiscard]] uint32_t GetBinding() const { return binding; }
-        [[nodiscard]] const string &GetName() const { return name; }
+        [[nodiscard]] const std::string &GetName() const { return name; }
         [[nodiscard]] Type GetType() const { return type; }
         [[nodiscard]] bool IsMultisampled() const { return multisampled; }
         [[nodiscard]] VkFormat GetFormat() const { return format; }
@@ -49,7 +49,7 @@ namespace SF::Engine
 
     private:
         uint32_t binding;
-        string name;
+        std::string name;
         Type type;
         bool multisampled;
         VkFormat format;
@@ -59,17 +59,17 @@ namespace SF::Engine
     class RhiSubpassType
     {
     public:
-        RhiSubpassType(uint32_t binding, vector<uint32_t> attachmentBindings) :
+        RhiSubpassType(uint32_t binding, std::vector<uint32_t> attachmentBindings) :
             binding(binding), attachmentBindings(move(attachmentBindings))
         {
         }
 
         [[nodiscard]] uint32_t GetBinding() const { return binding; }
-        [[nodiscard]] const vector<uint32_t> &GetAttachmentBindings() const { return attachmentBindings; }
+        [[nodiscard]] const std::vector<uint32_t> &GetAttachmentBindings() const { return attachmentBindings; }
 
     private:
         uint32_t binding;
-        vector<uint32_t> attachmentBindings;
+        std::vector<uint32_t> attachmentBindings;
     };
 
     class RhiRenderArea
@@ -110,15 +110,15 @@ namespace SF::Engine
         [[nodiscard]] const Vec2 &GetScale() const { return scale; }
         void SetScale(const Vec2 &scale) { this->scale = scale; }
 
-        [[nodiscard]] const optional<UVec2> &GetSize() const { return size; }
-        void SetSize(const optional<UVec2> &size) { this->size = size; }
+        [[nodiscard]] const std::optional<UVec2> &GetSize() const { return size; }
+        void SetSize(const std::optional<UVec2> &size) { this->size = size; }
 
         [[nodiscard]] const IVec2 &GetOffset() const { return offset; }
         void SetOffset(const IVec2 &offset) { this->offset = offset; }
 
     private:
         Vec2 scale = {1.0f, 1.0f};
-        optional<UVec2> size;
+        std::optional<UVec2> size;
         IVec2 offset{};
     };
 
@@ -127,7 +127,7 @@ namespace SF::Engine
         friend class RenderSystem;
 
     public:
-        explicit RhiRenderStage(vector<RhiAttachment> images = {}, vector<RhiSubpassType> subpasses = {},
+        explicit RhiRenderStage(std::vector<RhiAttachment> images = {}, std::vector<RhiSubpassType> subpasses = {},
                                 const RhiViewport &viewport = RhiViewport());
 
         void Update();
@@ -141,12 +141,12 @@ namespace SF::Engine
          */
         [[nodiscard]] UVec2 GetEffectiveExtent(const RhiSwapchain &swapchain) const;
 
-        [[nodiscard]] optional<RhiAttachment> GetAttachment(const string &name) const;
-        [[nodiscard]] optional<RhiAttachment> GetAttachment(uint32_t binding) const;
-        [[nodiscard]] const Descriptor *GetDescriptor(const string &name) const;
+        [[nodiscard]] std::optional<RhiAttachment> GetAttachment(const std::string &name) const;
+        [[nodiscard]] std::optional<RhiAttachment> GetAttachment(uint32_t binding) const;
+        [[nodiscard]] const Descriptor *GetDescriptor(const std::string &name) const;
         [[nodiscard]] const VkFramebuffer &GetActiveFramebuffer(uint32_t activeSwapchainImage) const;
-        [[nodiscard]] const vector<RhiAttachment> &GetAttachments() const { return attachments; }
-        [[nodiscard]] const vector<RhiSubpassType> &GetSubpasses() const { return subpasses; }
+        [[nodiscard]] const std::vector<RhiAttachment> &GetAttachments() const { return attachments; }
+        [[nodiscard]] const std::vector<RhiSubpassType> &GetSubpasses() const { return subpasses; }
 
         RhiViewport &GetViewport() { return viewport; }
         void SetViewport(const RhiViewport &viewport) { this->viewport = viewport; }
@@ -166,29 +166,29 @@ namespace SF::Engine
         [[nodiscard]] const RhiRenderpass *GetRenderpass() const { return renderpass.get(); }
         [[nodiscard]] const ImageDepth *GetDepthStencil() const { return depthStencil.get(); }
         [[nodiscard]] const Framebuffer *GetFramebuffer() const { return framebuffer.get(); }
-        [[nodiscard]] const vector<VkClearValue> &GetClearValues() const { return clearValues; }
+        [[nodiscard]] const std::vector<VkClearValue> &GetClearValues() const { return clearValues; }
         [[nodiscard]] uint32_t GetAttachmentCount(uint32_t subpass) const { return subpassAttachmentCount[subpass]; }
         [[nodiscard]] bool HasDepth() const { return depthAttachment.has_value(); }
         [[nodiscard]] bool HasSwapchain() const { return swapchainAttachment.has_value(); }
         [[nodiscard]] bool IsMultisampled(uint32_t subpass) const { return subpassMultisampled[subpass]; }
 
     private:
-        vector<RhiAttachment> attachments;
-        vector<RhiSubpassType> subpasses;
+        std::vector<RhiAttachment> attachments;
+        std::vector<RhiSubpassType> subpasses;
 
         RhiViewport viewport;
 
-        unique_ptr<RhiRenderpass> renderpass;
-        unique_ptr<ImageDepth> depthStencil;
-        unique_ptr<Framebuffer> framebuffer;
+        std::unique_ptr<RhiRenderpass> renderpass;
+        std::unique_ptr<ImageDepth> depthStencil;
+        std::unique_ptr<Framebuffer> framebuffer;
 
-        map<string, const Descriptor *> descriptors;
+        std::map<std::string, const Descriptor *> descriptors;
 
-        vector<VkClearValue> clearValues;
-        vector<uint32_t> subpassAttachmentCount;
-        optional<RhiAttachment> depthAttachment;
-        optional<RhiAttachment> swapchainAttachment;
-        vector<bool> subpassMultisampled;
+        std::vector<VkClearValue> clearValues;
+        std::vector<uint32_t> subpassAttachmentCount;
+        std::optional<RhiAttachment> depthAttachment;
+        std::optional<RhiAttachment> swapchainAttachment;
+        std::vector<bool> subpassMultisampled;
 
         RhiRenderArea renderArea;
         bool outOfDate = false;

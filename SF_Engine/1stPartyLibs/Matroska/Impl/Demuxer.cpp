@@ -5,51 +5,51 @@ namespace SF::Matroska
 {
     using namespace SF::EBML;
 
-    size_t Demuxer::tell_stream() const
+    std::size_t Demuxer::tell_stream() const
     {
         auto p = in_.tellg();
-        if (p == streampos(-1))
+        if (p == std::streampos(-1))
             return SIZE_MAX;
-        return static_cast<size_t>(static_cast<streamoff>(p));
+        return static_cast<std::size_t>(static_cast<std::streamoff>(p));
     }
 
     bool Demuxer::seek_stream(size_t offset) const
     {
         in_.clear();
-        in_.seekg(static_cast<streamoff>(offset), ios::beg);
+        in_.seekg(static_cast<std::streamoff>(offset), std::ios::beg);
         return in_.good();
     }
 
     size_t Demuxer::position() const { return tell_stream(); }
 
-    bool Demuxer::seek_to(size_t offset) const { return seek_stream(offset); }
+    bool Demuxer::seek_to(std::size_t offset) const { return seek_stream(offset); }
 
-    bool Demuxer::read_vint(span<const byte> data, size_t &pos, uint64_t &value, bool maskFirstBit)
+    bool Demuxer::read_vint(std::span<const byte> data, std::size_t &pos, std::uint64_t &value, bool maskFirstBit)
     {
         if (pos >= data.size())
             return false;
-        const uint8_t len = VintValidator::vint_length(data[pos]);
+        const std::uint8_t len = VintValidator::vint_length(data[pos]);
         if (len == 0 || len > kMaxVintLength || pos + len > data.size())
             return false;
 
-        uint64_t v = maskFirstBit ? (data[pos] & (0xFFu >> len)) : data[pos];
-        for (uint8_t i = 1; i < len; ++i)
+        std::uint64_t v = maskFirstBit ? (data[pos] & (0xFFu >> len)) : data[pos];
+        for (std::uint8_t i = 1; i < len; ++i)
             v = (v << 8) | data[pos + i];
         pos += len;
         value = v;
         return true;
     }
 
-    bool Demuxer::read_svint(span<const byte> data, size_t &pos, int64_t &value)
+    bool Demuxer::read_svint(std::span<const byte> data, std::size_t &pos, std::int64_t &value)
     {
         static constexpr int64_t kSub[] = {0x3fLL,        0x1fffLL,        0xfffffLL,        0x7ffffffLL,
                                            0x3ffffffffLL, 0x1ffffffffffLL, 0xffffffffffffLL, 0x7fffffffffffffLL};
-        const size_t start              = pos;
-        uint64_t v;
+        const std::size_t start         = pos;
+        std::uint64_t v;
         if (!read_vint(data, pos, v, true))
             return false;
-        const size_t len = pos - start;
-        value            = static_cast<int64_t>(v) - kSub[len - 1];
+        const std::size_t len = pos - start;
+        value                 = static_cast<std::int64_t>(v) - kSub[len - 1];
         return true;
     }
 
@@ -90,18 +90,18 @@ namespace SF::Matroska
 
     bool Demuxer::parse_ebml_header()
     {
-        auto readChunk = [&](size_t maxBytes) -> optional<Element>
+        auto readChunk = [&](size_t maxBytes) -> std::optional<Element>
         {
             // Read enough to cover the EBML header; growing window if needed.
             size_t window = 64;
-            vector<byte> buf;
+            std::vector<byte> buf;
             buf.reserve(window);
             while (buf.size() < maxBytes)
             {
                 size_t need = window - buf.size();
                 size_t cur  = buf.size();
                 buf.resize(window);
-                in_.read(reinterpret_cast<char *>(buf.data() + cur), static_cast<streamsize>(need));
+                in_.read(reinterpret_cast<char *>(buf.data() + cur), static_cast<std::streamsize>(need));
                 auto got = static_cast<size_t>(in_.gcount());
                 buf.resize(cur + got);
                 if (got == 0)
@@ -110,9 +110,9 @@ namespace SF::Matroska
                 {
                     auto result = parse_element(buf, schema_);
                     // Consume only the header bytes by seeking.
-                    size_t consumed = result.consumed;
+                    std::size_t consumed = result.consumed;
                     seek_stream(streamStart_ + consumed);
-                    ebmlHeaderBytes_.assign(buf.begin(), buf.begin() + consumed);
+                    ebmlHeaderBytes_.assign(buf.begin(), buf.begin() + static_cast<long>(consumed));
                     return result.element;
                 } catch (const ParseError &)
                 {
@@ -121,7 +121,7 @@ namespace SF::Matroska
                     window *= 2;
                 }
             }
-            return nullopt;
+            return std::nullopt;
         };
 
         auto ebml = readChunk(16 * 1024 * 1024);
@@ -136,15 +136,15 @@ namespace SF::Matroska
         if (pos == SIZE_MAX)
             return false;
 
-        vector<byte> buf;
+        std::vector<byte> buf;
         size_t window = 64;
         Element segment;
         while (buf.size() < 1024 * 1024)
         {
             buf.resize(window);
             in_.clear();
-            in_.seekg(static_cast<streamoff>(pos), ios::beg);
-            in_.read(reinterpret_cast<char *>(buf.data()), static_cast<streamsize>(window));
+            in_.seekg(static_cast<std::streamoff>(pos), std::ios::beg);
+            in_.read(reinterpret_cast<char *>(buf.data()), static_cast<std::streamsize>(window));
             auto got = static_cast<size_t>(in_.gcount());
             buf.resize(got);
             if (got < window)
@@ -155,14 +155,14 @@ namespace SF::Matroska
                 if (result.element.id() != ids::Segment)
                 {
                     in_.clear();
-                    in_.seekg(static_cast<streamoff>(pos), ios::beg);
+                    in_.seekg(static_cast<std::streamoff>(pos), std::ios::beg);
                     return false;
                 }
                 // segmentOffset_ = start of Segment's data.
                 segmentOffset_ = pos + result.element.id().encode().size() +
                                  encode_size(serialized_body_size(result.element)).size();
                 in_.clear();
-                in_.seekg(static_cast<streamoff>(segmentOffset_), ios::beg);
+                in_.seekg(static_cast<std::streamoff>(segmentOffset_), std::ios::beg);
                 return true;
             } catch (const ParseError &)
             {
@@ -190,15 +190,15 @@ namespace SF::Matroska
                     end = cueStart;
             }
 
-            vector<byte> buf;
+            std::vector<byte> buf;
             size_t window   = 64;
             bool progressed = false;
             while (buf.size() < 4 * 1024 * 1024)
             {
                 buf.resize(window);
                 in_.clear();
-                in_.seekg(static_cast<streamoff>(start), ios::beg);
-                in_.read(reinterpret_cast<char *>(buf.data()), static_cast<streamsize>(window));
+                in_.seekg(static_cast<std::streamoff>(start), std::ios::beg);
+                in_.read(reinterpret_cast<char *>(buf.data()), static_cast<std::streamsize>(window));
                 auto got = static_cast<size_t>(in_.gcount());
                 buf.resize(got);
                 if (got < window)
@@ -240,7 +240,7 @@ namespace SF::Matroska
                     {
                         // Done with metadata.
                         in_.clear();
-                        in_.seekg(static_cast<streamoff>(start), ios::beg);
+                        in_.seekg(static_cast<std::streamoff>(start), std::ios::beg);
                         return true;
                     } else if (e.id() == ids::Tags)
                         tagsPosition_ = static_cast<size_t>(start) - segmentOffset_;
@@ -255,7 +255,7 @@ namespace SF::Matroska
                     {
                         start += result.consumed;
                         in_.clear();
-                        in_.seekg(static_cast<streamoff>(start), ios::beg);
+                        in_.seekg(static_cast<std::streamoff>(start), std::ios::beg);
                         progressed = true;
                         break;
                     }
@@ -305,7 +305,7 @@ namespace SF::Matroska
                     }
                 }
             };
-            auto getString = [&](Identifier id, string &out)
+            auto getString = [&](Identifier id, std::string &out)
             {
                 if (auto *e = entry.find(id))
                 {
@@ -317,7 +317,7 @@ namespace SF::Matroska
                     }
                 }
             };
-            auto getBinary = [&](Identifier id, vector<byte> &out)
+            auto getBinary = [&](Identifier id, std::vector<byte> &out)
             {
                 if (auto *e = entry.find(id))
                 {
@@ -353,14 +353,14 @@ namespace SF::Matroska
 
             uint64_t defaultDur = 0;
             getUInt(ids::DefaultDuration, defaultDur);
-            track.defaultDuration = chrono::nanoseconds(defaultDur);
+            track.defaultDuration = std::chrono::nanoseconds(defaultDur);
             uint64_t codecDelay = 0, seekPreRoll = 0;
             getUInt(ids::CodecDelay, codecDelay);
             getUInt(ids::SeekPreRoll, seekPreRoll);
-            track.codecDelay  = chrono::nanoseconds(codecDelay);
-            track.seekPreRoll = chrono::nanoseconds(seekPreRoll);
+            track.codecDelay  = std::chrono::nanoseconds(codecDelay);
+            track.seekPreRoll = std::chrono::nanoseconds(seekPreRoll);
 
-            vector<byte> codecPrivate;
+            std::vector<byte> codecPrivate;
             getBinary(ids::CodecPrivate, codecPrivate);
 
             if (track.type == TrackType::Video)
@@ -546,16 +546,16 @@ namespace SF::Matroska
         return it == trackNumberToIndex_.end() ? -1 : static_cast<int>(it->second);
     }
 
-    optional<uint64_t> Demuxer::duration() const
+    std::optional<uint64_t> Demuxer::duration() const
     {
         // Duration is read during parse_info if present; we don't store it
         // here since nestegg's semantics are timecode-based, but we can
         // re-expose it via the Info element. For now, return nullopt; the
         // caller can inspect the Info element directly if needed.
-        return nullopt;
+        return std::nullopt;
     }
 
-    bool Demuxer::read_cluster(Element &cluster, optional<uint64_t> skipClustersBefore) const
+    bool Demuxer::read_cluster(Element &cluster, std::optional<std::uint64_t> skipClustersBefore) const
     {
         // Scan forward for the next Cluster element. We re-parse it as a
         // whole Master to get its children.
@@ -564,15 +564,15 @@ namespace SF::Matroska
             size_t start = tell_stream();
             if (start == SIZE_MAX)
                 return false;
-            vector<byte> buf;
+            std::vector<byte> buf;
             size_t window = 64;
             bool found    = false;
             while (buf.size() < 16 * 1024 * 1024)
             {
                 buf.resize(window);
                 in_.clear();
-                in_.seekg(static_cast<streamoff>(start), ios::beg);
-                in_.read(reinterpret_cast<char *>(buf.data()), static_cast<streamsize>(window));
+                in_.seekg(static_cast<std::streamoff>(start), std::ios::beg);
+                in_.read(reinterpret_cast<char *>(buf.data()), static_cast<std::streamsize>(window));
                 auto got = static_cast<size_t>(in_.gcount());
                 buf.resize(got);
                 if (got < window)
@@ -601,7 +601,7 @@ namespace SF::Matroska
                         {
                             start += result.consumed;
                             in_.clear();
-                            in_.seekg(static_cast<streamoff>(start), ios::beg);
+                            in_.seekg(static_cast<std::streamoff>(start), std::ios::beg);
                             found = false;
                             break; // re-scan
                         }
@@ -609,7 +609,7 @@ namespace SF::Matroska
                         // Advance the stream to the end of the cluster.
                         size_t endPos = start + result.consumed;
                         in_.clear();
-                        in_.seekg(static_cast<streamoff>(endPos), ios::beg);
+                        in_.seekg(static_cast<std::streamoff>(endPos), std::ios::beg);
                         return true;
                     } else if (result.element.id() == ids::Segment)
                     {
@@ -619,7 +619,7 @@ namespace SF::Matroska
                     // Other top-level element: skip past it.
                     start += result.consumed;
                     in_.clear();
-                    in_.seekg(static_cast<streamoff>(start), ios::beg);
+                    in_.seekg(static_cast<std::streamoff>(start), std::ios::beg);
                     found = false;
                     break;
                 } catch (const ParseError &)
@@ -634,8 +634,8 @@ namespace SF::Matroska
         }
     }
 
-    bool Demuxer::decode_lacing(LacingType lacing, span<const byte> data, size_t frameCount, vector<size_t> &frameSizes,
-                                size_t &consumed)
+    bool Demuxer::decode_lacing(LacingType lacing, std::span<const byte> data, std::size_t frameCount,
+                                std::vector<std::size_t> &frameSizes, size_t &consumed)
     {
         frameSizes.clear();
         frameSizes.resize(frameCount);
@@ -661,10 +661,10 @@ namespace SF::Matroska
 
             case LacingType::Xiph:
             {
-                uint64_t total = 0;
-                for (size_t i = 0; i + 1 < frameCount; ++i)
+                std::uint64_t total = 0;
+                for (std::size_t i = 0; i + 1 < frameCount; ++i)
                 {
-                    uint64_t size = 0;
+                    std::uint64_t size = 0;
                     while (true)
                     {
                         if (consumed >= data.size())
@@ -685,20 +685,20 @@ namespace SF::Matroska
 
             case LacingType::EBML:
             {
-                uint64_t firstSize;
+                std::uint64_t firstSize;
                 if (!read_vint(data, consumed, firstSize, true))
                     return false;
-                uint64_t total = firstSize;
-                frameSizes[0]  = static_cast<size_t>(firstSize);
-                for (size_t i = 1; i + 1 < frameCount; ++i)
+                std::uint64_t total = firstSize;
+                frameSizes[0]       = static_cast<size_t>(firstSize);
+                for (std::size_t i = 1; i + 1 < frameCount; ++i)
                 {
-                    int64_t delta;
+                    std::int64_t delta;
                     if (!read_svint(data, consumed, delta))
                         return false;
-                    int64_t size = static_cast<int64_t>(frameSizes[i - 1]) + delta;
+                    std::int64_t size = static_cast<int64_t>(frameSizes[i - 1]) + delta;
                     if (size < 0)
                         return false;
-                    frameSizes[i] = static_cast<size_t>(size);
+                    frameSizes[i] = static_cast<std::size_t>(size);
                     total += size;
                 }
                 if (consumed + total > data.size())
@@ -710,16 +710,17 @@ namespace SF::Matroska
         return false;
     }
 
-    bool Demuxer::parse_block(uint64_t blockId, span<const byte> payload, uint64_t clusterTimecode, Packet &packet)
+    bool Demuxer::parse_block(std::uint64_t blockId, std::span<const byte> payload, std::uint64_t clusterTimecode,
+                              Packet &packet)
     {
-        size_t pos = 0;
-        uint64_t trackNumber;
+        std::size_t pos = 0;
+        std::uint64_t trackNumber;
         if (!read_vint(payload, pos, trackNumber, true))
             return false;
         if (trackNumber == 0 || pos + 2 > payload.size())
             return false;
 
-        int16_t timecode = static_cast<int16_t>((static_cast<uint16_t>(payload[pos]) << 8) | payload[pos + 1]);
+        auto timecode = static_cast<int16_t>((static_cast<uint16_t>(payload[pos]) << 8) | payload[pos + 1]);
         pos += 2;
         if (pos >= payload.size())
             return false;
@@ -730,8 +731,8 @@ namespace SF::Matroska
         else
             packet.keyframe = KeyframeState::Unknown;
 
-        const uint8_t lacingBits = (flags >> 1) & 0x03;
-        const LacingType lacing  = static_cast<LacingType>(lacingBits);
+        const std::uint8_t lacingBits = (flags >> 1) & 0x03;
+        const auto lacing             = static_cast<LacingType>(lacingBits);
 
         size_t frameCount = 1;
         if (lacing != LacingType::None)
@@ -743,14 +744,14 @@ namespace SF::Matroska
                 return false;
         }
 
-        vector<size_t> frameSizes;
-        size_t lacingConsumed = 0;
+        std::vector<size_t> frameSizes;
+        std::size_t lacingConsumed = 0;
         if (!decode_lacing(lacing, payload.subspan(pos), frameCount, frameSizes, lacingConsumed))
             return false;
         pos += lacingConsumed;
 
         // Validate frame sizes against remaining bytes.
-        uint64_t sum = 0;
+        std::uint64_t sum = 0;
         for (auto s: frameSizes)
         {
             sum += s;
@@ -762,23 +763,24 @@ namespace SF::Matroska
         int idx            = find_track_index(trackNumber);
         if (idx < 0)
             return false;
-        packet.track          = static_cast<uint64_t>(idx);
-        const int64_t absTime = static_cast<int64_t>(clusterTimecode) + timecode;
-        packet.timecode       = absTime < 0 ? 0 : static_cast<uint64_t>(absTime);
+        packet.track          = static_cast<std::uint64_t>(idx);
+        const int64_t absTime = static_cast<std::int64_t>(clusterTimecode) + timecode;
+        packet.timecode       = absTime < 0 ? 0 : static_cast<std::uint64_t>(absTime);
 
         packet.frames.clear();
         packet.frames.reserve(frameCount);
-        for (size_t i = 0; i < frameCount; ++i)
+        for (std::size_t i = 0; i < frameCount; ++i)
         {
             Frame f;
-            f.data.assign(payload.begin() + pos, payload.begin() + pos + frameSizes[i]);
-            packet.frames.push_back(std::move(f));
+            f.data.assign(payload.begin() + static_cast<long>(pos),
+                          payload.begin() + static_cast<long>(pos) + static_cast<long>(frameSizes[i]));
+            packet.frames.push_back(f);
             pos += frameSizes[i];
         }
         return true;
     }
 
-    bool Demuxer::parse_block_additions(const span<const byte> payload, Packet &packet) const
+    bool Demuxer::parse_block_additions(const std::span<const byte> payload, Packet &packet) const
     {
         // Walk BlockAdditions -> repeated BlockMore -> BlockAddID, BlockAdditional.
         ElementList parsed;
@@ -811,7 +813,7 @@ namespace SF::Matroska
         return true;
     }
 
-    int Demuxer::read_packet(optional<Packet> &packet)
+    int Demuxer::read_packet(std::optional<Packet> &packet)
     {
         packet.reset();
         if (!headersParsed_)
@@ -821,18 +823,18 @@ namespace SF::Matroska
         // for either a Cluster or a Block/SimpleBlock directly.
         while (true)
         {
-            size_t start = tell_stream();
+            std::size_t start = tell_stream();
             if (start == SIZE_MAX)
                 return -1;
-            vector<byte> buf;
-            size_t window   = 64;
-            bool progressed = false;
+            std::vector<byte> buf;
+            std::size_t window = 64;
+            bool progressed    = false;
             while (buf.size() < 32 * 1024 * 1024)
             {
                 buf.resize(window);
                 in_.clear();
-                in_.seekg(static_cast<streamoff>(start), ios::beg);
-                in_.read(reinterpret_cast<char *>(buf.data()), static_cast<streamsize>(window));
+                in_.seekg(static_cast<std::streamoff>(start), std::ios::beg);
+                in_.read(reinterpret_cast<char *>(buf.data()), static_cast<std::streamsize>(window));
                 auto got = static_cast<size_t>(in_.gcount());
                 buf.resize(got);
                 if (got < window)
@@ -861,7 +863,7 @@ namespace SF::Matroska
                             // Timecode is mandatory. Treat as error.
                             start += result.consumed;
                             in_.clear();
-                            in_.seekg(static_cast<streamoff>(start), ios::beg);
+                            in_.seekg(static_cast<std::streamoff>(start), std::ios::beg);
                             progressed = true;
                             break;
                         }
@@ -881,7 +883,7 @@ namespace SF::Matroska
                                 // Position the stream just past this cluster.
                                 size_t endPos = start + result.consumed;
                                 in_.clear();
-                                in_.seekg(static_cast<streamoff>(endPos), ios::beg);
+                                in_.seekg(static_cast<std::streamoff>(endPos), std::ios::beg);
                                 return 1;
                             } else if (child.id() == ids::BlockGroup)
                             {
@@ -932,7 +934,7 @@ namespace SF::Matroska
                                     packet        = std::move(pkt);
                                     size_t endPos = start + result.consumed;
                                     in_.clear();
-                                    in_.seekg(static_cast<streamoff>(endPos), ios::beg);
+                                    in_.seekg(static_cast<std::streamoff>(endPos), std::ios::beg);
                                     return 1;
                                 }
                             }
@@ -940,7 +942,7 @@ namespace SF::Matroska
                         // No block found in this cluster; std::move on.
                         start += result.consumed;
                         in_.clear();
-                        in_.seekg(static_cast<streamoff>(start), ios::beg);
+                        in_.seekg(static_cast<std::streamoff>(start), std::ios::beg);
                         progressed = true;
                         break;
                     } else if (e.id() == ids::SimpleBlock || e.id() == ids::BlockGroup)
@@ -996,12 +998,12 @@ namespace SF::Matroska
                             packet        = std::move(pkt);
                             size_t endPos = start + result.consumed;
                             in_.clear();
-                            in_.seekg(static_cast<streamoff>(endPos), ios::beg);
+                            in_.seekg(static_cast<std::streamoff>(endPos), std::ios::beg);
                             return 1;
                         }
                         start += result.consumed;
                         in_.clear();
-                        in_.seekg(static_cast<streamoff>(start), ios::beg);
+                        in_.seekg(static_cast<std::streamoff>(start), std::ios::beg);
                         progressed = true;
                         break;
                     } else if (e.id() == ids::Timecode)
@@ -1017,7 +1019,7 @@ namespace SF::Matroska
                         }
                         start += result.consumed;
                         in_.clear();
-                        in_.seekg(static_cast<streamoff>(start), ios::beg);
+                        in_.seekg(static_cast<std::streamoff>(start), std::ios::beg);
                         progressed = true;
                         break;
                     } else if (e.id() == EBML::ids::EBML || e.id() == ids::Segment || e.id() == ids::Info ||
@@ -1026,7 +1028,7 @@ namespace SF::Matroska
                         // Metadata in the middle of the stream: skip.
                         start += result.consumed;
                         in_.clear();
-                        in_.seekg(static_cast<streamoff>(start), ios::beg);
+                        in_.seekg(static_cast<std::streamoff>(start), std::ios::beg);
                         progressed = true;
                         break;
                     } else if (e.id() == ids::Cues || e.id() == ids::Tags || e.id() == ids::Chapters ||
@@ -1034,7 +1036,7 @@ namespace SF::Matroska
                     {
                         start += result.consumed;
                         in_.clear();
-                        in_.seekg(static_cast<streamoff>(start), ios::beg);
+                        in_.seekg(static_cast<std::streamoff>(start), std::ios::beg);
                         progressed = true;
                         break;
                     } else
@@ -1042,7 +1044,7 @@ namespace SF::Matroska
                         // Unknown top-level element: skip.
                         start += result.consumed;
                         in_.clear();
-                        in_.seekg(static_cast<streamoff>(start), ios::beg);
+                        in_.seekg(static_cast<std::streamoff>(start), std::ios::beg);
                         progressed = true;
                         break;
                     }
@@ -1051,7 +1053,7 @@ namespace SF::Matroska
                     if (window > 32 * 1024 * 1024)
                     {
                         in_.clear();
-                        in_.seekg(static_cast<streamoff>(start), ios::beg);
+                        in_.seekg(static_cast<std::streamoff>(start), std::ios::beg);
                         if (!in_.good())
                             return 0; // EOF
                         return -1;
@@ -1065,7 +1067,7 @@ namespace SF::Matroska
                 return 0;
             }
             // Check for EOF after skipping.
-            if (in_.peek() == char_traits<char>::eof())
+            if (in_.peek() == std::char_traits<char>::eof())
                 return 0;
         }
     }
@@ -1075,14 +1077,14 @@ namespace SF::Matroska
     {
         if (!seek_stream(segmentOffset_ + segmentRelativeOffset))
             return false;
-        vector<byte> buf;
+        std::vector<byte> buf;
         size_t window = 64;
         while (buf.size() < 16 * 1024 * 1024)
         {
             buf.resize(window);
             in_.clear();
-            in_.seekg(static_cast<streamoff>(segmentOffset_ + segmentRelativeOffset), ios::beg);
-            in_.read(reinterpret_cast<char *>(buf.data()), static_cast<streamsize>(window));
+            in_.seekg(static_cast<std::streamoff>(segmentOffset_ + segmentRelativeOffset), std::ios::beg);
+            in_.read(reinterpret_cast<char *>(buf.data()), static_cast<std::streamsize>(window));
             auto got = static_cast<size_t>(in_.gcount());
             buf.resize(got);
             if (got < window)
@@ -1112,8 +1114,8 @@ namespace SF::Matroska
         if (!cues_.empty())
         {
             // Cues are sorted by timecode. Find the largest cue <= tstamp.
-            auto it = ranges::upper_bound(cues_, make_pair(tstamp, static_cast<uint64_t>(-1)),
-                                          [](const auto &a, const auto &b) { return a.first < b.first; });
+            auto it = std::ranges::upper_bound(cues_, std::make_pair(tstamp, static_cast<uint64_t>(-1)),
+                                               [](const auto &a, const auto &b) { return a.first < b.first; });
             if (it != cues_.begin())
                 --it;
             return seek_stream(segmentOffset_ + it->second);

@@ -6,8 +6,8 @@
 
 #include <cstring>
 
-#include <tracy/Tracy.hpp>
 #include <Platform/Windowing/WindowManager.hpp>
+#include <tracy/Tracy.hpp>
 #include "SharedSamplers.hpp"
 
 #include <Rendering/Camera/Camera.hpp>
@@ -17,12 +17,15 @@
 namespace SF::Engine
 {
     RenderSystem::RenderSystem() :
-        instance(make_unique<Instance>()), physicalDevice(make_unique<PhysicalDevice>(*instance)),
-        logicalDevice(make_unique<LogicalDevice>(*instance, *physicalDevice)), elapsedPurge(5s)
+        instance(std::make_unique<Instance>()), physicalDevice(std::make_unique<PhysicalDevice>(*instance)),
+        logicalDevice(std::make_unique<LogicalDevice>(*instance, *physicalDevice)), elapsedPurge(5s)
     {
         WindowManager::Get()->OnAddWindow().connect(
                 [this](Window *window, bool)
-                { surfaces.emplace_back(make_unique<Surface>(*instance, *physicalDevice, *logicalDevice, *window)); });
+                {
+                    surfaces.emplace_back(
+                            std::make_unique<Surface>(*instance, *physicalDevice, *logicalDevice, *window));
+                });
 
         VmaAllocatorCreateInfo allocatorCreateInfo = {};
         allocatorCreateInfo.vulkanApiVersion       = VK_API_VERSION_1_2;
@@ -37,7 +40,7 @@ namespace SF::Engine
 
         Log::Info("Creating VMA allocator");
         if (const VkResult vmaResult = vmaCreateAllocator(&allocatorCreateInfo, &alloc); vmaResult != VK_SUCCESS)
-            throw runtime_error("Failed to create VMA allocator: " + StrVkResult(vmaResult));
+            throw std::runtime_error("Failed to create VMA allocator: " + StrVkResult(vmaResult));
         Log::Info("VMA allocator created");
 
         CreatePipelineCache();
@@ -48,8 +51,8 @@ namespace SF::Engine
     void RenderSystem::PostInit()
     {
         SharedSamplers::CreateSamplers();
-        bindlessMgr = make_unique<BindlessManager>();
-        config      = make_unique<SMARTRenderSystemConfig>();
+        bindlessMgr = std::make_unique<BindlessManager>();
+        config      = std::make_unique<SMARTRenderSystemConfig>();
         CreateSharedCameraBuffer();
         AtmoLUTs::Init();
     }
@@ -182,9 +185,9 @@ namespace SF::Engine
             VkResult acquireResult;
             {
                 ZoneScopedN("AcquireNextImage");
-                acquireResult = swapchain->AcquireNextImage(
-                        perSurfaceBuffer->presentCompletes[perSurfaceBuffer->currentFrame],
-                        perSurfaceBuffer->flightFences[perSurfaceBuffer->currentFrame]);
+                acquireResult =
+                        swapchain->AcquireNextImage(perSurfaceBuffer->presentCompletes[perSurfaceBuffer->currentFrame],
+                                                    perSurfaceBuffer->flightFences[perSurfaceBuffer->currentFrame]);
             }
 
             static int s_consecutiveTimeouts = 0;
@@ -309,7 +312,7 @@ namespace SF::Engine
         }
     }
 
-    string RenderSystem::StrVkResult(const VkResult result)
+    std::string RenderSystem::StrVkResult(const VkResult result)
     {
         switch (result)
         {
@@ -380,10 +383,10 @@ namespace SF::Engine
             _Exit(EXIT_FAILURE);
         }
 
-        throw runtime_error("Vulkan error: " + StrVkResult(result));
+        throw std::runtime_error("Vulkan error: " + StrVkResult(result));
     }
 
-    void RenderSystem::CaptureScreenshot(const filesystem::path &filename, const size_t surfaceId) const
+    void RenderSystem::CaptureScreenshot(const std::filesystem::path &filename, const size_t surfaceId) const
     {
         auto size = WindowManager::Get()->GetWindow(0)->GetSize();
 
@@ -400,7 +403,7 @@ namespace SF::Engine
         VkSubresourceLayout dstSubresourceLayout{};
         vkGetImageSubresourceLayout(*logicalDevice, dstImage, &imageSubresource, &dstSubresourceLayout);
 
-        Bitmap bitmap(make_unique<uint8_t[]>(dstSubresourceLayout.size), size);
+        Bitmap bitmap(std::make_unique<uint8_t[]>(dstSubresourceLayout.size), size);
 
         void *data = nullptr;
         vmaMapMemory(alloc, dstImageMemory, &data);
@@ -420,14 +423,14 @@ namespace SF::Engine
         return nullptr;
     }
 
-    const Descriptor *RenderSystem::GetAttachment(const string &name) const
+    const Descriptor *RenderSystem::GetAttachment(const std::string &name) const
     {
         if (const auto it = attachments.find(name); it != attachments.end())
             return it->second;
         return nullptr;
     }
 
-    const shared_ptr<CommandPool> &RenderSystem::GetCommandPool(const thread::id &threadId)
+    const std::shared_ptr<CommandPool> &RenderSystem::GetCommandPool(const std::thread::id &threadId)
     {
         if (const auto it = commandPools.find(threadId); it != commandPools.end())
             return it->second;
@@ -480,8 +483,8 @@ namespace SF::Engine
         perSurfaceBuffers.resize(surfaces.size());
         for (const auto [id, surface]: Enumerate(surfaces))
         {
-            swapchains[id] = make_unique<RhiSwapchain>(*physicalDevice, *surface, *logicalDevice, displayExtent,
-                                                       swapchains[id].get());
+            swapchains[id] = std::make_unique<RhiSwapchain>(*physicalDevice, *surface, *logicalDevice, displayExtent,
+                                                            swapchains[id].get());
 
             // Explicitly destroy semaphores and fences before replacing the buffer set.
             // Simply assigning a new PerSurfaceBuffers leaks them because the Vulkan
@@ -501,7 +504,7 @@ namespace SF::Engine
                 psb.commandBuffers.clear();
             }
 
-            perSurfaceBuffers[id] = make_unique<PerSurfaceBuffers>();
+            perSurfaceBuffers[id] = std::make_unique<PerSurfaceBuffers>();
             RecreateCommandBuffers(id);
         }
 
@@ -539,7 +542,7 @@ namespace SF::Engine
             CheckVkResult(vkCreateSemaphore(*logicalDevice, &semaphoreCreateInfo, nullptr,
                                             &perSurfaceBuffer->renderCompletes[i]));
             CheckVkResult(vkCreateFence(*logicalDevice, &fenceCreateInfo, nullptr, &perSurfaceBuffer->flightFences[i]));
-            perSurfaceBuffer->commandBuffers[i] = make_unique<CommandBuffer>(false);
+            perSurfaceBuffer->commandBuffers[i] = std::make_unique<CommandBuffer>(false);
         }
     }
 
@@ -559,7 +562,7 @@ namespace SF::Engine
             // passed in; RecreatePass may be invoked with any stage as the
             // trigger, and that stage might not be the one that owns swapchain.
             const bool anyStageHasSwapchain =
-                    ranges::any_of(renderer->renderStages, [](const auto &rs) { return rs->HasSwapchain(); });
+                    std::ranges::any_of(renderer->renderStages, [](const auto &rs) { return rs->HasSwapchain(); });
 
             if (anyStageHasSwapchain && (psb->framebufferResized || !swapchain->IsSameExtent(displayExtent)))
             {

@@ -1,5 +1,6 @@
 #pragma once
 #include <Assets/Bitmaps/Bitmap.hpp>
+#include <cstring>
 #include <filesystem>
 #include <libraw/libraw.h>
 #include <memory>

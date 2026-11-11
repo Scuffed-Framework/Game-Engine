@@ -6,7 +6,7 @@
 
 namespace SF::Engine
 {
-    static const vector<VkCompositeAlphaFlagBitsKHR> COMPOSITE_ALPHA_FLAGS = {
+    static const std::vector<VkCompositeAlphaFlagBitsKHR> COMPOSITE_ALPHA_FLAGS = {
             VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
             VK_COMPOSITE_ALPHA_PRE_MULTIPLIED_BIT_KHR,
             VK_COMPOSITE_ALPHA_POST_MULTIPLIED_BIT_KHR,
@@ -18,7 +18,7 @@ namespace SF::Engine
                                const RhiSwapchain *oldSwapchain) :
         physicalDevice(physicalDevice), surface(surface), logicalDevice(logicalDevice), extent(extent),
         presentMode(VK_PRESENT_MODE_FIFO_KHR), preTransform(VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR),
-        compositeAlpha(VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR), activeImageIndex(numeric_limits<uint32_t>::max())
+        compositeAlpha(VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR), activeImageIndex(std::numeric_limits<uint32_t>::max())
     {
         auto surfaceFormat       = surface.GetFormat();
         auto surfaceCapabilities = surface.GetCapabilities();
@@ -28,7 +28,7 @@ namespace SF::Engine
         uint32_t physicalPresentModeCount;
         vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice.GetPhysicalDevice(), surface,
                                                   &physicalPresentModeCount, nullptr);
-        vector<VkPresentModeKHR> physicalPresentModes(physicalPresentModeCount);
+        std::vector<VkPresentModeKHR> physicalPresentModes(physicalPresentModeCount);
         vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice.GetPhysicalDevice(), surface,
                                                   &physicalPresentModeCount, physicalPresentModes.data());
 
@@ -73,15 +73,15 @@ namespace SF::Engine
 
         // Clamp extent to what the surface actually supports.
         // If currentExtent is not 0xFFFFFFFF the driver mandates a specific size.
-        if (surfaceCapabilities.currentExtent.width != numeric_limits<uint32_t>::max())
+        if (surfaceCapabilities.currentExtent.width != std::numeric_limits<uint32_t>::max())
         {
             this->extent = surfaceCapabilities.currentExtent;
         } else
         {
-            this->extent.width  = clamp(this->extent.width, surfaceCapabilities.minImageExtent.width,
-                                        surfaceCapabilities.maxImageExtent.width);
-            this->extent.height = clamp(this->extent.height, surfaceCapabilities.minImageExtent.height,
-                                        surfaceCapabilities.maxImageExtent.height);
+            this->extent.width  = std::clamp(this->extent.width, surfaceCapabilities.minImageExtent.width,
+                                             surfaceCapabilities.maxImageExtent.width);
+            this->extent.height = std::clamp(this->extent.height, surfaceCapabilities.minImageExtent.height,
+                                             surfaceCapabilities.maxImageExtent.height);
         }
 
         VkSwapchainCreateInfoKHR swapchainCreateInfo = {};
@@ -111,7 +111,7 @@ namespace SF::Engine
 
         if (RenderSystemFamily != presentFamily)
         {
-            array queueFamily                         = {RenderSystemFamily, presentFamily};
+            std::array queueFamily                    = {RenderSystemFamily, presentFamily};
             swapchainCreateInfo.imageSharingMode      = VK_SHARING_MODE_CONCURRENT;
             swapchainCreateInfo.queueFamilyIndexCount = static_cast<uint32_t>(queueFamily.size());
             swapchainCreateInfo.pQueueFamilyIndices   = queueFamily.data();
@@ -195,14 +195,14 @@ namespace SF::Engine
             }
         }
 
-        const auto acquireResult = vkAcquireNextImageKHR(logicalDevice, swapchain, numeric_limits<uint64_t>::max(),
+        const auto acquireResult = vkAcquireNextImageKHR(logicalDevice, swapchain, std::numeric_limits<uint64_t>::max(),
                                                          presentCompleteSemaphore, VK_NULL_HANDLE, &activeImageIndex);
 
         if (acquireResult == VK_ERROR_OUT_OF_DATE_KHR || acquireResult == VK_SUBOPTIMAL_KHR)
             return acquireResult;
 
         if (acquireResult != VK_SUCCESS)
-            throw runtime_error("Failed to acquire swapchain image");
+            throw std::runtime_error("Failed to acquire swapchain image");
 
         if (fence != VK_NULL_HANDLE)
             RenderSystem::CheckVkResult(vkResetFences(logicalDevice, 1, &fence));

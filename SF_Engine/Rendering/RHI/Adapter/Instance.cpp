@@ -10,7 +10,7 @@
 
 namespace SF::Engine
 {
-    const vector<const char *> Instance::ValidationLayers = {
+    const std::vector<const char *> Instance::ValidationLayers = {
             "VK_LAYER_KHRONOS_validation"}; // "VK_LAYER_RENDERDOC_Capture"
 
     VKAPI_ATTR VkBool32 VKAPI_CALL CallbackDebug(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
@@ -75,7 +75,7 @@ namespace SF::Engine
             }
         }
 
-        throw runtime_error("Couldn't find a proper memory type");
+        throw std::runtime_error("Couldn't find a proper memory type");
     }
 
     Instance::Instance()
@@ -96,7 +96,7 @@ namespace SF::Engine
     {
         uint32_t instanceLayerPropertyCount;
         vkEnumerateInstanceLayerProperties(&instanceLayerPropertyCount, nullptr);
-        vector<VkLayerProperties> instanceLayerProperties(instanceLayerPropertyCount);
+        std::vector<VkLayerProperties> instanceLayerProperties(instanceLayerPropertyCount);
         vkEnumerateInstanceLayerProperties(&instanceLayerPropertyCount, instanceLayerProperties.data());
 
         LogVulkanLayers(instanceLayerProperties);
@@ -124,12 +124,12 @@ namespace SF::Engine
         return true;
     }
 
-    vector<const char *> Instance::GetExtensions() const
+    std::vector<const char *> Instance::GetExtensions() const
     {
         // Sets up the extensions.
         auto [Extensions, ExtensionsCount] = WindowManager::Get()->GetInstanceExtensions();
 
-        vector<const char *> extensions(Extensions, Extensions + ExtensionsCount);
+        std::vector<const char *> extensions(Extensions, Extensions + ExtensionsCount);
 
         if (validationLayersEnabled)
         {
@@ -213,9 +213,9 @@ namespace SF::Engine
                 CreateDebugMessenger(instance, &debugUtilsMessengerCreateInfo, nullptr, &debugMessenger));
     }
 
-    void Instance::LogVulkanLayers(const vector<VkLayerProperties> &layerProperties)
+    void Instance::LogVulkanLayers(const std::vector<VkLayerProperties> &layerProperties)
     {
-        stringstream ss;
+        std::stringstream ss;
         ss << "Instance Layers: ";
         for (const auto &layer: layerProperties)
             ss << layer.layerName << ", ";

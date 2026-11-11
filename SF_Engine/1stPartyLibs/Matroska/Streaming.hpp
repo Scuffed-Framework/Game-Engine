@@ -47,46 +47,46 @@ namespace SF::Matroska
     class StreamingWriter
     {
     private:
-        ostream &out_;
+        std::ostream &out_;
         Timestamp timestamp_;
 
         // Track positions for seeking
         struct SeekEntry
         {
-            uint64_t id;     // id of the element this entry points at
-            size_t position; // absolute offset in the stream of the 8-byte SeekPosition payload
+            std::uint64_t id;     // id of the element this entry points at
+            std::size_t position; // absolute offset in the stream of the 8-byte SeekPosition payload
         };
-        vector<SeekEntry> seekEntries_;
+        std::vector<SeekEntry> seekEntries_;
 
         // Absolute offset of the first occurrence of every element id written through
         // begin_unknown / write_element. Used to resolve seek entries.
-        unordered_map<uint64_t, size_t> elementPositions_;
+        std::unordered_map<std::uint64_t, std::size_t> elementPositions_;
         // Absolute offset of the first byte of the Segment's data. SeekPosition values
         // are relative to this.
-        optional<size_t> segmentDataStart_;
+        std::optional<std::size_t> segmentDataStart_;
 
         struct UnknownElement
         {
-            size_t startPos = 0;
+            std::size_t startPos = 0;
             Identifier id;
-            vector<byte> idBytes;
-            vector<byte> sizeBytes;
+            std::vector<byte> idBytes;
+            std::vector<byte> sizeBytes;
             bool hasCRC32 = false;
-            vector<byte> crcBuffer;
+            std::vector<byte> crcBuffer;
         };
-        vector<UnknownElement> unknownStack_;
+        std::vector<UnknownElement> unknownStack_;
 
         // File position tracking
         size_t currentPosition_ = 0;
         size_t clusterCount_    = 0;
 
     public:
-        explicit StreamingWriter(ostream &out) : out_(out)
+        explicit StreamingWriter(std::ostream &out) : out_(out)
         {
             // Start from wherever the stream already is so recorded offsets are absolute.
-            const streampos p = out_.tellp();
-            if (p != streampos(-1))
-                currentPosition_ = static_cast<size_t>(static_cast<streamoff>(p));
+            const std::streampos p = out_.tellp();
+            if (p != std::streampos(-1))
+                currentPosition_ = static_cast<size_t>(static_cast<std::streamoff>(p));
         }
 
         size_t tell() const { return currentPosition_; }
@@ -105,9 +105,9 @@ namespace SF::Matroska
 
             // Write ID and unknown size
             out_.write(reinterpret_cast<const char *>(elem.idBytes.data()),
-                       static_cast<streamsize>(elem.idBytes.size()));
+                       static_cast<std::streamsize>(elem.idBytes.size()));
             out_.write(reinterpret_cast<const char *>(elem.sizeBytes.data()),
-                       static_cast<streamsize>(elem.sizeBytes.size()));
+                       static_cast<std::streamsize>(elem.sizeBytes.size()));
             currentPosition_ += elem.idBytes.size() + elem.sizeBytes.size();
 
             if (id.value() == ids::Segment.value() && !segmentDataStart_)
@@ -119,7 +119,7 @@ namespace SF::Matroska
         void end_unknown()
         {
             if (unknownStack_.empty())
-                throw runtime_error("No unknown-size element to close");
+                throw std::runtime_error("No unknown-size element to close");
 
             auto &elem = unknownStack_.back();
 
@@ -130,7 +130,7 @@ namespace SF::Matroska
                 uint32_t crc = crc32(elem.crcBuffer);
 
                 // Build CRC32 element
-                vector<byte> crcBytes = {
+                std::vector<byte> crcBytes = {
                         static_cast<byte>(crc & 0xFF),
                         static_cast<byte>((crc >> 8) & 0xFF),
                         static_cast<byte>((crc >> 16) & 0xFF),
@@ -142,7 +142,8 @@ namespace SF::Matroska
                 // Seek back to after the ID and size
                 // But we need to insert CRC32 at the beginning, which requires shifting
                 // This is complex - for now, we'll write it at the end
-                out_.write(reinterpret_cast<const char *>(crcData.data()), static_cast<streamsize>(crcData.size()));
+                out_.write(reinterpret_cast<const char *>(crcData.data()),
+                           static_cast<std::streamsize>(crcData.size()));
                 currentPosition_ += crcData.size();
 
                 elem.crcBuffer.clear();
@@ -159,7 +160,7 @@ namespace SF::Matroska
                 segmentDataStart_ = start + payload_offset(element);
 
             auto bytes = serialize(element);
-            out_.write(reinterpret_cast<const char *>(bytes.data()), static_cast<streamsize>(bytes.size()));
+            out_.write(reinterpret_cast<const char *>(bytes.data()), static_cast<std::streamsize>(bytes.size()));
             currentPosition_ += bytes.size();
 
             // Accumulate for CRC32 if needed
@@ -215,13 +216,13 @@ namespace SF::Matroska
         // Overwrites already-written bytes at an absolute stream offset (e.g. a fixed-size
         // placeholder such as Info/Duration), then restores the write position.
         // Returns false if the stream isn't seekable or the write failed.
-        bool patch_bytes(size_t position, span<const byte> bytes) const
+        bool patch_bytes(size_t position, std::span<const byte> bytes) const
         {
-            const streampos resume = out_.tellp();
-            if (resume == streampos(-1))
+            const std::streampos resume = out_.tellp();
+            if (resume == std::streampos(-1))
                 return false;
-            out_.seekp(static_cast<streamoff>(position));
-            out_.write(reinterpret_cast<const char *>(bytes.data()), static_cast<streamsize>(bytes.size()));
+            out_.seekp(static_cast<std::streamoff>(position));
+            out_.write(reinterpret_cast<const char *>(bytes.data()), static_cast<std::streamsize>(bytes.size()));
             out_.seekp(resume);
             return out_.good();
         }
@@ -240,11 +241,11 @@ namespace SF::Matroska
          *        update_seek_entries() can fill them in once the targets have been written.
          *        Call it inside the Segment, before the elements it points at.
          */
-        void write_seek_head(const vector<Identifier> &targets)
+        void write_seek_head(const std::vector<Identifier> &targets)
         {
             const size_t seekPosHeaderLen = ids::SeekPosition.encode().size() + encode_size(8).size();
 
-            vector<Element> entries;
+            std::vector<Element> entries;
             entries.reserve(targets.size());
             size_t bodyLen = 0;
             for (const auto &target: targets)
@@ -252,7 +253,7 @@ namespace SF::Matroska
                 auto seek = Element::make_master(ids::Seek);
                 seek.add(Element::make_binary(ids::SeekID, target.encode()));
                 // Fixed 8 bytes so the SeekHead never changes size when patched.
-                seek.add(Element::make_binary(ids::SeekPosition, vector<byte>(8, 0)));
+                seek.add(Element::make_binary(ids::SeekPosition, std::vector<byte>(8, 0)));
                 bodyLen += serialized_size(seek);
                 entries.push_back(std::move(seek));
             }
@@ -284,13 +285,13 @@ namespace SF::Matroska
          * @return false if the stream isn't seekable, the Segment start is unknown, or any entry's
          *         target element was never written (that entry is left as its placeholder).
          */
-        bool update_seek_entries(ostream &target)
+        bool update_seek_entries(std::ostream &target)
         {
             if (!segmentDataStart_)
                 return false;
 
-            const streampos resume = target.tellp();
-            if (resume == streampos(-1))
+            const std::streampos resume = target.tellp();
+            if (resume == std::streampos(-1))
                 return false; // not seekable (pipe, socket, ...)
 
             bool allResolved = true;
@@ -304,15 +305,15 @@ namespace SF::Matroska
                 }
 
                 uint64_t value = it->second - *segmentDataStart_;
-                array<byte, 8> bytes{};
+                std::array<byte, 8> bytes{};
                 for (int i = 7; i >= 0; --i)
                 {
                     bytes[static_cast<size_t>(i)] = static_cast<byte>(value & 0xFF);
                     value >>= 8;
                 }
 
-                target.seekp(static_cast<streamoff>(position));
-                target.write(reinterpret_cast<const char *>(bytes.data()), static_cast<streamsize>(bytes.size()));
+                target.seekp(static_cast<std::streamoff>(position));
+                target.write(reinterpret_cast<const char *>(bytes.data()), static_cast<std::streamsize>(bytes.size()));
             }
 
             target.seekp(resume); // leave the stream where the caller was writing
@@ -325,23 +326,23 @@ namespace SF::Matroska
 
     class StreamingReader
     {
-        istream &in_;
+        std::istream &in_;
         const Schema &schema_;
-        function<void(const Element &)> callback_;
-        vector<byte> buffer_;
+        std::function<void(const Element &)> callback_;
+        std::vector<byte> buffer_;
         size_t bufferPos_ = 0;
         bool eof_         = false;
         size_t bytesRead_ = 0;
 
     public:
-        StreamingReader(istream &in, const Schema &schema = default_matroska_schema(),
-                        function<void(const Element &)> callback = nullptr) :
+        StreamingReader(std::istream &in, const Schema &schema = default_matroska_schema(),
+                        std::function<void(const Element &)> callback = nullptr) :
             in_(in), schema_(schema), callback_(std::move(callback))
         {
             buffer_.reserve(1024 * 1024);
         }
 
-        optional<Element> read_next_element()
+        std::optional<Element> read_next_element()
         {
             while (!eof_)
             {
@@ -351,13 +352,13 @@ namespace SF::Matroska
                 if (!ensure_data(1))
                 {
                     eof_ = true;
-                    return nullopt;
+                    return std::nullopt;
                 }
 
                 try
                 {
                     auto [element, consumed] = parse_element(
-                            span<const byte>(buffer_.data() + bufferPos_, buffer_.size() - bufferPos_), schema_);
+                            std::span<const byte>(buffer_.data() + bufferPos_, buffer_.size() - bufferPos_), schema_);
 
                     bufferPos_ += consumed;
                     bytesRead_ += consumed;
@@ -383,7 +384,7 @@ namespace SF::Matroska
                     }
                 }
             }
-            return nullopt;
+            return std::nullopt;
         }
 
         [[nodiscard]] size_t bytes_read() const { return bytesRead_; }

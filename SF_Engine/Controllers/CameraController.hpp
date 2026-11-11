@@ -31,7 +31,7 @@ namespace SF::Engine
             // Game cameras update themselves via their own Update() / pawn tick
         }
 
-        Camera *GetActive() const { return possessed_; }
+        [[nodiscard]] Camera *GetActive() const { return possessed_; }
         EditorCamera &GetEditorCamera() { return editorCamera_; }
 
         [[nodiscard]] bool IsEditorCameraActive() const { return possessed_ == &editorCamera_; }

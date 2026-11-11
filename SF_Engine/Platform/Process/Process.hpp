@@ -6,7 +6,7 @@
 
 namespace SF::Engine
 {
-    using namespace std;
+
     struct ProcessID
     {
         Platform::NativePID Value = Platform::InvalidPID;
@@ -34,11 +34,12 @@ namespace SF::Engine
     public:
         Process() = default;
         explicit Process(ProcessID pid);
-        explicit Process(filesystem::path program, filesystem::path directory) :
-            Process(std::move(program), {}, std::move(directory))
+        explicit Process(const std::filesystem::path &program, const std::filesystem::path &directory) :
+            Process(program, {}, directory)
         {
         }
-        explicit Process(filesystem::path program, vector<string> args, filesystem::path directory)
+        explicit Process(const std::filesystem::path &program, const std::vector<std::string> &args,
+                         const std::filesystem::path &directory)
         {
             *this = Launch(program, args, directory);
         }
@@ -57,7 +58,7 @@ namespace SF::Engine
         [[nodiscard]] bool IsRunning() const;
         [[nodiscard]] ProcessState GetState() const;
         [[nodiscard]] int GetExitCode() const;
-        [[nodiscard]] string GetName() const;
+        [[nodiscard]] std::string GetName() const;
 
         bool Wait();
         bool Wait(uint32_t timeoutMilliseconds);
@@ -66,16 +67,16 @@ namespace SF::Engine
 
         static Process Current();
 
-        static Process Launch(const filesystem::path &executable, const vector<string> &arguments = {},
-                              const filesystem::path &workingDirectory = {});
+        static Process Launch(const std::filesystem::path &executable, const std::vector<std::string> &arguments = {},
+                              const std::filesystem::path &workingDirectory = {});
 
     private:
         ProcessID m_PID{};
         int m_ExitStatus = 0;
 
     public:
-        static optional<Process> GetProcessById(ProcessID pid);
-        static vector<Process> GetProcessesByName(string_view name);
-        static vector<Process> GetProcesses();
+        static std::optional<Process> GetProcessById(ProcessID pid);
+        static std::vector<Process> GetProcessesByName(std::string_view name);
+        static std::vector<Process> GetProcesses();
     };
 } // namespace SF::Engine

@@ -217,8 +217,8 @@ namespace SF::Engine
     private:
         bool InitializeModule(TypeId id);
 
-        vector<TypeId> creationOrder; // dependencies first
-        unordered_set<TypeId> initializedModules;
+        std::vector<TypeId> creationOrder; // dependencies first
+        std::unordered_set<TypeId> initializedModules;
         bool mainWindowReady = false;
 
     public:

@@ -6,7 +6,7 @@
 
 namespace SF::Engine::SplashScreenInternal
 {
-    using namespace std;
+
     enum class RLEBlockType : uint8_t
     {
         Run,
@@ -21,7 +21,7 @@ namespace SF::Engine::SplashScreenInternal
         uint8_t Value;
     };
 
-    inline constexpr array<uint8_t, 8158> LiteralData = {{
+    inline constexpr std::array<uint8_t, 8158> LiteralData = {{
             0x48, 0x38, 0x44, 0x42, 0x77, 0x42, 0x34, 0x66, 0x38, 0x4C, 0x34, 0x66, 0x75, 0x50, 0x33, 0x44, 0x75, 0x66,
             0x2F, 0x2F, 0x35, 0x34, 0x48, 0x39, 0x2B, 0x66, 0x34, 0x38, 0x6A, 0x2F, 0x2F, 0x67, 0x44, 0x41, 0x48, 0x41,
             0x50, 0x7A, 0x2B, 0x66, 0x2F, 0x48, 0x2B, 0x66, 0x76, 0x67, 0x63, 0x4D, 0x42, 0x2F, 0x2F, 0x68, 0x2B, 0x38,
@@ -478,7 +478,7 @@ namespace SF::Engine::SplashScreenInternal
             0x59, 0x41, 0x42, 0x38,
     }};
 
-    inline constexpr array<RLEBlock, 6435> CompressedData = {{
+    inline constexpr std::array<RLEBlock, 6435> CompressedData = {{
             {RLEBlockType::Run, 4477, 0, 0x41},      {RLEBlockType::Literal, 1, 0, 0x00},
             {RLEBlockType::Run, 6, 0, 0x2F},         {RLEBlockType::Literal, 1, 1, 0x00},
             {RLEBlockType::Run, 171, 0, 0x41},       {RLEBlockType::Literal, 1, 2, 0x00},
@@ -3702,9 +3702,9 @@ namespace SF::Engine::SplashScreenInternal
     constexpr int DATA_WIDTH = 1200, DATA_HEIGHT = 600;
 
     template<size_t N, size_t L>
-    vector<uint8_t> DecompressRLE(const array<RLEBlock, N> &blocks, const array<uint8_t, L> &literals)
+    std::vector<uint8_t> DecompressRLE(const std::array<RLEBlock, N> &blocks, const std::array<uint8_t, L> &literals)
     {
-        vector<uint8_t> output;
+        std::vector<uint8_t> output;
 
         for (const auto &block: blocks)
         {

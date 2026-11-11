@@ -13,7 +13,7 @@
 
 namespace SF::EBML
 {
-    using namespace std;
+
 
     class Schema
     {
@@ -38,7 +38,7 @@ namespace SF::EBML
         // size.
         void add_child(Identifier parent, Identifier child) { m_children[parent.value()].insert(child.value()); }
 
-        void add_children(Identifier parent, initializer_list<Identifier> children)
+        void add_children(Identifier parent, std::initializer_list<Identifier> children)
         {
             auto &set = m_children[parent.value()];
             for (auto c: children)
@@ -60,11 +60,11 @@ namespace SF::EBML
         }
 
     private:
-        unordered_map<uint32_t, Element::Kind> m_map{};
-        unordered_map<uint32_t, unordered_set<uint32_t>> m_children{};
+        std::unordered_map<uint32_t, Element::Kind> m_map{};
+        std::unordered_map<uint32_t, std::unordered_set<uint32_t>> m_children{};
     };
 
-    class ParseError : public runtime_error
+    class ParseError : public std::runtime_error
     {
     public:
         using runtime_error::runtime_error;
@@ -76,7 +76,7 @@ namespace SF::EBML
         size_t consumed;
     };
 
-    inline ParseResult parse_element(span<const byte> data, const Schema &schema, int maxDepth = 64)
+    inline ParseResult parse_element(std::span<const byte> data, const Schema &schema, int maxDepth = 64)
     {
         if (maxDepth <= 0)
             throw ParseError("EBML nesting exceeds max depth");
@@ -101,9 +101,9 @@ namespace SF::EBML
             if (kind != Element::Kind::Master)
                 throw ParseError("unknown-size is only supported for master elements");
 
-            Element element         = Element::make_master(*id);
-            span<const byte> cursor = afterSize;
-            size_t bodyConsumed     = 0;
+            Element element              = Element::make_master(*id);
+            std::span<const byte> cursor = afterSize;
+            size_t bodyConsumed          = 0;
             while (!cursor.empty())
             {
                 // Peek the next child's ID (without consuming it yet) to
@@ -133,8 +133,8 @@ namespace SF::EBML
 
         if (kind == Element::Kind::Master)
         {
-            Element element         = Element::make_master(*id);
-            span<const byte> cursor = body;
+            Element element              = Element::make_master(*id);
+            std::span<const byte> cursor = body;
             while (!cursor.empty())
             {
                 auto child = parse_element(cursor, schema, maxDepth - 1);
@@ -147,10 +147,10 @@ namespace SF::EBML
         return {Element::make_leaf(*id, kind, {body.begin(), body.end()}), consumed};
     }
 
-    inline ElementList parse_stream(span<const byte> data, const Schema &schema)
+    inline ElementList parse_stream(std::span<const byte> data, const Schema &schema)
     {
         ElementList out;
-        span<const byte> cursor = data;
+        std::span<const byte> cursor = data;
         while (!cursor.empty())
         {
             auto [element, consumed] = parse_element(cursor, schema);

@@ -74,27 +74,27 @@ namespace SF::Engine
         std::string ReadAllText();
         std::vector<std::string> ReadAllLines();
         std::vector<uint8_t> ReadAllBytes();
-        size_t Read(void *buffer, size_t size);
-        std::string ReadString(size_t length);
-        int64_t ReadInt64();
-        int32_t ReadInt32();
+        size_t Read(void *buffer, std::size_t size);
+        std::string ReadString(std::size_t length);
+        std::int64_t ReadInt64();
+        std::int32_t ReadInt32();
         double ReadDouble();
         float ReadFloat();
 
         // Writing operations
-        size_t Write(const void *data, size_t size);
+        std::size_t Write(const void *data, std::size_t size);
         void WriteAllText(const std::string &text);
         void WriteAllBytes(const std::vector<uint8_t> &data);
-        void WriteInt64(int64_t value);
-        void WriteInt32(int32_t value);
+        void WriteInt64(std::int64_t value);
+        void WriteInt32(std::int32_t value);
         void WriteDouble(double value);
         void WriteFloat(float value);
 
         // Position and size
-        size_t GetSize() const;
-        size_t GetPosition();
-        bool SetPosition(size_t position, FileSeek seek = FileSeek::Begin);
-        bool Seek(int64_t offset, FileSeek seek = FileSeek::Current);
+        std::size_t GetSize() const;
+        std::size_t GetPosition();
+        bool SetPosition(std::size_t position, FileSeek seek = FileSeek::Begin);
+        bool Seek(std::int64_t offset, FileSeek seek = FileSeek::Current);
 
         // File system operations
         static bool Exists(const std::string &path);
@@ -197,8 +197,8 @@ namespace SF::Engine
         FileReader &operator>>(T &value);
 
         bool IsEOF();
-        size_t GetPosition();
-        size_t GetSize() const;
+        std::size_t GetPosition();
+        std::size_t GetSize() const;
 
     private:
         File m_file;
@@ -235,9 +235,9 @@ namespace SF::Engine
         void Close();
 
         [[nodiscard]] bool IsOpen() const;
-        [[nodiscard]] size_t GetSize() const;
-        [[nodiscard]] const uint8_t *GetData() const;
-        uint8_t *GetData();
+        [[nodiscard]] std::size_t GetSize() const;
+        [[nodiscard]] const std::uint8_t *GetData() const;
+        std::uint8_t *GetData();
 
         template<typename T>
         const T *GetAs() const;
@@ -251,12 +251,12 @@ namespace SF::Engine
 #else
         int m_fileDescriptor = -1;
 #endif
-        uint8_t *m_data = nullptr;
-        size_t m_size   = 0;
-        size_t m_offset = 0;
+        std::uint8_t *m_data = nullptr;
+        std::size_t m_size   = 0;
+        std::size_t m_offset = 0;
 
-        uint8_t *m_mappingData = nullptr;
-        size_t m_mappingSize   = 0;
+        std::uint8_t *m_mappingData = nullptr;
+        std::size_t m_mappingSize   = 0;
     };
 
     // File watcher for monitoring file changes
@@ -382,16 +382,13 @@ namespace SF::Engine
 
 } // namespace SF::Engine
 
-namespace std
+template<>
+struct std::hash<SF::Engine::DataInput>
 {
-    template<>
-    struct hash<SF::Engine::DataInput>
+    size_t operator()(const SF::Engine::DataInput &d) const noexcept
     {
-        size_t operator()(const SF::Engine::DataInput &d) const noexcept
-        {
-            size_t h1 = std::hash<void *>{}(static_cast<void *>(d.file));
-            size_t h2 = std::hash<void *>{}(d.memory);
-            return h1 ^ (h2 << 1);
-        }
-    };
-} // namespace std
+        size_t h1 = std::hash<void *>{}(static_cast<void *>(d.file));
+        size_t h2 = std::hash<void *>{}(d.memory);
+        return h1 ^ (h2 << 1);
+    }
+}; // namespace std

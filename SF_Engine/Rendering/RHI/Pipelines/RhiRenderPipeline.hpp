@@ -14,7 +14,7 @@
 
 namespace SF::Engine
 {
-    using namespace std;
+
     class ImageDepth;
     class Image2d;
 
@@ -88,16 +88,14 @@ namespace SF::Engine
          * @param patchControlPoints Control points per patch; only used when the .shader contains
          *        tessellation stages (topology is then forced to PATCH_LIST). 0 = default of 3.
          */
-        RhiRenderPipeline(Stage stage, filesystem::path shaderPath, vector<Shader::VertexInput> vertexInputs,
-                          vector<Shader::Define> defines = {}, Mode mode = Mode::Polygon,
-                          Depth depth                  = Depth::ReadWrite,
-                          VkPrimitiveTopology topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
-                          VkPolygonMode polygonMode    = VK_POLYGON_MODE_FILL,
-                          VkCullModeFlags cullMode     = VK_CULL_MODE_BACK_BIT,
-                          VkFrontFace frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE, bool pushDescriptors = false,
-                          vector<VkDescriptorSetLayout> additionalLayouts = {}, Blend blend = Blend::PremultipliedAlpha,
-                          vector<VkPipelineColorBlendAttachmentState> blendStates = {},
-                          uint32_t patchControlPoints                             = 0);
+        RhiRenderPipeline(
+                Stage stage, std::filesystem::path shaderPath, std::vector<Shader::VertexInput> vertexInputs,
+                std::vector<Shader::Define> defines = {}, Mode mode = Mode::Polygon, Depth depth = Depth::ReadWrite,
+                VkPrimitiveTopology topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
+                VkPolygonMode polygonMode = VK_POLYGON_MODE_FILL, VkCullModeFlags cullMode = VK_CULL_MODE_BACK_BIT,
+                VkFrontFace frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE, bool pushDescriptors = false,
+                std::vector<VkDescriptorSetLayout> additionalLayouts = {}, Blend blend = Blend::PremultipliedAlpha,
+                std::vector<VkPipelineColorBlendAttachmentState> blendStates = {}, uint32_t patchControlPoints = 0);
 
         /**
          * Offscreen constructor : uses a caller-supplied VkRenderPass instead of
@@ -106,15 +104,15 @@ namespace SF::Engine
          *
          * IsMultisampled() always returns false for offscreen pipelines.
          */
-        RhiRenderPipeline(VkRenderPass offscreenRenderPass, uint32_t subpassIndex, filesystem::path shaderPath,
-                          vector<Shader::VertexInput> vertexInputs = {}, vector<Shader::Define> defines = {},
+        RhiRenderPipeline(VkRenderPass offscreenRenderPass, uint32_t subpassIndex, std::filesystem::path shaderPath,
+                          std::vector<Shader::VertexInput> vertexInputs = {}, std::vector<Shader::Define> defines = {},
                           Depth depth = Depth::None, VkPrimitiveTopology topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
-                          VkPolygonMode polygonMode                       = VK_POLYGON_MODE_FILL,
-                          VkCullModeFlags cullMode                        = VK_CULL_MODE_NONE,
-                          VkFrontFace frontFace                           = VK_FRONT_FACE_COUNTER_CLOCKWISE,
-                          vector<VkDescriptorSetLayout> additionalLayouts = {}, Blend blend = Blend::Opaque,
-                          vector<VkPipelineColorBlendAttachmentState> blendStates = {},
-                          uint32_t patchControlPoints                             = 0);
+                          VkPolygonMode polygonMode                            = VK_POLYGON_MODE_FILL,
+                          VkCullModeFlags cullMode                             = VK_CULL_MODE_NONE,
+                          VkFrontFace frontFace                                = VK_FRONT_FACE_COUNTER_CLOCKWISE,
+                          std::vector<VkDescriptorSetLayout> additionalLayouts = {}, Blend blend = Blend::Opaque,
+                          std::vector<VkPipelineColorBlendAttachmentState> blendStates = {},
+                          uint32_t patchControlPoints                                  = 0);
 
         ~RhiRenderPipeline() override;
 
@@ -122,16 +120,17 @@ namespace SF::Engine
          * Gets the depth stencil used in a stage. Offscreen pipelines must pass an
          * explicit `stage`; they aren't tied to a RenderSystem stage.
          */
-        [[nodiscard]] const ImageDepth *GetDepthStencil(const optional<uint32_t> &stage = nullopt) const;
+        [[nodiscard]] const ImageDepth *GetDepthStencil(const std::optional<uint32_t> &stage = std::nullopt) const;
 
-        [[nodiscard]] const Image2d *GetImage(uint32_t index, const optional<uint32_t> &stage = nullopt) const;
+        [[nodiscard]] const Image2d *GetImage(uint32_t index,
+                                              const std::optional<uint32_t> &stage = std::nullopt) const;
 
-        [[nodiscard]] RhiRenderArea GetRenderArea(const optional<uint32_t> &stage = nullopt) const;
+        [[nodiscard]] RhiRenderArea GetRenderArea(const std::optional<uint32_t> &stage = std::nullopt) const;
 
         [[nodiscard]] const Stage &GetStage() const { return stage; }
-        [[nodiscard]] const filesystem::path &GetShaderPath() const { return shaderPath; }
-        [[nodiscard]] const vector<Shader::VertexInput> &GetVertexInputs() const { return vertexInputs; }
-        [[nodiscard]] const vector<Shader::Define> &GetDefines() const { return defines; }
+        [[nodiscard]] const std::filesystem::path &GetShaderPath() const { return shaderPath; }
+        [[nodiscard]] const std::vector<Shader::VertexInput> &GetVertexInputs() const { return vertexInputs; }
+        [[nodiscard]] const std::vector<Shader::Define> &GetDefines() const { return defines; }
         [[nodiscard]] Mode GetMode() const { return mode; }
         [[nodiscard]] Depth GetDepth() const { return depth; }
         [[nodiscard]] Blend GetBlend() const { return blend; }
@@ -166,9 +165,9 @@ namespace SF::Engine
         void CreatePipelineMrt();
 
         Stage stage;
-        filesystem::path shaderPath;
-        vector<Shader::VertexInput> vertexInputs;
-        vector<Shader::Define> defines;
+        std::filesystem::path shaderPath;
+        std::vector<Shader::VertexInput> vertexInputs;
+        std::vector<Shader::Define> defines;
         Mode mode;
         Depth depth;
         VkPrimitiveTopology topology;
@@ -182,9 +181,9 @@ namespace SF::Engine
         bool hasGeometryShader      = false;
         uint32_t patchControlPoints = 0; // 0 = auto (3) when tessellation stages are present
 
-        shared_ptr<Shader> shader;
-        vector<VkDynamicState> dynamicStates;
-        vector<VkPipelineShaderStageCreateInfo> stages;
+        std::shared_ptr<Shader> shader;
+        std::vector<VkDynamicState> dynamicStates;
+        std::vector<VkPipelineShaderStageCreateInfo> stages;
 
         VkDescriptorSetLayout descriptorSetLayout = VK_NULL_HANDLE;
         VkDescriptorPool descriptorPool           = VK_NULL_HANDLE;
@@ -206,10 +205,10 @@ namespace SF::Engine
         VkPipelineInputAssemblyStateCreateInfo inputAssemblyState       = {};
         VkPipelineRasterizationStateCreateInfo rasterizationState       = {};
 
-        Blend blend                                                       = Blend::PremultipliedAlpha;
-        vector<VkPipelineColorBlendAttachmentState> customBlendStates     = {}; // only used when blend == Custom
-        vector<VkPipelineColorBlendAttachmentState> blendAttachmentStates = {}; // resolved states actually used
-        vector<VkDescriptorSetLayout> additionalLayouts{};
+        Blend blend                                                            = Blend::PremultipliedAlpha;
+        std::vector<VkPipelineColorBlendAttachmentState> customBlendStates     = {}; // only used when blend == Custom
+        std::vector<VkPipelineColorBlendAttachmentState> blendAttachmentStates = {}; // resolved states actually used
+        std::vector<VkDescriptorSetLayout> additionalLayouts{};
 
         VkPipelineColorBlendStateCreateInfo colourBlendState    = {};
         VkPipelineDepthStencilStateCreateInfo depthStencilState = {};
@@ -222,18 +221,18 @@ namespace SF::Engine
     class RenderPipelineCreate
     {
     public:
-        RenderPipelineCreate(filesystem::path shaderPath = {}, vector<Shader::VertexInput> vertexInputs = {},
-                             vector<Shader::Define> defines = {},
-                             RhiRenderPipeline::Mode mode   = RhiRenderPipeline::Mode::Polygon,
-                             RhiRenderPipeline::Depth depth = RhiRenderPipeline::Depth::ReadWrite,
-                             VkPrimitiveTopology topology   = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
-                             VkPolygonMode polygonMode      = VK_POLYGON_MODE_FILL,
-                             VkCullModeFlags cullMode       = VK_CULL_MODE_BACK_BIT,
+        RenderPipelineCreate(std::filesystem::path shaderPath = {}, std::vector<Shader::VertexInput> vertexInputs = {},
+                             std::vector<Shader::Define> defines = {},
+                             RhiRenderPipeline::Mode mode        = RhiRenderPipeline::Mode::Polygon,
+                             RhiRenderPipeline::Depth depth      = RhiRenderPipeline::Depth::ReadWrite,
+                             VkPrimitiveTopology topology        = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
+                             VkPolygonMode polygonMode           = VK_POLYGON_MODE_FILL,
+                             VkCullModeFlags cullMode            = VK_CULL_MODE_BACK_BIT,
                              VkFrontFace frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE, bool pushDescriptors = false,
-                             vector<VkDescriptorSetLayout> additionalLayouts = {},
+                             std::vector<VkDescriptorSetLayout> additionalLayouts = {},
                              RhiRenderPipeline::Blend blend = RhiRenderPipeline::Blend::PremultipliedAlpha,
-                             vector<VkPipelineColorBlendAttachmentState> blendStates = {},
-                             uint32_t patchControlPoints                             = 0) :
+                             std::vector<VkPipelineColorBlendAttachmentState> blendStates = {},
+                             uint32_t patchControlPoints                                  = 0) :
             shaderPath(std::move(shaderPath)), vertexInputs(std::move(vertexInputs)), defines(std::move(defines)),
             mode(mode), depth(depth), topology(topology), polygonMode(polygonMode), cullMode(cullMode),
             frontFace(frontFace), pushDescriptors(pushDescriptors), additionalLayouts(std::move(additionalLayouts)),
@@ -253,9 +252,9 @@ namespace SF::Engine
                                          blendStates, patchControlPoints);
         }
 
-        [[nodiscard]] const filesystem::path &GetShaderPath() const { return shaderPath; }
-        [[nodiscard]] const vector<Shader::VertexInput> &GetVertexInputs() const { return vertexInputs; }
-        [[nodiscard]] const vector<Shader::Define> &GetDefines() const { return defines; }
+        [[nodiscard]] const std::filesystem::path &GetShaderPath() const { return shaderPath; }
+        [[nodiscard]] const std::vector<Shader::VertexInput> &GetVertexInputs() const { return vertexInputs; }
+        [[nodiscard]] const std::vector<Shader::Define> &GetDefines() const { return defines; }
         [[nodiscard]] RhiRenderPipeline::Mode GetMode() const { return mode; }
         [[nodiscard]] RhiRenderPipeline::Depth GetDepth() const { return depth; }
         [[nodiscard]] VkPrimitiveTopology GetTopology() const { return topology; }
@@ -263,15 +262,21 @@ namespace SF::Engine
         [[nodiscard]] VkCullModeFlags GetCullMode() const { return cullMode; }
         [[nodiscard]] VkFrontFace GetFrontFace() const { return frontFace; }
         [[nodiscard]] bool GetPushDescriptors() const { return pushDescriptors; }
-        [[nodiscard]] const vector<VkDescriptorSetLayout> &GetAdditionalLayouts() const { return additionalLayouts; }
+        [[nodiscard]] const std::vector<VkDescriptorSetLayout> &GetAdditionalLayouts() const
+        {
+            return additionalLayouts;
+        }
         [[nodiscard]] uint32_t GetPatchControlPoints() const { return patchControlPoints; }
         [[nodiscard]] RhiRenderPipeline::Blend GetBlend() const { return blend; }
-        [[nodiscard]] const vector<VkPipelineColorBlendAttachmentState> &GetBlendStates() const { return blendStates; }
+        [[nodiscard]] const std::vector<VkPipelineColorBlendAttachmentState> &GetBlendStates() const
+        {
+            return blendStates;
+        }
 
     private:
-        filesystem::path shaderPath;
-        vector<Shader::VertexInput> vertexInputs;
-        vector<Shader::Define> defines;
+        std::filesystem::path shaderPath;
+        std::vector<Shader::VertexInput> vertexInputs;
+        std::vector<Shader::Define> defines;
 
         RhiRenderPipeline::Mode mode;
         RhiRenderPipeline::Depth depth;
@@ -280,9 +285,9 @@ namespace SF::Engine
         VkCullModeFlags cullMode;
         VkFrontFace frontFace;
         bool pushDescriptors;
-        vector<VkDescriptorSetLayout> additionalLayouts;
+        std::vector<VkDescriptorSetLayout> additionalLayouts;
         RhiRenderPipeline::Blend blend;
-        vector<VkPipelineColorBlendAttachmentState> blendStates;
+        std::vector<VkPipelineColorBlendAttachmentState> blendStates;
         uint32_t patchControlPoints;
     };
 } // namespace SF::Engine

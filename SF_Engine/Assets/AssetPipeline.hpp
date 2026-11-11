@@ -11,7 +11,7 @@
 
 namespace SF::Engine
 {
-    using namespace std;
+
     enum class AssetType // scoped enum avoids name collisions
     {
         Mesh,
@@ -40,22 +40,22 @@ namespace SF::Engine
         static constexpr int kSchemaVersion = 1;
 
         // The source file this asset was imported from (it sits next to its .meta). Empty for procedural assets.
-        filesystem::path assetPath;
-        string name;
+        std::filesystem::path assetPath;
+        std::string name;
         AssetType type;
         UUID uuid = UUID::Generate(); // stable asset ID: scenes reference assets by this, never by path
 
         int schemaVersion   = kSchemaVersion;
         int importerVersion = 0;   // bumped when an importer changes what it produces; lets us detect stale imports
-        string sourceHash;         // BLAKE2b-256 (hex) of the source bytes at import time
-        string packageId;          // filled in by the RSC build step; empty in the editor
-        string recordLocator;      // ditto
-        vector<UUID> dependencies; // assets this one needs (e.g. a model's textures)
+        std::string sourceHash;    // BLAKE2b-256 (hex) of the source bytes at import time
+        std::string packageId;     // filled in by the RSC build step; empty in the editor
+        std::string recordLocator; // ditto
+        std::vector<UUID> dependencies; // assets this one needs (e.g. a model's textures)
 
         virtual ~AssetBase() = default;
 
-        virtual void Save()                            = 0;
-        virtual bool Load(span<const uint8_t> payload) = 0;
+        virtual void Save()                                 = 0;
+        virtual bool Load(std::span<const uint8_t> payload) = 0;
 
         // Import settings live in <Asset><ImportSettings>. Override to persist per-type settings.
         virtual void SerializeImportSettings(XMLNode & /*node*/) const {}
@@ -70,8 +70,8 @@ namespace SF::Engine
             XMLNode asset = node.AddChild("Asset");
             asset.SetAttribute("Name", name);
             asset.SetAttribute("Type", static_cast<int>(type));
-            asset.SetAttribute(string("UUID"), uuid.ToString());
-            asset.SetAttribute("ConcreteType", string(RTTI_GetTypeName()));
+            asset.SetAttribute(std::string("UUID"), uuid.ToString());
+            asset.SetAttribute("ConcreteType", std::string(RTTI_GetTypeName()));
             asset.SetAttribute("Schema", schemaVersion);
             asset.SetAttribute("ImporterVersion", importerVersion);
             asset.SetAttribute("SourceHash", sourceHash);
@@ -86,7 +86,7 @@ namespace SF::Engine
                 for (const UUID &dep: dependencies)
                 {
                     XMLNode d = deps.AddChild("Dependency");
-                    d.SetAttribute(string("UUID"), dep.ToString());
+                    d.SetAttribute(std::string("UUID"), dep.ToString());
                 }
             }
 
@@ -101,7 +101,7 @@ namespace SF::Engine
             int rawType{};
             asset.GetAttribute("Type", rawType);
             type = static_cast<AssetType>(rawType);
-            uuid = UUID::FromString(asset.GetAttribute(string(string("UUID"))));
+            uuid = UUID::FromString(asset.GetAttribute(std::string(std::string("UUID"))));
 
             // Everything below is optional so meta files written before the ARP fields existed still load.
             asset.GetAttribute("Schema", schemaVersion);
@@ -115,7 +115,7 @@ namespace SF::Engine
             {
                 for (const XMLNode &d: deps.GetChildren("Dependency"))
                 {
-                    string raw;
+                    std::string raw;
                     if (!d.GetAttribute("UUID", raw))
                         continue;
                     try
@@ -144,7 +144,7 @@ namespace SF::Engine
             XMLNode root = writer->GetRootNode();
             Serialize(root);
 
-            filesystem::path metaPath = assetPath;
+            std::filesystem::path metaPath = assetPath;
             metaPath += ".meta";
             if (!writer->SaveToFile(metaPath.string()))
                 Log::Error("AssetBase::SaveMeta: failed to write '{}'", metaPath.string());
@@ -166,7 +166,7 @@ namespace SF::Engine
         }
     };
 
-    using AssetFactoryFn = function<shared_ptr<AssetBase>()>;
+    using AssetFactoryFn = std::function<std::shared_ptr<AssetBase>()>;
 
     class AssetController : public ModuleRegistrar<AssetController>
     {
@@ -179,7 +179,7 @@ namespace SF::Engine
         void ProjectLoaded();
         void Shutdown() override { assets_.clear(); }
 
-        static void RegisterFactory(const string &rttiTypeName, AssetFactoryFn factory);
+        static void RegisterFactory(const std::string &rttiTypeName, AssetFactoryFn factory);
 
         // Registers MeshAsset / AudioAsset / ImageAsset<...> explicitly. Static-registrar objects in
         // otherwise-unreferenced .cpp files get dropped when SF_Engine is linked as a static library,
@@ -189,55 +189,55 @@ namespace SF::Engine
         void SaveAll();
         void SaveManifest();
 
-        [[nodiscard]] shared_ptr<AssetBase> FindByUUID(const UUID &guid) const;
-        [[nodiscard]] shared_ptr<AssetBase> FindByName(string_view name) const;
+        [[nodiscard]] std::shared_ptr<AssetBase> FindByUUID(const UUID &guid) const;
+        [[nodiscard]] std::shared_ptr<AssetBase> FindByName(std::string_view name) const;
         // Matches on the source file (assetPath), tolerant of different spellings of the same path.
-        [[nodiscard]] shared_ptr<AssetBase> FindByPath(const filesystem::path &path) const;
+        [[nodiscard]] std::shared_ptr<AssetBase> FindByPath(const std::filesystem::path &path) const;
 
         // Adds an already-constructed asset (e.g. freshly imported) to the live asset list.
-        void AddAsset(shared_ptr<AssetBase> asset);
+        void AddAsset(std::shared_ptr<AssetBase> asset);
 
         // Removes the file as well since we aren't going to use it
         bool RemoveAsset(const UUID &guid);
         // Removes every disk-backed asset whose source lives at or below the folder. Returns how many.
-        size_t RemoveAssetsUnder(const filesystem::path &folder);
+        size_t RemoveAssetsUnder(const std::filesystem::path &folder);
 
         // Returns true if the list changed.
         bool SyncWithDisk(bool scanForNew);
 
         template<typename T>
-        shared_ptr<Asset<T>> GetAsset(const UUID &guid) const
+        std::shared_ptr<Asset<T>> GetAsset(const UUID &guid) const
         {
             return ::SF::Reflection::rtti_pointer_cast<Asset<T>>(FindByUUID(guid));
         }
 
-        vector<shared_ptr<AssetBase>> assets_;
+        std::vector<std::shared_ptr<AssetBase>> assets_;
 
         template<typename T, typename... Args>
-        shared_ptr<T> RegisterAsset(string assetName, Args &&...args)
+        std::shared_ptr<T> RegisterAsset(std::string assetName, Args &&...args)
         {
-            static_assert(is_base_of_v<AssetBase, T>, "RegisterAsset<T> requires T to derive from AssetBase");
+            static_assert(std::is_base_of_v<AssetBase, T>, "RegisterAsset<T> requires T to derive from AssetBase");
 
-            auto asset  = make_shared<T>(forward<Args>(args)...);
+            auto asset  = std::make_shared<T>(forward<Args>(args)...);
             asset->name = std::move(assetName);
             assets_.push_back(asset);
             return asset;
         }
 
     private:
-        bool LoadMetaFile(const filesystem::path &metaPath);
-        static unordered_map<string, AssetFactoryFn> &Factories();
+        bool LoadMetaFile(const std::filesystem::path &metaPath);
+        static std::unordered_map<std::string, AssetFactoryFn> &Factories();
     };
 
     template<typename T>
     struct AssetRegistrar
     {
-        static_assert(is_base_of_v<AssetBase, T>, "AssetRegistrar<T> requires T to derive from AssetBase "
-                                                  "(this includes Asset<Payload> and ImageAsset<TImage> leaves)");
+        static_assert(std::is_base_of_v<AssetBase, T>, "AssetRegistrar<T> requires T to derive from AssetBase "
+                                                       "(this includes Asset<Payload> and ImageAsset<TImage> leaves)");
 
         explicit AssetRegistrar()
         {
-            AssetController::RegisterFactory(T::RTTI_TypeName(), [] { return make_shared<T>(); });
+            AssetController::RegisterFactory(T::RTTI_TypeName(), [] { return std::make_shared<T>(); });
         }
     };
 } // namespace SF::Engine

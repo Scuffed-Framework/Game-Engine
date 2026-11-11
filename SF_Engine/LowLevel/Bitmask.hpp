@@ -2,13 +2,13 @@
 
 namespace SF::Engine
 {
-    using namespace std;
+
     // Wrapper type for enum Bitmasks
-    template<typename Enum, typename = enable_if_t<is_enum_v<Enum>>>
+    template<typename Enum, typename = std::enable_if_t<std::is_enum_v<Enum>>>
     class Bitmask
     {
     public:
-        using underlying_type = underlying_type_t<Enum>;
+        using underlying_type = std::underlying_type_t<Enum>;
 
         constexpr Bitmask() noexcept : value(0) {}
         constexpr Bitmask(Enum e) noexcept : value(static_cast<underlying_type>(e)) {}

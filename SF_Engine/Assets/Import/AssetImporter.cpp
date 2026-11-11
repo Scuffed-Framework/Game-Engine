@@ -57,7 +57,7 @@ namespace SF::Engine
             const std::string ext  = desired.extension().string();
             for (int i = 1; i < 10000; ++i)
             {
-                fs::path candidate = dir / (stem + " (" + std::to_string(i) + ")" + ext);
+                fs::path candidate = dir / (stem + " (" + std::to_string(i) + ")" += ext);
                 if (!taken(candidate))
                     return candidate;
             }

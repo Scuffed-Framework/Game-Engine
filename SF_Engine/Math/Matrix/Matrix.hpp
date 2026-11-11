@@ -1,7 +1,5 @@
 #pragma once
 
-#include <cstddef>
-#include <functional>
 #include <glm/glm.hpp>
 #include "../Vectors/Vector.hpp"
 

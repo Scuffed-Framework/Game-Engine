@@ -11,7 +11,7 @@
 
 namespace SF::Engine
 {
-    using namespace std;
+
     // this shit is just black
     class SceneViewport : NoCopy
     {
@@ -37,20 +37,20 @@ namespace SF::Engine
         void CreateImages(UVec2 extent);
 
         Camera camera;
-        unique_ptr<Image2d> color;
-        unique_ptr<ImageDepth> depth;
+        std::unique_ptr<Image2d> color;
+        std::unique_ptr<ImageDepth> depth;
         VkDescriptorSet imguiDescriptor = VK_NULL_HANDLE;
-        vector<optional<VkDescriptorSet>> pendingFree{};
+        std::vector<std::optional<VkDescriptorSet>> pendingFree{};
         // Images retired by a viewport resize. They're referenced by command buffers still in
         // flight (as the render target, and as the ImGui texture), so they can't be destroyed the
         // moment Tick() replaces them -- they're parked per frame slot and only freed when that slot
         // comes round again (>= kFramesInFlight frames later), mirroring pendingFree above.
         struct RetiredImages
         {
-            unique_ptr<Image2d> color;
-            unique_ptr<ImageDepth> depth;
+            std::unique_ptr<Image2d> color;
+            std::unique_ptr<ImageDepth> depth;
         };
-        vector<RetiredImages> retired{};
+        std::vector<RetiredImages> retired{};
         UVec2 currentExtent{};
         UVec2 desiredExtent{};
         bool resizePending                      = false;

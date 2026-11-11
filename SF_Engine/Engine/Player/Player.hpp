@@ -4,12 +4,12 @@
 
 namespace SF::Engine
 {
-    using namespace std;
+
     class PlayerBase
     {
     public:
         virtual ~PlayerBase() = default;
-        string Name;
+        std::string Name;
         UUID PlayerID;
 
         // internet (lil scripty might lag the server :sob:)
@@ -21,5 +21,5 @@ namespace SF::Engine
     };
 
     template<typename Player>
-    constexpr bool IsDerivedOfPlayerBase = is_base_of_v<PlayerBase, Player> && is_same_v<Player, PlayerBase>;
+    constexpr bool IsDerivedOfPlayerBase = std::is_base_of_v<PlayerBase, Player> && std::is_same_v<Player, PlayerBase>;
 } // namespace SF::Engine

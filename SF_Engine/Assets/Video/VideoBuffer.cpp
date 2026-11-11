@@ -15,30 +15,30 @@
 
 namespace SF::Engine
 {
-    namespace fs = filesystem;
+    namespace fs = std::filesystem;
 
-    unordered_map<string, weak_ptr<VideoBuffer>> VideoBuffer::cache;
-    mutex VideoBuffer::cacheMutex;
+    std::unordered_map<std::string, std::weak_ptr<VideoBuffer>> VideoBuffer::cache;
+    std::mutex VideoBuffer::cacheMutex;
 
     static fs::path PathOf(const File &f) { return f.GetFullPath(); }
 
-    static string LowerExt(const fs::path &p)
+    static std::string LowerExt(const fs::path &p)
     {
-        string e = p.extension().string();
-        ranges::transform(e, e.begin(), [](const unsigned char c) { return tolower(c); });
+        std::string e = p.extension().string();
+        std::ranges::transform(e, e.begin(), [](const unsigned char c) { return tolower(c); });
         return e;
     }
 
-    shared_ptr<VideoBuffer> VideoBuffer::Create(const File &input)
+    std::shared_ptr<VideoBuffer> VideoBuffer::Create(const File &input)
     {
-        const string key = fs::weakly_canonical(PathOf(input)).string();
+        const std::string key = fs::weakly_canonical(PathOf(input)).string();
 
-        lock_guard lock(cacheMutex);
+        std::lock_guard lock(cacheMutex);
         if (const auto it = cache.find(key); it != cache.end())
             if (auto sp = it->second.lock())
                 return sp;
 
-        auto buffer = make_shared<VideoBuffer>(input, true);
+        auto buffer = std::make_shared<VideoBuffer>(input, true);
         cache[key]  = buffer;
         return buffer;
     }
@@ -90,7 +90,8 @@ namespace SF::Engine
 
         const auto it = Registry().find(ext);
         if (it == Registry().end())
-            throw runtime_error("VideoBuffer: no loader registered for '" + ext + "'. Convert it to AV1 MKV first.");
+            throw std::runtime_error("VideoBuffer: no loader registered for '" + ext +
+                                     "'. Convert it to AV1 MKV first.");
 
         const auto &importFn = get<2>(it->second);
         if (!importFn)
@@ -99,7 +100,7 @@ namespace SF::Engine
         // Transcode once, reuse next time while the source is unchanged.
         fs::path out = path;
         out.replace_extension(".av1.mkv"); // TODO: replace imported media with mkv :) :) trolling
-        error_code ec;
+        std::error_code ec;
         if (fs::exists(out, ec) && fs::last_write_time(out, ec) >= fs::last_write_time(path, ec))
             return {out};
 
@@ -120,7 +121,7 @@ namespace SF::Engine
 
         const auto it = Registry().find(".mkv");
         if (it == Registry().end() || !get<0>(it->second))
-            throw runtime_error("VideoBuffer: MKV loader not registered (include MkvVideoBuffer.hpp)");
+            throw std::runtime_error("VideoBuffer: MKV loader not registered (include MkvVideoBuffer.hpp)");
 
         get<0>(it->second)(*this, File(mkv));
         loaded = true;
@@ -131,7 +132,7 @@ namespace SF::Engine
         const auto ext = LowerExt(PathOf(output));
         const auto it  = Registry().find(ext);
         if (it == Registry().end() || !get<1>(it->second))
-            throw runtime_error("VideoBuffer: no writer registered for '" + ext + "'");
+            throw std::runtime_error("VideoBuffer: no writer registered for '" + ext + "'");
         get<1>(it->second)(*this, output);
     }
 
@@ -145,7 +146,7 @@ namespace SF::Engine
         if (dav1d_open(&decoder, &settings) < 0)
         {
             decoder = nullptr;
-            throw runtime_error("VideoBuffer: dav1d_open failed");
+            throw std::runtime_error("VideoBuffer: dav1d_open failed");
         }
         nextPacket = 0;
         draining   = false;
@@ -216,7 +217,7 @@ namespace SF::Engine
         if (!decoder || packets.empty())
             return;
 
-        frameIndex = min(frameIndex, packets.size() - 1);
+        frameIndex = std::min(frameIndex, packets.size() - 1);
         while (frameIndex > 0 && !packets[frameIndex].KeyFrame)
             --frameIndex;
 

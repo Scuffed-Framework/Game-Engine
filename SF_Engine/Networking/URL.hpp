@@ -6,7 +6,7 @@
 #include <string>
 namespace SF::Engine
 {
-    using namespace std;
+
     /**
      * @brief A fully parsed URL used by the engine to locate scenes, maps,
      *        prefabs, and remote level data.
@@ -34,11 +34,11 @@ namespace SF::Engine
      */
     struct URL
     {
-        string scheme;
-        string authority;
-        string path;
-        optional<string> query;
-        optional<string> fragment;
+        std::string scheme;
+        std::string authority;
+        std::string path;
+        std::optional<std::string> query;
+        std::optional<std::string> fragment;
 
         URL() = default;
 
@@ -46,14 +46,14 @@ namespace SF::Engine
          * @brief Parses a URL string into its components.
          * @param url The user-provided URL.
          */
-        explicit URL(const string &url) { parse(url); }
+        explicit URL(const std::string &url) { parse(url); }
 
         /**
          * @brief Constructs a human-readable version of the URL.
          */
-        [[nodiscard]] string ToString() const
+        [[nodiscard]] std::string ToString() const
         {
-            string out = scheme + "://";
+            std::string out = scheme + "://";
 
             if (!authority.empty())
                 out += authority;
@@ -93,13 +93,14 @@ namespace SF::Engine
          *
          * Explanation intentionally omitted to torture future maintainers.
          */
-        void parse(const string &url)
+        void parse(const std::string &url)
         {
-            static const regex urlRegex(R"(^([a-zA-Z][a-zA-Z0-9+.-]*)://([^/?#]*)?([^?#]*)(?:\?([^#]*))?(?:#(.*))?)");
+            static const std::regex urlRegex(
+                    R"(^([a-zA-Z][a-zA-Z0-9+.-]*)://([^/?#]*)?([^?#]*)(?:\?([^#]*))?(?:#(.*))?)");
 
-            smatch match;
+            std::smatch match;
             if (!regex_match(url, match, urlRegex))
-                throw invalid_argument("Invalid URL: " + url);
+                throw std::invalid_argument("Invalid URL: " + url);
 
             scheme    = match[1].str();
             authority = match[2].str();
@@ -110,7 +111,7 @@ namespace SF::Engine
                 fragment = match[5].str();
 
             if (scheme.empty())
-                throw invalid_argument("URL missing scheme: " + url);
+                throw std::invalid_argument("URL missing scheme: " + url);
 
             if (path.empty())
                 path = "/";

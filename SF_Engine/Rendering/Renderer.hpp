@@ -13,7 +13,7 @@ namespace SF::Engine
 
     public:
         /**
-         * Creates a new renderer, fill {@link renderStages} in your subclass of this.
+         * Creates a new renderer, fill {@link renderStages} in your subclass of this.\endlink
          */
         Renderer()          = default;
         virtual ~Renderer() = default;

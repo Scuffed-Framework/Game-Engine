@@ -17,7 +17,7 @@
 
 namespace SF::Engine
 {
-    using namespace std;
+
     using EntityId                          = uint64_t;
     constexpr std::uint64_t InvalidEntityId = 0u; // should do the trick
     /**
@@ -42,7 +42,7 @@ namespace SF::Engine
          *        (A constructor-side parent pointer left the entity claiming a
          *        parent that didn't own it.)
          */
-        explicit Entity(const string &entityName);
+        explicit Entity(const std::string &entityName);
 
         virtual ~Entity()                 = default;
         Entity(const Entity &)            = delete;
@@ -50,11 +50,11 @@ namespace SF::Engine
         Entity(Entity &&other) noexcept;
         Entity &operator=(Entity &&other) noexcept;
 
-        unordered_map<type_index, unique_ptr<Component>> components;
+        std::unordered_map<std::type_index, std::unique_ptr<Component>> components;
 
-        vector<unique_ptr<Entity>> children;
-        vector<string> tags = {};
-        string name;
+        std::vector<std::unique_ptr<Entity>> children;
+        std::vector<std::string> tags = {};
+        std::string name;
 
         EntityId id    = 0;
         Entity *parent = nullptr;
@@ -65,11 +65,11 @@ namespace SF::Engine
         bool IsMarkedForRemoval() const { return markedForRemoval; }
         void MarkForRemoval() { markedForRemoval = true; }
 
-        bool HasTag(const std::string &tag) const { return ranges::find(tags, tag) != tags.end(); }
+        bool HasTag(const std::string &tag) const { return std::ranges::find(tags, tag) != tags.end(); }
 
         void AddTag(const std::string &tag)
         {
-            if (ranges::find(tags, tag) == tags.end()) // not found
+            if (std::ranges::find(tags, tag) == tags.end()) // not found
                 tags.emplace_back(tag);
             else
                 Log::Warning(
@@ -79,7 +79,7 @@ namespace SF::Engine
 
         void RemoveTag(const std::string &tag)
         {
-            if (ranges::find(tags, tag) != tags.end()) // found
+            if (std::ranges::find(tags, tag) != tags.end()) // found
                 std::erase(tags, tag);
             else
                 Log::Warning("Entity does not have the tag:{}", tag);
@@ -139,7 +139,7 @@ namespace SF::Engine
             components.emplace(key, std::move(component));
             return raw;
         }
-        
+
         /**
          * @brief Factory hook so derived entity types clone as themselves.
          *        Override in subclasses (and copy any extra members there).
@@ -191,7 +191,7 @@ namespace SF::Engine
 
             // Fallback: T might be a base/interface type (e.g. IRenderable)
             // that some other concrete component derives from.
-            for (auto &component: components | views::values)
+            for (auto &component: components | std::views::values)
             {
                 if (T *result = dynamic_cast<T *>(component.get()))
                     return result;
@@ -212,7 +212,7 @@ namespace SF::Engine
 
             // Fallback: T might be a base/interface type (e.g. IRenderable)
             // that some other concrete component derives from.
-            for (const auto &component: components | views::values)
+            for (const auto &component: components | std::views::values)
             {
                 if (T *result = dynamic_cast<T *>(component.get()))
                     return result;
@@ -262,7 +262,7 @@ namespace SF::Engine
 
         bool HasComponent(std::string_view typeName) const
         {
-            for (const auto &component: components | views::values)
+            for (const auto &component: components | std::views::values)
             {
                 if (component->GetTypeName() == typeName)
                     return true;
@@ -319,7 +319,8 @@ namespace SF::Engine
          */
         std::unique_ptr<Entity> ReleaseChild(Entity *child)
         {
-            auto it = ranges::find_if(children, [child](const std::unique_ptr<Entity> &c) { return c.get() == child; });
+            auto it = std::ranges::find_if(children,
+                                           [child](const std::unique_ptr<Entity> &c) { return c.get() == child; });
 
             if (it == children.end())
                 return nullptr;
@@ -337,7 +338,8 @@ namespace SF::Engine
          */
         bool DestroyChild(Entity *child)
         {
-            auto it = ranges::find_if(children, [child](const std::unique_ptr<Entity> &c) { return c.get() == child; });
+            auto it = std::ranges::find_if(children,
+                                           [child](const std::unique_ptr<Entity> &c) { return c.get() == child; });
 
             if (it == children.end())
                 return false;
@@ -497,8 +499,8 @@ namespace SF::Engine
                 parent->DestroyChild(entity);
             } else
             {
-                auto it = ranges::find_if(roots,
-                                          [entity](const std::unique_ptr<Entity> &e) { return e.get() == entity; });
+                auto it = std::ranges::find_if(roots, [entity](const std::unique_ptr<Entity> &e)
+                                               { return e.get() == entity; });
                 if (it != roots.end())
                     roots.erase(it);
             }
@@ -560,8 +562,8 @@ namespace SF::Engine
                 owned = oldParent->ReleaseChild(entity);
             } else
             {
-                auto it = ranges::find_if(roots,
-                                          [entity](const std::unique_ptr<Entity> &e) { return e.get() == entity; });
+                auto it = std::ranges::find_if(roots, [entity](const std::unique_ptr<Entity> &e)
+                                               { return e.get() == entity; });
                 if (it != roots.end())
                 {
                     owned = std::move(*it);
@@ -651,8 +653,8 @@ namespace SF::Engine
          */
         std::unique_ptr<Entity> RemoveRoot(Entity *entity)
         {
-            auto it = ranges::find_if(roots,
-                                      [entity](const std::unique_ptr<Entity> &root) { return root.get() == entity; });
+            auto it = std::ranges::find_if(roots, [entity](const std::unique_ptr<Entity> &root)
+                                           { return root.get() == entity; });
 
             if (it == roots.end())
                 return nullptr;

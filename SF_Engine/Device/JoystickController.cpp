@@ -467,7 +467,7 @@ namespace SF::Engine
 
     size_t JoystickController::GetConnectedCount() const
     {
-        return static_cast<size_t>(ranges::count_if(joysticks, [](const Joystick &j) { return j.connected; }));
+        return static_cast<size_t>(std::ranges::count_if(joysticks, [](const Joystick &j) { return j.connected; }));
     }
 
     const Joystick *JoystickController::GetJoystick(const JoystickPort port) const

@@ -8,7 +8,7 @@ namespace SF::Engine
     class PlayerCamera : public Camera
     {
     private:
-        bool UseInfiniteFarPlane;
+        bool UseInfiniteFarPlane{};
 
     public:
     };

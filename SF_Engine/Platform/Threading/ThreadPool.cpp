@@ -17,10 +17,10 @@ namespace SF::Engine
                     {
                         while (true)
                         {
-                            function<void()> task;
+                            std::function<void()> task;
 
                             {
-                                unique_lock<mutex> lock(queueMutex);
+                                std::unique_lock<std::mutex> lock(queueMutex);
 
                                 condition.wait(lock, [this] { return stop || !tasks.empty(); });
 
@@ -38,7 +38,7 @@ namespace SF::Engine
                             task();
 
                             {
-                                unique_lock<mutex> lock(queueMutex);
+                                std::unique_lock<std::mutex> lock(queueMutex);
 
                                 --activeTasks;
 
@@ -53,7 +53,7 @@ namespace SF::Engine
     ThreadPool::~ThreadPool()
     {
         {
-            unique_lock<mutex> lock(queueMutex);
+            std::unique_lock<std::mutex> lock(queueMutex);
             stop = true;
         }
 
@@ -69,7 +69,7 @@ namespace SF::Engine
 
     void ThreadPool::Wait()
     {
-        unique_lock<mutex> lock(queueMutex);
+        std::unique_lock lock(queueMutex);
 
         completionCondition.wait(lock, [this] { return tasks.empty() && activeTasks == 0; });
     }

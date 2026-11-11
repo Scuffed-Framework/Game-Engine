@@ -1,4 +1,5 @@
-#pragma onced
+#pragma once
+
 #include <Engine/Module.hpp>
 
 #include <Engine/InitGame/AppInfo.hpp>
@@ -7,7 +8,7 @@ namespace SF::Engine
 {
     constexpr void GenerateLinuxDesktopFile(AppInfo) {}
 
-    using namespace std;
+
     class BuildSystem : public ModuleRegistrar<BuildSystem>
     {
         REGISTER_MODULE(BuildSystem, ModuleStage::Never);

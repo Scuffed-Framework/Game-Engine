@@ -5,7 +5,7 @@
 
 namespace SF::EBML
 {
-    using namespace std;
+
     // IEEE 802.3 CRC-32 (the same polynomial zlib/PNG/gzip use), which is what
     // the EBML \CRC32 element specifies.
     inline std::uint32_t crc32(std::span<const std::uint8_t> data)

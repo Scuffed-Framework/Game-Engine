@@ -31,11 +31,11 @@ namespace SF::Engine
         {
             std::string name;
             std::shared_ptr<Mesh> mesh;
-            Vec4 baseColor  = {1.0f, 1.0f, 1.0f, 1.0f};
-            float metallic  = 0.0f;
-            float roughness = 1.0f;
-            uint32_t vertexCount   = 0;
-            uint32_t triangleCount = 0;
+            Vec4 baseColor              = {1.0f, 1.0f, 1.0f, 1.0f};
+            float metallic              = 0.0f;
+            float roughness             = 1.0f;
+            std::uint32_t vertexCount   = 0;
+            std::uint32_t triangleCount = 0;
         };
 
         MeshAsset() { type = AssetType::Mesh; }
@@ -55,7 +55,7 @@ namespace SF::Engine
 
         bool EnsureLoaded() override;
         void Save() override { SaveMeta(); }
-        bool Load(span<const uint8_t> /*payload*/) override { return EnsureLoaded(); }
+        bool Load(std::span<const uint8_t> /*payload*/) override { return EnsureLoaded(); }
 
         void SerializeImportSettings(XMLNode &node) const override;
         void DeserializeImportSettings(const XMLNode &node) override;

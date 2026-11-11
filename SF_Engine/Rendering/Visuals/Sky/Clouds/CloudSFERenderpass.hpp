@@ -20,7 +20,7 @@
 
 namespace SF::Engine
 {
-    using namespace std;
+
     struct Std140 CloudData
     {
         float cloudBottomRadius;
@@ -96,21 +96,21 @@ namespace SF::Engine
         void BindDescriptors() const;
         void UpdateCloudData();
 
-        shared_ptr<AtmosphereData> data_;
-        unique_ptr<UniformBuffer> atmoUBO_;   // binding=0
-        unique_ptr<UniformBuffer> CloudData_; // binding=1
+        std::shared_ptr<AtmosphereData> data_;
+        std::unique_ptr<UniformBuffer> atmoUBO_;   // binding=0
+        std::unique_ptr<UniformBuffer> CloudData_; // binding=1
 
-        unique_ptr<CloudNoiseLUTs> cloudNoise_;
+        std::unique_ptr<CloudNoiseLUTs> cloudNoise_;
 
-        unique_ptr<ComputePipeline> raymarchPipeline_;
-        unique_ptr<ComputePipeline> reconstructPipeline_;
-        unique_ptr<ComputePipeline> compositePipeline_;
+        std::unique_ptr<ComputePipeline> raymarchPipeline_;
+        std::unique_ptr<ComputePipeline> reconstructPipeline_;
+        std::unique_ptr<ComputePipeline> compositePipeline_;
 
-        unique_ptr<DescriptorSet> raymarchSet_; // written once in BindDescriptors(), never re-written per frame
+        std::unique_ptr<DescriptorSet> raymarchSet_; // written once in BindDescriptors(), never re-written per frame
 
         static constexpr uint32_t kFramesInFlight = 3;
-        unique_ptr<DescriptorSet> reconstructSet_[kFramesInFlight];
-        unique_ptr<DescriptorSet> compositeSet_[kFramesInFlight];
+        std::unique_ptr<DescriptorSet> reconstructSet_[kFramesInFlight];
+        std::unique_ptr<DescriptorSet> compositeSet_[kFramesInFlight];
 
         Vec3 cachedSunDir_{0.577f, 0.577f, 0.577f};
         float totalTime_{0.0f};
@@ -121,25 +121,25 @@ namespace SF::Engine
         uint64_t lastAttachmentGeneration_ = 0;
         uint32_t frameCounter_             = 0;
 
-        unique_ptr<Image2d> cloudRenderRT_; // binding 2/3  rgba16f
-        unique_ptr<Image2d> cloudDepthRT_;  // binding 14/15 r32f
-        unique_ptr<Image2d> cloudFogRT_;    // binding 22/23 rgba16f
+        std::unique_ptr<Image2d> cloudRenderRT_; // binding 2/3  rgba16f
+        std::unique_ptr<Image2d> cloudDepthRT_;  // binding 14/15 r32f
+        std::unique_ptr<Image2d> cloudFogRT_;    // binding 22/23 rgba16f
 
-        unique_ptr<Image2d> reconColor_[kFramesInFlight]; // binding 12(write)/13(read)/18(history)
-        unique_ptr<Image2d> reconDepth_[kFramesInFlight]; // binding 16(write)/17(read)/19(history)
-        unique_ptr<Image2d> reconFog_[kFramesInFlight];   // binding 24(write)/25(read)/26(history)
+        std::unique_ptr<Image2d> reconColor_[kFramesInFlight]; // binding 12(write)/13(read)/18(history)
+        std::unique_ptr<Image2d> reconDepth_[kFramesInFlight]; // binding 16(write)/17(read)/19(history)
+        std::unique_ptr<Image2d> reconFog_[kFramesInFlight];   // binding 24(write)/25(read)/26(history)
 
         uint32_t framesSinceStart_ = 0;
         uint32_t frameSlot_        = 0; // monotonically increasing, index with % kFramesInFlight
         bool firstFrame_           = true;
         // fahh
-        unique_ptr<Image2d> dummyTexture_;
+        std::unique_ptr<Image2d> dummyTexture_;
 
         // Composite compute writes premultiplied cloud colour here; Render() blends it into "hdr".
         // (Writing "hdr" from PreRender gets wiped by stage 1's render-pass clear.)
-        unique_ptr<Image2d> cloudCompositeRT_;
-        unique_ptr<RhiRenderPipeline> blitPipeline_;
-        unique_ptr<DescriptorSet> blitSet_;
+        std::unique_ptr<Image2d> cloudCompositeRT_;
+        std::unique_ptr<RhiRenderPipeline> blitPipeline_;
+        std::unique_ptr<DescriptorSet> blitSet_;
         bool drawThisFrame_ = false;
         size_t uiHandle;
     };

@@ -5,12 +5,12 @@
 
 namespace SF::Engine::Animation
 {
-    using namespace std;
+
     class AnimationCurve
     {
     public:
         // Properties
-        vector<Keyframe> keyframes;
+        std::vector<Keyframe> keyframes;
         const int length = static_cast<int>(keyframes.size());
 
         Keyframe AddKeyframe(const Keyframe &frame)
@@ -21,7 +21,7 @@ namespace SF::Engine::Animation
 
         void RemoveKeyframe(const Keyframe &frame)
         {
-            if (const auto it = ranges::find(keyframes, frame); it != keyframes.end())
+            if (const auto it = std::ranges::find(keyframes, frame); it != keyframes.end())
                 keyframes.erase(it);
         }
     };

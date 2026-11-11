@@ -6,7 +6,7 @@
 
 namespace SF::Engine
 {
-    CommandWindow::ParsedCmd CommandWindow::Parse(const string &raw)
+    CommandWindow::ParsedCmd CommandWindow::Parse(const std::string &raw)
     {
         ParsedCmd result;
         const char *p   = raw.c_str();
@@ -22,7 +22,7 @@ namespace SF::Engine
             const char *start = p;
             while (p < end && isspace(*p))
                 ++p;
-            return string(start, static_cast<size_t>(p - start));
+            return std::string(start, static_cast<size_t>(p - start));
         };
 
         skipSpace();
@@ -45,10 +45,10 @@ namespace SF::Engine
         // "print <msg...>" echos to log
         struct PrintCmd : Commandlet
         {
-            vector<LogEntry> *log{};
+            std::vector<LogEntry> *log{};
             void Execute() override
             {
-                string msg;
+                std::string msg;
                 for (const auto &a: args)
                 {
                     msg += a;
@@ -59,11 +59,11 @@ namespace SF::Engine
         };
         struct HelpCmd : Commandlet
         {
-            vector<LogEntry> *log{};
+            std::vector<LogEntry> *log{};
             void Execute() override
             {
-                string msg;
-                for (const auto &cmd: CommandletRegistry::Get().commandlets_ | views::values)
+                std::string msg;
+                for (const auto &cmd: CommandletRegistry::Get().commandlets_ | std::views::values)
                 {
                     msg += cmd->name + "\n";
                     msg += ' ';
@@ -76,7 +76,7 @@ namespace SF::Engine
         dynamic_cast<PrintCmd *>(printCmd.get())->log = &m_log;
     }
 
-    shared_ptr<Commandlet> CommandWindow::Execute(const string &input)
+    std::shared_ptr<Commandlet> CommandWindow::Execute(const std::string &input)
     {
         auto [name, args] = Parse(input);
 
@@ -89,9 +89,9 @@ namespace SF::Engine
 
         if (name.starts_with(CommandWindowConsoleVariablePrefix))
         {
-            const string fullName = name.substr(CommandWindowConsoleVariablePrefix.size());
+            const std::string fullName = name.substr(CommandWindowConsoleVariablePrefix.size());
 
-            IConsoleVariable *cvar = ConsoleVariableRegistry::Find(string_view(fullName));
+            IConsoleVariable *cvar = ConsoleVariableRegistry::Find(std::string_view(fullName));
             if (!cvar)
             {
                 m_log.push_back({LogEntry::Level::Error, "CVar '" + fullName + "' not found."});
@@ -105,7 +105,7 @@ namespace SF::Engine
                 return nullptr;
             }
 
-            if (!cvar->SetValueFromString(string_view(args[0])))
+            if (!cvar->SetValueFromString(std::string_view(args[0])))
             {
                 m_log.push_back(
                         {LogEntry::Level::Error, "Failed to parse '" + args[0] + "' for CVar '" + fullName + "'."});
@@ -135,7 +135,7 @@ namespace SF::Engine
         return cmd;
     }
 
-    bool CommandWindow::IsInputCmdInRegistry(const string &in) const
+    bool CommandWindow::IsInputCmdInRegistry(const std::string &in) const
     {
         return CommandletRegistry::Get().FindByName(Parse(in).name) != nullptr;
     }

@@ -26,10 +26,10 @@ namespace SF::Engine
         initFlags |= SDL_INIT_CAMERA | SDL_INIT_SENSOR;
 #endif
         if (!SDL_InitSubSystem(initFlags))
-            throw runtime_error(string("SDL failed to initialize: ") + SDL_GetError());
+            throw std::runtime_error(std::string("SDL failed to initialize: ") + SDL_GetError());
 
         if (!SDL_Vulkan_LoadLibrary(nullptr))
-            throw runtime_error(string("SDL failed to find Vulkan support: ") + SDL_GetError());
+            throw std::runtime_error(std::string("SDL failed to find Vulkan support: ") + SDL_GetError());
 
         SDL_AddEventWatch(&WindowManager::EventWatch, this);
 
@@ -38,7 +38,7 @@ namespace SF::Engine
         if (SDL_DisplayID *displays = SDL_GetDisplays(&displayCount))
         {
             for (int32_t i = 0; i < displayCount; i++)
-                monitors.emplace_back(make_unique<Monitor>(displays[i]));
+                monitors.emplace_back(std::make_unique<Monitor>(displays[i]));
             SDL_free(displays);
         }
     }
@@ -160,12 +160,12 @@ namespace SF::Engine
 
     void WindowManager::AddMonitor(SDL_DisplayID display)
     {
-        const bool known =
-                ranges::any_of(monitors, [display](const auto &monitor) { return monitor->GetMonitor() == display; });
+        const bool known = std::ranges::any_of(monitors, [display](const auto &monitor)
+                                               { return monitor->GetMonitor() == display; });
         if (known)
             return;
 
-        auto *monitor = monitors.emplace_back(make_unique<Monitor>(display)).get();
+        auto *monitor = monitors.emplace_back(std::make_unique<Monitor>(display)).get();
         onMonitorConnect(monitor, true);
     }
 
@@ -178,15 +178,15 @@ namespace SF::Engine
                 onMonitorConnect(monitor.get(), false);
         }
 
-        monitors.erase(
-                ranges::remove_if(monitors, [display](const auto &monitor) { return monitor->GetMonitor() == display; })
-                        .begin(),
-                monitors.end());
+        monitors.erase(std::ranges::remove_if(monitors, [display](const auto &monitor)
+                                              { return monitor->GetMonitor() == display; })
+                               .begin(),
+                       monitors.end());
     }
 
     Window *WindowManager::AddWindow()
     {
-        const auto window = windows.emplace_back(make_unique<Window>(windows.size())).get();
+        const auto window = windows.emplace_back(std::make_unique<Window>(windows.size())).get();
         onAddWindow(window, true);
         if (windows.size() == 1)
             Engine::Get()->OnMainWindowReady();
@@ -217,7 +217,7 @@ namespace SF::Engine
         return nullptr;
     }
 
-    pair<const char *const *, uint32_t> WindowManager::GetInstanceExtensions() const
+    std::pair<const char *const *, uint32_t> WindowManager::GetInstanceExtensions() const
     {
         Uint32 count                  = 0;
         const char *const *extensions = SDL_Vulkan_GetInstanceExtensions(&count);

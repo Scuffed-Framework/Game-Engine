@@ -9,7 +9,7 @@
 
 namespace SF::Engine
 {
-    using namespace std;
+
     /**
      * @brief Class that represents a compute pipeline.
      */
@@ -29,9 +29,10 @@ namespace SF::Engine
          *        group counts; must match the shader's actual `local_size_*` layout qualifiers.
          *        Must be non-zero in every component.
          */
-        explicit ComputePipeline(filesystem::path shaderStage, vector<Shader::Define> defines = {},
-                                 bool pushDescriptors = false, vector<VkDescriptorSetLayout> additionalLayouts = {},
-                                 UVec3 localSize = {16, 16, 1});
+        explicit ComputePipeline(std::filesystem::path shaderStage, std::vector<Shader::Define> defines = {},
+                                 bool pushDescriptors                                 = false,
+                                 std::vector<VkDescriptorSetLayout> additionalLayouts = {},
+                                 UVec3 localSize                                      = {16, 16, 1});
 
         /**
          * Creates a new compute pipeline.
@@ -42,18 +43,19 @@ namespace SF::Engine
          * @param additionalLayouts See other constructor.
          * @param localSize See other constructor.
          */
-        explicit ComputePipeline(filesystem::path shaderStage, const string &entry, vector<Shader::Define> defines = {},
-                                 bool pushDescriptors = false, vector<VkDescriptorSetLayout> additionalLayouts = {},
-                                 UVec3 localSize = {16, 16, 1});
+        explicit ComputePipeline(std::filesystem::path shaderStage, const std::string &entry,
+                                 std::vector<Shader::Define> defines = {}, bool pushDescriptors = false,
+                                 std::vector<VkDescriptorSetLayout> additionalLayouts = {},
+                                 UVec3 localSize                                      = {16, 16, 1});
 
         ~ComputePipeline() override;
 
         /// Dispatches ceil(extent / {LOCAL_X, LOCAL_Y, LOCAL_Z}) groups in all 3 dimensions.
         void Dispatch(const CommandBuffer &commandBuffer, const UVec3 &extent, const UVec3 &localSize = {}) const;
 
-        [[nodiscard]] const filesystem::path &GetShaderStage() const { return shaderStage; }
-        [[nodiscard]] const string &GetEntry() const { return entryOpt; }
-        [[nodiscard]] const vector<Shader::Define> &GetDefines() const { return defines; }
+        [[nodiscard]] const std::filesystem::path &GetShaderStage() const { return shaderStage; }
+        [[nodiscard]] const std::string &GetEntry() const { return entryOpt; }
+        [[nodiscard]] const std::vector<Shader::Define> &GetDefines() const { return defines; }
         [[nodiscard]] const UVec3 &GetLocalSize() const { return localSize; }
         [[nodiscard]] bool IsPushDescriptors() const override { return pushDescriptors; }
         [[nodiscard]] const Shader *GetShader() const override { return shader.get(); }
@@ -66,23 +68,23 @@ namespace SF::Engine
         [[nodiscard]] const VkPipelineLayout &GetPipelineLayout() const override { return pipelineLayout; }
         [[nodiscard]] const VkPipelineBindPoint &GetPipelineBindPoint() const override { return pipelineBindPoint; }
 
-        void ReloadShader(const vector<uint32_t> &newSpirv) const;
+        void ReloadShader(const std::vector<uint32_t> &newSpirv) const;
 
     private:
-        void CreateShaderProgram(const string &entry);
+        void CreateShaderProgram(const std::string &entry);
         void CreateDescriptorLayout();
         void CreateDescriptorPool();
         void CreatePipelineLayout();
         void CreatePipelineCompute();
 
-        filesystem::path shaderStage;
-        vector<Shader::Define> defines;
+        std::filesystem::path shaderStage;
+        std::vector<Shader::Define> defines;
         bool pushDescriptors;
-        vector<VkDescriptorSetLayout> additionalLayouts;
+        std::vector<VkDescriptorSetLayout> additionalLayouts;
         UVec3 localSize;
 
-        shared_ptr<Shader> shader;
-        string entryOpt;
+        std::shared_ptr<Shader> shader;
+        std::string entryOpt;
 
         VkDevice device_                          = VK_NULL_HANDLE;
         VkDescriptorSetLayout descriptorSetLayout = VK_NULL_HANDLE;

@@ -275,7 +275,7 @@ namespace SF::Engine
         return ptr;
     }
 
-    SceneLight *Scene::AddLight(const string &name, Lighting::LightType type, const Vec3 &color, float intensity,
+    SceneLight *Scene::AddLight(const std::string &name, Lighting::LightType type, const Vec3 &color, float intensity,
                                 const Vec3 &position, Rotation rotation, Entity *parent)
     {
         SceneLight *ptr =
@@ -475,7 +475,7 @@ namespace SF::Engine
 
         for (XMLNode n: root.GetChildren("Object"))
         {
-            auto *obj = entities.CreateEntity<SceneObject>(string()); // name set by Deserialize below
+            auto *obj = entities.CreateEntity<SceneObject>(std::string()); // name set by Deserialize below
             obj->Deserialize(n);
             if (initialized_) // GPU resources only once the renderer exists; Initialize() handles the rest
                 ResolveBuiltinMesh(obj);
@@ -490,7 +490,7 @@ namespace SF::Engine
 
         for (XMLNode n: root.GetChildren("Light"))
         {
-            auto *light = entities.CreateEntity<SceneLight>(string());
+            auto *light = entities.CreateEntity<SceneLight>(std::string());
             light->Deserialize(n);
 
             int parentKind = 0, parentIndex = -1;

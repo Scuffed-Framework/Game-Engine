@@ -222,19 +222,18 @@ namespace SF::Engine
 
         style.ColorButtonPosition = ImGuiDir_Right;
 
-        const Vec4 accent       = Vec4(0.00f, 0.54f, 1.00f, 1.00f); // signature blue
-        const Vec4 accentHover  = Vec4(0.00f, 0.62f, 1.00f, 1.00f);
-        const Vec4 accentActive = Vec4(0.00f, 0.68f, 1.00f, 1.00f);
-
-        const Vec4 bgVoid        = Vec4(0.00f, 0.00f, 0.00f, 0.92f); // window/popup bg
-        const Vec4 bgPanel       = Vec4(0.06f, 0.06f, 0.06f, 1.00f); // title bars
-        const Vec4 bgField       = Vec4(0.11f, 0.11f, 0.11f, 1.00f); // frame bg
-        const Vec4 bgFieldHover  = Vec4(0.16f, 0.16f, 0.16f, 1.00f);
-        const Vec4 bgFieldActive = Vec4(0.14f, 0.14f, 0.14f, 1.00f);
-        const Vec4 borderCol     = Vec4(0.20f, 0.20f, 0.20f, 1.00f);
-        const Vec4 rowSelect     = Vec4(0.20f, 0.20f, 0.20f, 1.00f); // hierarchy selection grey
-        const Vec4 rowHover      = Vec4(0.13f, 0.13f, 0.13f, 1.00f);
-        const Vec4 textDim       = Vec4(0.55f, 0.55f, 0.55f, 1.00f);
+        constexpr auto accent        = Vec4(0.00f, 0.54f, 1.00f, 1.00f); // signature blue
+        constexpr auto accentHover   = Vec4(0.00f, 0.62f, 1.00f, 1.00f);
+        constexpr auto accentActive  = Vec4(0.00f, 0.68f, 1.00f, 1.00f);
+        constexpr auto bgVoid        = Vec4(0.00f, 0.00f, 0.00f, 0.92f); // window/popup bg
+        constexpr auto bgPanel       = Vec4(0.06f, 0.06f, 0.06f, 1.00f); // title bars
+        constexpr auto bgField       = Vec4(0.11f, 0.11f, 0.11f, 1.00f); // frame bg
+        constexpr auto bgFieldHover  = Vec4(0.16f, 0.16f, 0.16f, 1.00f);
+        constexpr auto bgFieldActive = Vec4(0.14f, 0.14f, 0.14f, 1.00f);
+        constexpr auto borderCol     = Vec4(0.20f, 0.20f, 0.20f, 1.00f);
+        constexpr auto rowSelect     = Vec4(0.20f, 0.20f, 0.20f, 1.00f); // hierarchy selection grey
+        constexpr auto rowHover      = Vec4(0.13f, 0.13f, 0.13f, 1.00f);
+        constexpr auto textDim       = Vec4(0.55f, 0.55f, 0.55f, 1.00f);
 
         colors[ImGuiCol_Text]         = Vec4(1.00f, 1.00f, 1.00f, 1.00f);
         colors[ImGuiCol_TextDisabled] = textDim;

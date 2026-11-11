@@ -24,22 +24,22 @@ namespace SF::Engine
     struct AudioTrackInfo
     {
         uint64_t trackNumber = 0;
-        string codecID;
-        string codecName;
-        string language;
+        std::string codecID;
+        std::string codecName;
+        std::string language;
         double samplingFrequency = 48000.0;
         uint64_t channels        = 2;
         uint64_t bitDepth        = 0;
-        vector<uint8_t> codecPrivate;
+        std::vector<uint8_t> codecPrivate;
         bool enabled   = true;
         bool isDefault = false;
     };
 
     struct SegmentInfo
     {
-        string title;
-        string muxingApp;
-        string writingApp;
+        std::string title;
+        std::string muxingApp;
+        std::string writingApp;
         double duration        = 0.0;
         uint64_t timecodeScale = 1'000'000;
     };
@@ -48,7 +48,7 @@ namespace SF::Engine
     {
         uint64_t trackNumber = 0;
         uint64_t timestamp   = 0; // in segmentInfo.timecodeScale units, i.e. raw Matroska ticks
-        vector<uint8_t> data;
+        std::vector<uint8_t> data;
         bool keyframe = true;
     };
 
@@ -65,28 +65,28 @@ namespace SF::Engine
     class MatroskaAudioLoader
     {
     public:
-        explicit MatroskaAudioLoader(string filePath);
+        explicit MatroskaAudioLoader(std::string filePath);
         ~MatroskaAudioLoader();
 
         bool Load();
         void PrintInfo() const;
 
         const SegmentInfo &GetSegmentInfo() const { return segmentInfo; }
-        const vector<AudioTrackInfo> &GetAudioTracks() const { return audioTracks; }
+        const std::vector<AudioTrackInfo> &GetAudioTracks() const { return audioTracks; }
 
         bool ReadNextFrame(AudioFrame &frame);
         void SeekToTimestamp(uint64_t timestamp);
 
     private:
-        string filePath;
-        ifstream fileStream;
+        std::string filePath;
+        std::ifstream fileStream;
 
         SF::EBML::Schema schema{SF::Matroska::create_matroska_schema()};
 
         SegmentInfo segmentInfo;
-        vector<AudioTrackInfo> audioTracks;
+        std::vector<AudioTrackInfo> audioTracks;
 
-        vector<AudioFrame> allFrames_;
+        std::vector<AudioFrame> allFrames_;
         size_t frameCursor_ = 0;
 
         bool loaded_ = false;
@@ -119,16 +119,17 @@ namespace SF::Engine
 
         // Linear-interpolation resampler. Adequate for editor export; swap in a proper
         // polyphase/sinc resampler if you care about the top octave.
-        inline vector<int16_t> ResampleLinear(span<const int16_t> in, int channels, uint32_t from, uint32_t to)
+        inline std::vector<int16_t> ResampleLinear(std::span<const int16_t> in, int channels, uint32_t from,
+                                                   uint32_t to)
         {
             const size_t inFrames = in.size() / channels;
             const auto outFrames  = static_cast<size_t>(llround(static_cast<double>(inFrames) * to / from));
-            vector<int16_t> out(outFrames * channels);
+            std::vector<int16_t> out(outFrames * channels);
             for (size_t i = 0; i < outFrames; ++i)
             {
                 const double src = static_cast<double>(i) * from / to;
-                const size_t i0  = min(static_cast<size_t>(src), inFrames - 1);
-                const size_t i1  = min(i0 + 1, inFrames - 1);
+                const size_t i0  = std::min(static_cast<size_t>(src), inFrames - 1);
+                const size_t i1  = std::min(i0 + 1, inFrames - 1);
                 const double f   = src - static_cast<double>(i0);
                 for (int c = 0; c < channels; ++c)
                 {
@@ -144,8 +145,8 @@ namespace SF::Engine
      * @brief Encodes PCM to Opus and muxes it into a .mka.
      * @return true on success.
      */
-    inline bool WriteOpusMka(span<const int16_t> pcmIn, uint32_t sampleRate, int channels, const filesystem::path &path,
-                             const OpusMkaOptions &opt = {})
+    inline bool WriteOpusMka(std::span<const int16_t> pcmIn, uint32_t sampleRate, int channels,
+                             const std::filesystem::path &path, const OpusMkaOptions &opt = {})
     {
         using namespace SF::Matroska;
 
@@ -153,9 +154,9 @@ namespace SF::Engine
             return false;
 
         // 1. Bring the input to a rate Opus accepts.
-        vector<int16_t> resampled;
-        uint32_t rate           = sampleRate;
-        span<const int16_t> pcm = pcmIn;
+        std::vector<int16_t> resampled;
+        uint32_t rate                = sampleRate;
+        std::span<const int16_t> pcm = pcmIn;
         if (!Detail::IsNativeOpusRate(rate))
         {
             resampled = Detail::ResampleLinear(pcmIn, channels, rate, 48000);
@@ -166,7 +167,7 @@ namespace SF::Engine
 
         // 2. Encoder.
         int err = 0;
-        unique_ptr<OpusEncoder, decltype(&opus_encoder_destroy)> enc(
+        std::unique_ptr<OpusEncoder, decltype(&opus_encoder_destroy)> enc(
                 opus_encoder_create(static_cast<opus_int32>(rate), channels, OPUS_APPLICATION_AUDIO, &err),
                 &opus_encoder_destroy);
         if (!enc || err != OPUS_OK)
@@ -181,15 +182,15 @@ namespace SF::Engine
         const size_t frameSize = static_cast<size_t>(rate) * opt.frameMs / 1000; // per channel, at `rate`
         const size_t frame48   = static_cast<size_t>(48000) * opt.frameMs / 1000;
 
-        ofstream out(path, ios::binary | ios::trunc);
+        std::ofstream out(path, std::ios::binary | std::ios::trunc);
         if (!out)
             return false;
 
         MatroskaFile file;
 
         // OpusHead: magic, version, channels, preskip (LE16), input rate (LE32), gain (LE16), mapping family
-        vector<EBML::byte> head = {'O', 'p', 'u', 's', 'H', 'e', 'a', 'd', 1, static_cast<EBML::byte>(channels)};
-        auto le16               = [&](uint32_t v)
+        std::vector<EBML::byte> head = {'O', 'p', 'u', 's', 'H', 'e', 'a', 'd', 1, static_cast<EBML::byte>(channels)};
+        auto le16                    = [&](uint32_t v)
         {
             head.push_back(v & 0xFF);
             head.push_back((v >> 8) & 0xFF);
@@ -205,11 +206,11 @@ namespace SF::Engine
         head.push_back(0); // mapping family 0 (mono/stereo)
 
         MatroskaFile::AudioTrackOptions topt;
-        topt.codecPrivate = head;
-        topt.codecDelay =
-                chrono::nanoseconds((static_cast<uint64_t>(preSkip48) * 1'000'000'000ull + 47999) / 48000); // round up
-        topt.seekPreRoll     = chrono::milliseconds(80);
-        topt.defaultDuration = chrono::milliseconds(opt.frameMs);
+        topt.codecPrivate    = head;
+        topt.codecDelay      = std::chrono::nanoseconds((static_cast<uint64_t>(preSkip48) * 1'000'000'000ull + 47999) /
+                                                        48000); // round up
+        topt.seekPreRoll     = std::chrono::milliseconds(80);
+        topt.defaultDuration = std::chrono::milliseconds(opt.frameMs);
         const Track track    = file.add_audio_track(48000.0, channels, "A_OPUS", topt);
 
         file.initialize_writer(out);
@@ -217,15 +218,15 @@ namespace SF::Engine
         const size_t fedFrames   = totalFrames + static_cast<size_t>(lookahead);
         const size_t packetCount = (fedFrames + frameSize - 1) / frameSize;
 
-        vector<int16_t> frameBuf(frameSize * channels);
-        vector<EBML::byte> packet(4000);
+        std::vector<int16_t> frameBuf(frameSize * channels);
+        std::vector<EBML::byte> packet(4000);
 
         for (size_t p = 0; p < packetCount; ++p)
         {
-            ranges::fill(frameBuf, 0);
+            std::ranges::fill(frameBuf, 0);
             if (const size_t start = p * frameSize; start < totalFrames)
             {
-                const size_t n = min(frameSize, totalFrames - start);
+                const size_t n = std::min(frameSize, totalFrames - start);
                 copy_n(pcm.begin() + static_cast<long>(start) * channels, n * channels, frameBuf.begin());
             }
 
@@ -243,13 +244,13 @@ namespace SF::Engine
                 // Samples (at 48 kHz) the decoder will produce beyond the real audio.
                 const uint64_t decoded48 = static_cast<uint64_t>(packetCount) * frame48;
                 const uint64_t real48    = static_cast<uint64_t>(totalFrames) * 48000 / rate;
-                const uint64_t trim48    = decoded48 - preSkip48 - min<uint64_t>(real48, decoded48 - preSkip48);
+                const uint64_t trim48    = decoded48 - preSkip48 - std::min<uint64_t>(real48, decoded48 - preSkip48);
                 // Round UP: decoders floor ns->samples, so truncating here would leave 1 sample too many.
                 discardNs = static_cast<int64_t>((trim48 * 1'000'000'000ull + 47999) / 48000);
             }
 
-            file.write_frame(track.number, ts, span<const EBML::byte>(packet.data(), static_cast<size_t>(bytes)), true,
-                             last ? static_cast<uint64_t>(opt.frameMs) : 0, discardNs);
+            file.write_frame(track.number, ts, std::span<const EBML::byte>(packet.data(), static_cast<size_t>(bytes)),
+                             true, last ? static_cast<uint64_t>(opt.frameMs) : 0, discardNs);
         }
 
         file.finalize();

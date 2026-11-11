@@ -19,7 +19,6 @@
 
 namespace SF::EBML
 {
-    using namespace std;
     // Forward declaration
     class BackPatchableWriter;
 
@@ -27,44 +26,44 @@ namespace SF::EBML
     struct SerializationContext
     {
         // Start offset (id byte of the element header) of the FIRST occurrence of each element id.
-        std::unordered_map<uint64_t, size_t> elementPositions;
-        std::unordered_map<uint64_t, vector<size_t>> seekPositions;
+        std::unordered_map<std::uint64_t, std::size_t> elementPositions;
+        std::unordered_map<std::uint64_t, std::vector<size_t>> seekPositions;
         // Running absolute offset. Set it to where the bytes will land in the output
         // before calling serialize(); it is advanced as elements are serialized.
-        size_t currentPosition = 0;
-        bool isTwoPass         = false;
-        bool isBackPatching    = false;
+        std::size_t currentPosition = 0;
+        bool isTwoPass              = false;
+        bool isBackPatching         = false;
     };
 
-    inline size_t serialized_size(const Element &element);
+    inline std::size_t serialized_size(const Element &element);
 
     // Size of just the payload (children or raw bytes), without the id/size header.
-    inline size_t serialized_body_size(const Element &element)
+    inline std::size_t serialized_body_size(const Element &element)
     {
         if (!element.is_master())
             return element.raw().size();
 
-        size_t total = 0;
+        std::size_t total = 0;
         for (const auto &child: element.children())
             total += serialized_size(child);
         return total;
     }
 
     // Full serialized size: id + size field + payload.
-    inline size_t serialized_size(const Element &element)
+    inline std::size_t serialized_size(const Element &element)
     {
-        const size_t body = serialized_body_size(element);
+        const std::size_t body = serialized_body_size(element);
         return element.id().encode().size() + encode_size(body).size() + body;
     }
 
     // Byte offset, inside the element's serialized bytes, where its payload begins
     // (i.e. the id + size-field length). Handy as `patchPosition` for write_with_backpatch.
-    inline size_t payload_offset(const Element &element)
+    inline std::size_t payload_offset(const Element &element)
     {
         return element.id().encode().size() + encode_size(serialized_body_size(element)).size();
     }
 
-    inline vector<byte> serialize(const Element &element, SerializationContext *ctx = nullptr)
+    inline std::vector<byte> serialize(const Element &element, SerializationContext *ctx = nullptr)
     {
         // The header size depends on the payload size, so get that first. That lets every
         // nested element know its absolute start offset before it is serialized.
@@ -104,23 +103,23 @@ namespace SF::EBML
     // Back-patchable writer with support for updating SeekHead
     class BackPatchableWriter
     {
-        ostream &out_;
-        mutable mutex mutex_;
-        size_t position_ = 0;
-        bool isTwoPass_  = false;
-        bool seekable_   = false;
+        std::ostream &out_;
+        mutable std::mutex mutex_;
+        std::size_t position_ = 0;
+        bool isTwoPass_       = false;
+        bool seekable_        = false;
 
         // A fixed 8-byte big-endian uint64 field, already written as a placeholder,
         // that gets overwritten later.
         struct PatchPoint
         {
-            size_t position; // absolute offset in the output stream
-            uint64_t value = 0;
-            bool hasValue  = false; // value assigned but not yet written (deferred patch)
-            bool isWritten = false;
+            std::size_t position; // absolute offset in the output stream
+            std::uint64_t value = 0;
+            bool hasValue       = false; // value assigned but not yet written (deferred patch)
+            bool isWritten      = false;
         };
-        unordered_map<uint64_t, vector<PatchPoint>> patches_;
-        unordered_map<uint64_t, size_t> elementPositions_;
+        std::unordered_map<std::uint64_t, std::vector<PatchPoint>> patches_;
+        std::unordered_map<std::uint64_t, std::size_t> elementPositions_;
 
         // Appends the element at the current position and records the start offset of it
         // and everything nested in it. Returns the element's start offset.

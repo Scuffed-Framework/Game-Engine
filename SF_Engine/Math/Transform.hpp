@@ -114,7 +114,7 @@ namespace SF::Engine
         Transform(const Vec3 &position = {}, const Rotation &rotation = {}, const Vec3 &scale = Vec3(1.0f));
         ~Transform() override = default;
 
-        string_view GetTypeName() const override { return "Transform"; }
+        std::string_view GetTypeName() const override { return "Transform"; }
 
         Mat4 GetWorldMatrix() const;
         Vec3 GetPosition() const;
@@ -182,6 +182,6 @@ namespace SF::Engine
             scale    = {1.0f, 1.0f, 1.0f};
         }
 
-        unique_ptr<Component> Clone() const override { return std::make_unique<Transform>(*this); }
+        std::unique_ptr<Component> Clone() const override { return std::make_unique<Transform>(*this); }
     };
 } // namespace SF::Engine

@@ -47,7 +47,7 @@
 
 namespace SF::Engine
 {
-    using namespace std;
+
 
     inline constexpr float Pi       = 3.14159265358979323846f;
     inline constexpr float TwoPi    = 2.0f * Pi;
@@ -59,37 +59,37 @@ namespace SF::Engine
      * @brief Concept for arithmetic types
      */
     template<typename T>
-    concept Arithmetic = is_arithmetic_v<T>;
+    concept Arithmetic = std::is_arithmetic_v<T>;
 
     /**
      * @brief Concept for floating point types
      */
     template<typename T>
-    concept FloatingPoint = is_floating_point_v<T>;
+    concept FloatingPoint = std::is_floating_point_v<T>;
 
     /**
      * @brief Concept for integral types
      */
     template<typename T>
-    concept Integral = is_integral_v<T>;
+    concept Integral = std::is_integral_v<T>;
 
     /**
      * @brief Signed integral types
      */
     template<typename T>
-    concept SignedIntegral = Integral<T> && signed_integral<T>;
+    concept SignedIntegral = Integral<T> && std::signed_integral<T>;
 
     /**
      * @brief Unsigned integral types
      */
     template<typename T>
-    concept UnsignedIntegral = Integral<T> && unsigned_integral<T>;
+    concept UnsignedIntegral = Integral<T> && std::unsigned_integral<T>;
 
     /**
      * @brief Boolean type only
      */
     template<typename T>
-    concept Boolean = same_as<remove_cvref_t<T>, bool>;
+    concept Boolean = std::same_as<std::remove_cvref_t<T>, bool>;
 
     /**
      * @brief Excludes bool from arithmetic
@@ -98,16 +98,16 @@ namespace SF::Engine
     concept Numeric = Arithmetic<T> && !Boolean<T>;
 
     template<typename T>
-    concept Enum = is_enum_v<T>;
+    concept Enum = std::is_enum_v<T>;
 
     template<typename T>
-    concept Trivial = is_trivial_v<T>;
+    concept Trivial = std::is_trivial_v<T>;
 
     template<typename T>
-    concept POD = is_standard_layout_v<T> && is_trivial_v<T>;
+    concept POD = std::is_standard_layout_v<T> && std::is_trivial_v<T>;
 
     template<typename T>
-    concept Real = integral<T> || floating_point<T>;
+    concept Real = std::integral<T> || std::floating_point<T>;
 
     template<typename T>
     struct Fraction
@@ -117,8 +117,8 @@ namespace SF::Engine
     };
     template<typename T>
     concept Rational = requires(T v) {
-        { v.numerator } -> integral;
-        { v.denominator } -> integral;
+        { v.numerator } -> std::integral;
+        { v.denominator } -> std::integral;
     };
 
     /**
@@ -129,35 +129,35 @@ namespace SF::Engine
     public:
         // Use C++20 mathematical constants (more precise)
         template<FloatingPoint T = float>
-        static constexpr T PI = numbers::pi_v<T>;
+        static constexpr T PI = std::numbers::pi_v<T>;
 
         template<FloatingPoint T = float>
-        static constexpr T TAU = numbers::pi_v<T> * T(2); // 2π
+        static constexpr T TAU = std::numbers::pi_v<T> * T(2); // 2π
 
         template<FloatingPoint T = float>
-        static constexpr T E = numbers::e_v<T>;
+        static constexpr T E = std::numbers::e_v<T>;
 
         template<FloatingPoint T = float>
         static constexpr T GOLDEN_RATIO = T(1.618033988749894848204586834365638117720309179805762862135);
 
         template<FloatingPoint T = float>
-        static constexpr T SQRT2 = numbers::sqrt2_v<T>;
+        static constexpr T SQRT2 = std::numbers::sqrt2_v<T>;
 
         template<FloatingPoint T = float>
-        static constexpr T SQRT3 = numbers::sqrt3_v<T>;
+        static constexpr T SQRT3 = std::numbers::sqrt3_v<T>;
 
         // Default epsilon for floating point comparisons
         template<FloatingPoint T = float>
-        static constexpr T EPSILON = numeric_limits<T>::epsilon();
+        static constexpr T EPSILON = std::numeric_limits<T>::epsilon();
 
         Mathematics() = delete;
 
         /**
          * @brief Get thread-local random number generator
          */
-        static mt19937 &GetRNG()
+        static std::mt19937 &GetRNG()
         {
-            thread_local mt19937 rng(random_device{}());
+            thread_local std::mt19937 rng(std::random_device{}());
             return rng;
         }
 
@@ -170,7 +170,7 @@ namespace SF::Engine
         template<FloatingPoint T = float>
         static T Random(T min = T(0), T max = T(1))
         {
-            uniform_real_distribution<T> dist(min, max);
+            std::uniform_real_distribution<T> dist(min, max);
             return dist(GetRNG());
         }
 
@@ -180,10 +180,10 @@ namespace SF::Engine
          * @param max The max value (inclusive)
          * @return The randomly selected value within the range
          */
-        template<integral T>
+        template<std::integral T>
         static T RandomInt(T min, T max)
         {
-            uniform_int_distribution<T> dist(min, max);
+            std::uniform_int_distribution<T> dist(min, max);
             return dist(GetRNG());
         }
 
@@ -196,7 +196,7 @@ namespace SF::Engine
         template<FloatingPoint T = float>
         static T RandomNormal(T mean = T(0), T standardDeviation = T(1))
         {
-            normal_distribution<T> dist(mean, standardDeviation);
+            std::normal_distribution<T> dist(mean, standardDeviation);
             return dist(GetRNG());
         }
 
@@ -222,18 +222,18 @@ namespace SF::Engine
          * @return The final random number
          */
         template<typename T>
-            requires(is_integral_v<T> || is_floating_point_v<T>)
+            requires(std::is_integral_v<T> || std::is_floating_point_v<T>)
         [[nodiscard]] static T Rand(T Min, T Max)
         {
-            thread_local mt19937_64 Generator(random_device{}());
+            thread_local std::mt19937_64 Generator(std::random_device{}());
 
-            if constexpr (is_integral_v<T>)
+            if constexpr (std::is_integral_v<T>)
             {
-                uniform_int_distribution<T> Dist(Min, Max);
+                std::uniform_int_distribution<T> Dist(Min, Max);
                 return Dist(Generator);
             } else
             {
-                uniform_real_distribution<T> Dist(Min, Max);
+                std::uniform_real_distribution<T> Dist(Min, Max);
                 return Dist(Generator);
             }
         }
@@ -246,7 +246,7 @@ namespace SF::Engine
         template<Arithmetic T>
         static constexpr auto Radians(T degrees) noexcept
         {
-            using Result = conditional_t<is_floating_point_v<T>, T, double>;
+            using Result = std::conditional_t<std::is_floating_point_v<T>, T, double>;
             return static_cast<Result>(degrees) * PI<Result> / Result(180);
         }
 
@@ -258,7 +258,7 @@ namespace SF::Engine
         template<Arithmetic T>
         static constexpr auto Degrees(T radians) noexcept
         {
-            using Result = conditional_t<is_floating_point_v<T>, T, double>;
+            using Result = std::conditional_t<std::is_floating_point_v<T>, T, double>;
             return static_cast<Result>(radians) * Result(180) / PI<Result>;
         }
 
@@ -328,7 +328,7 @@ namespace SF::Engine
         static T RoundToPlaces(T value, int32_t places)
         {
             T multiplier = pow(T(10), places);
-            return round(value * multiplier) / multiplier;
+            return std::round(value * multiplier) / multiplier;
         }
 
         /**
@@ -340,7 +340,7 @@ namespace SF::Engine
         template<Arithmetic T>
         static constexpr T Deadband(T threshold, T value) noexcept
         {
-            return abs(value) >= abs(threshold) ? value : T(0);
+            return std::abs(value) >= std::abs(threshold) ? value : T(0);
         }
 
         /**
@@ -353,7 +353,7 @@ namespace SF::Engine
         template<FloatingPoint T>
         static constexpr bool AlmostEqual(T a, T b, T epsilon = EPSILON<T>) noexcept
         {
-            return abs(a - b) <= epsilon * max({T(1), abs(a), abs(b)});
+            return std::abs(a - b) <= epsilon * std::max({T(1), std::abs(a), std::abs(b)});
         }
 
         /**
@@ -365,7 +365,7 @@ namespace SF::Engine
         template<FloatingPoint T>
         static constexpr bool IsZero(T value, T epsilon = EPSILON<T>) noexcept
         {
-            return abs(value) <= epsilon;
+            return std::abs(value) <= epsilon;
         }
 
         /**
@@ -404,7 +404,7 @@ namespace SF::Engine
         template<Arithmetic T>
         static constexpr auto InverseLerp(T a, T b, T value) noexcept
         {
-            using Result = conditional_t<is_floating_point_v<T>, T, double>;
+            using Result = std::conditional_t<std::is_floating_point_v<T>, T, double>;
             if (a == b)
                 return Result(0);
             return (value - a) / static_cast<Result>(b - a);
@@ -434,7 +434,7 @@ namespace SF::Engine
         template<FloatingPoint T = float>
         static constexpr T Smoothstep(T edge0, T edge1, T x) noexcept
         {
-            T t = clamp((x - edge0) / (edge1 - edge0), T(0), T(1));
+            T t = std::clamp((x - edge0) / (edge1 - edge0), T(0), T(1));
             return t * t * (T(3) - T(2) * t);
         }
 
@@ -448,7 +448,7 @@ namespace SF::Engine
         template<FloatingPoint T = float>
         static constexpr T Smootherstep(T edge0, T edge1, T x) noexcept
         {
-            T t = clamp((x - edge0) / (edge1 - edge0), T(0), T(1));
+            T t = std::clamp((x - edge0) / (edge1 - edge0), T(0), T(1));
             return t * t * t * (t * (t * T(6) - T(15)) + T(10));
         }
 
@@ -464,7 +464,7 @@ namespace SF::Engine
         template<Arithmetic T>
         static constexpr auto Remap(T value, T fromMin, T fromMax, T toMin, T toMax) noexcept
         {
-            using Result = conditional_t<is_floating_point_v<T>, T, double>;
+            using Result = std::conditional_t<std::is_floating_point_v<T>, T, double>;
             Result t     = InverseLerp(fromMin, fromMax, value);
             return Lerp(toMin, toMax, t);
         }
@@ -479,7 +479,7 @@ namespace SF::Engine
         template<Arithmetic T>
         static constexpr T Clamp(T value, T min, T max) noexcept
         {
-            return clamp(value, min, max);
+            return std::clamp(value, min, max);
         }
 
         /**
@@ -490,8 +490,8 @@ namespace SF::Engine
         template<Arithmetic T>
         static constexpr auto Saturate(T value) noexcept
         {
-            using Result = conditional_t<is_floating_point_v<T>, T, double>;
-            return clamp(static_cast<Result>(value), Result(0), Result(1));
+            using Result = std::conditional_t<std::is_floating_point_v<T>, T, double>;
+            return std::clamp(static_cast<Result>(value), Result(0), Result(1));
         }
 
         /**
@@ -581,9 +581,9 @@ namespace SF::Engine
          * @param v The value to hash
          */
         template<typename T>
-        static void HashCombine(size_t &seed, const T &v) noexcept
+        static void HashCombine(std::size_t &seed, const T &v) noexcept
         {
-            hash<T> hasher;
+            std::hash<T> hasher;
             seed ^= hasher(v) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
         }
 
@@ -593,9 +593,9 @@ namespace SF::Engine
          * @return Combined hash
          */
         template<typename... Args>
-        static size_t Hash(const Args &...args) noexcept
+        static std::size_t Hash(const Args &...args) noexcept
         {
-            size_t seed = 0;
+            std::size_t seed = 0;
             (HashCombine(seed, args), ...);
             return seed;
         }

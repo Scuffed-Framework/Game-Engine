@@ -13,15 +13,15 @@
 // to add: usdz and other model types.
 namespace SF::Engine
 {
-    using namespace std;
+
     template<typename Base>
     class ModelFactory
     {
     public:
-        using TCreateReturn = shared_ptr<Base>;
+        using TCreateReturn = std::shared_ptr<Base>;
 
-        using TCreateMethodFilename = function<TCreateReturn(const filesystem::path &)>;
-        using TRegistryMapFilename  = unordered_map<string, TCreateMethodFilename>;
+        using TCreateMethodFilename = std::function<TCreateReturn(const std::filesystem::path &)>;
+        using TRegistryMapFilename  = std::unordered_map<std::string, TCreateMethodFilename>;
 
         virtual ~ModelFactory() = default;
 
@@ -30,7 +30,7 @@ namespace SF::Engine
          * @param filename The file to load the model from.
          * @return The model loaded from the filename.
          */
-        static TCreateReturn Create(const filesystem::path &filename)
+        static TCreateReturn Create(const std::filesystem::path &filename)
         {
             auto fileExt = filename.extension().string();
             auto it      = RegistryFilename().find(fileExt);
@@ -47,15 +47,15 @@ namespace SF::Engine
         class Registrar : public Base
         {
         protected:
-            static bool Register(const string &typeName, const string &extension)
+            static bool Register(const std::string &typeName, const std::string &extension)
             {
                 name                                        = typeName; // per-T, since Registrar<T> has its own static
-                ModelFactory::RegistryFilename()[extension] = [](const filesystem::path &filename) -> TCreateReturn
+                ModelFactory::RegistryFilename()[extension] = [](const std::filesystem::path &filename) -> TCreateReturn
                 { return T::Create(filename); };
                 return true;
             }
 
-            inline static string name;
+            inline static std::string name;
         };
     };
 
@@ -76,22 +76,22 @@ namespace SF::Engine
          * @param vertices The model vertices.
          * @param indices The model indices.
          */
-        explicit Model(const vector<Vertex> &vertices, const vector<uint32_t> &indices = {})
+        explicit Model(const std::vector<Vertex> &vertices, const std::vector<uint32_t> &indices = {})
         {
-            vector vertexData(vertices.begin(), vertices.end());
-            vector indexData(indices);
+            std::vector vertexData(vertices.begin(), vertices.end());
+            std::vector indexData(indices);
             Initialize(vertexData, indexData);
         }
 
         [[nodiscard]] bool CmdRender(const CommandBuffer &commandBuffer, uint32_t instances = 1) const;
 
-        [[nodiscard]] vector<Vertex> GetVertices(size_t offset = 0) const;
-        void SetVertices(vector<Vertex> &vertices);
+        [[nodiscard]] std::vector<Vertex> GetVertices(size_t offset = 0) const;
+        void SetVertices(std::vector<Vertex> &vertices);
 
-        [[nodiscard]] vector<uint32_t> GetIndices(size_t offset = 0) const;
-        void SetIndices(vector<uint32_t> &indices);
+        [[nodiscard]] std::vector<uint32_t> GetIndices(size_t offset = 0) const;
+        void SetIndices(std::vector<uint32_t> &indices);
 
-        [[nodiscard]] vector<float> GetPointCloud() const;
+        [[nodiscard]] std::vector<float> GetPointCloud() const;
 
         [[nodiscard]] const Vec3 &GetMinExtents() const { return minExtents; }
         [[nodiscard]] const Vec3 &GetMaxExtents() const { return maxExtents; }
@@ -110,13 +110,13 @@ namespace SF::Engine
         static VkIndexType GetIndexType() { return VK_INDEX_TYPE_UINT32; }
 
     protected:
-        void Initialize(vector<Vertex> &vertices, vector<uint32_t> &indices);
+        void Initialize(std::vector<Vertex> &vertices, std::vector<std::uint32_t> &indices);
 
     private:
-        unique_ptr<Buffer> vertexBuffer;
-        unique_ptr<Buffer> indexBuffer;
-        uint32_t vertexCount = 0;
-        uint32_t indexCount  = 0;
+        std::unique_ptr<Buffer> vertexBuffer;
+        std::unique_ptr<Buffer> indexBuffer;
+        std::uint32_t vertexCount = 0;
+        std::uint32_t indexCount  = 0;
 
         Vec3 minExtents = {};
         Vec3 maxExtents = {};

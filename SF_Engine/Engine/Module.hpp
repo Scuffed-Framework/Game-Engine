@@ -30,7 +30,7 @@
 
 namespace SF::Engine
 {
-    using namespace std;
+
     // Forward declaration
     class Module;
 
@@ -64,7 +64,7 @@ namespace SF::Engine
      * @brief Concept to ensure a type is derived from Module
      */
     template<typename T>
-    concept ModuleDerived = is_base_of_v<Module, T> && !is_same_v<Module, T>;
+    concept ModuleDerived = std::is_base_of_v<Module, T> && !std::is_same_v<Module, T>;
 
     /**
      * @brief Factory for creating and managing module instances
@@ -78,14 +78,14 @@ namespace SF::Engine
          */
         struct CreateInfo
         {
-            function<unique_ptr<Base>()> createFunc{};
+            std::function<std::unique_ptr<Base>()> createFunc{};
             ModuleStage stage{};
             ModuleStartupStage start_stage = ModuleStartupStage::OnEngineInit;
-            vector<TypeId> dependencies{};
-            string_view name{}; // For debugging and logging
+            std::vector<TypeId> dependencies{};
+            std::string_view name{}; // For debugging and logging
         };
 
-        using RegistryMap = unordered_map<TypeId, CreateInfo>;
+        using RegistryMap = std::unordered_map<TypeId, CreateInfo>;
 
         virtual ~ModuleFactory() = default;
 
@@ -105,9 +105,9 @@ namespace SF::Engine
         class Requires // Ensure this is in a public section
         {
         public:
-            [[nodiscard]] vector<TypeId> Get() const
+            [[nodiscard]] std::vector<TypeId> Get() const
             {
-                vector<TypeId> dependencies;
+                std::vector<TypeId> dependencies;
                 dependencies.reserve(sizeof...(Args));
                 (dependencies.emplace_back(TypeInfo<Base>::template GetTypeId<Args>()), ...);
                 return dependencies;
@@ -140,10 +140,10 @@ namespace SF::Engine
                 s_registeredName         = typeid(T).name();
 
                 ModuleFactory::Registry()[TypeInfo<Base>::template GetTypeId<T>()] = {
-                        []() -> unique_ptr<Base>
+                        []() -> std::unique_ptr<Base>
                         {
                             s_instance = new T();
-                            return unique_ptr<Base>(s_instance);
+                            return std::unique_ptr<Base>(s_instance);
                         },
                         stage, s_registeredStartupStage, dependencies.Get(), s_registeredName};
 
@@ -152,7 +152,7 @@ namespace SF::Engine
 
             inline static auto s_registeredStage        = ModuleStage::Never;
             inline static auto s_registeredStartupStage = ModuleStartupStage::OnEngineInit;
-            inline static string_view s_registeredName;
+            inline static std::string_view s_registeredName;
 
         private:
             inline static T *s_instance = nullptr;
@@ -191,8 +191,8 @@ namespace SF::Engine
         /**
          * @brief Stage and type identifier pair
          */
-        using StageIndex   = pair<Stage, TypeId>;
-        using StartupIndex = pair<StartupStage, TypeId>;
+        using StageIndex   = std::pair<Stage, TypeId>;
+        using StartupIndex = std::pair<StartupStage, TypeId>;
 
         virtual ~Module() = default;
 
@@ -230,7 +230,7 @@ namespace SF::Engine
         /**
          * @brief Get the module's name (for debugging)
          */
-        [[nodiscard]] virtual string_view GetName() const = 0;
+        [[nodiscard]] virtual std::string_view GetName() const = 0;
     };
 
     // Explicit template instantiation
@@ -254,7 +254,7 @@ namespace SF::Engine
 
         [[nodiscard]] TypeId GetTypeId() const override { return TypeInfo<Module>::template GetTypeId<T>(); }
 
-        [[nodiscard]] string_view GetName() const override { return ModuleRegistrar<T>::s_registeredName; }
+        [[nodiscard]] std::string_view GetName() const override { return ModuleRegistrar<T>::s_registeredName; }
     };
 
     /**
@@ -309,8 +309,8 @@ namespace SF::Engine
 
     private:
         bool m_includeAll = true;
-        unordered_set<TypeId> m_included;
-        unordered_set<TypeId> m_excluded;
+        std::unordered_set<TypeId> m_included;
+        std::unordered_set<TypeId> m_excluded;
     };
 
     /**

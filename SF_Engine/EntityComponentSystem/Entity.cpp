@@ -1,5 +1,6 @@
 #include "Entity.hpp"
 #include <Math/Transform.hpp>
+#include <utility>
 
 namespace SF::Engine
 {
@@ -21,7 +22,7 @@ namespace SF::Engine
         }
 
         // Update owner pointers in moved components
-        for (auto &[type, component]: components)
+        for (auto &component: components | std::views::values)
         {
             component->SetOwner(this);
         }
@@ -55,7 +56,7 @@ namespace SF::Engine
             }
 
             // Update owner pointers in moved components
-            for (auto &[type, component]: components)
+            for (auto &component: components | std::views::values)
             {
                 component->SetOwner(this);
             }

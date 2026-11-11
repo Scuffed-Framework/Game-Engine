@@ -12,22 +12,21 @@
 
 namespace SF::Engine
 {
-    using namespace std;
 
     struct DragAndDropObjectTag
     {
     };
 
     template<typename T>
-    constexpr bool has_dnd_tag_v = is_base_of_v<DragAndDropObjectTag, T>;
+    constexpr bool has_dnd_tag_v = std::is_base_of_v<DragAndDropObjectTag, T>;
 
     template<typename T>
-    struct is_optional : false_type
+    struct is_optional : std::false_type
     {
     };
 
     template<typename T>
-    struct is_optional<optional<T>> : true_type
+    struct is_optional<std::optional<T>> : std::true_type
     {
     };
 
@@ -35,12 +34,12 @@ namespace SF::Engine
     inline constexpr bool is_optional_v = is_optional<T>::value;
 
     template<typename T>
-    struct is_pair : false_type
+    struct is_pair : std::false_type
     {
     };
 
     template<typename T, typename U>
-    struct is_pair<pair<T, U>> : true_type
+    struct is_pair<std::pair<T, U>> : std::true_type
     {
     };
 
@@ -48,12 +47,12 @@ namespace SF::Engine
     inline constexpr bool is_pair_v = is_pair<T>::value;
 
     template<typename T>
-    struct is_vector : false_type
+    struct is_vector : std::false_type
     {
     };
 
     template<typename T, typename A>
-    struct is_vector<vector<T, A>> : true_type
+    struct is_vector<std::vector<T, A>> : std::true_type
     {
     };
 
@@ -61,24 +60,25 @@ namespace SF::Engine
     inline constexpr bool is_vector_v = is_vector<T>::value;
 
     template<typename T, typename U = void>
-    struct is_map : false_type
+    struct is_map : std::false_type
     {
     };
 
     template<typename T>
-    struct is_map<T, void_t<typename T::key_type, typename T::mapped_type,
-                            decltype(declval<T &>()[declval<const typename T::key_type &>()])>> : true_type
+    struct is_map<T, std::void_t<typename T::key_type, typename T::mapped_type,
+                                 decltype(std::declval<T &>()[std::declval<const typename T::key_type &>()])>>
+        : std::true_type
     {
     };
 
-    template<ranges::input_range R1, ranges::input_range R2, typename Compare = ranges::less>
+    template<std::ranges::input_range R1, std::ranges::input_range R2, typename Compare = std::ranges::less>
     constexpr bool LexicographicalCompare(R1 &&a, R2 &&b, Compare comp = {})
     {
-        auto it1 = ranges::begin(a);
-        auto it2 = ranges::begin(b);
+        auto it1 = std::ranges::begin(a);
+        auto it2 = std::ranges::begin(b);
 
-        const auto end1 = ranges::end(a);
-        const auto end2 = ranges::end(b);
+        const auto end1 = std::ranges::end(a);
+        const auto end2 = std::ranges::end(b);
 
         for (; it1 != end1 && it2 != end2; ++it1, ++it2)
         {
@@ -96,12 +96,12 @@ namespace SF::Engine
     inline constexpr bool is_map_v = is_map<T>::value;
 
     template<typename T>
-    struct is_unique_ptr : false_type
+    struct is_unique_ptr : std::false_type
     {
     };
 
     template<typename T, typename D>
-    struct is_unique_ptr<unique_ptr<T, D>> : true_type
+    struct is_unique_ptr<std::unique_ptr<T, D>> : std::true_type
     {
     };
 
@@ -109,12 +109,12 @@ namespace SF::Engine
     inline constexpr bool is_unique_ptr_v = is_unique_ptr<T>::value;
 
     template<typename T>
-    struct is_shared_ptr : false_type
+    struct is_shared_ptr : std::false_type
     {
     };
 
     template<typename T>
-    struct is_shared_ptr<shared_ptr<T>> : true_type
+    struct is_shared_ptr<std::shared_ptr<T>> : std::true_type
     {
     };
 
@@ -122,12 +122,12 @@ namespace SF::Engine
     inline constexpr bool is_shared_ptr_v = is_shared_ptr<T>::value;
 
     template<typename T>
-    struct is_weak_ptr : false_type
+    struct is_weak_ptr : std::false_type
     {
     };
 
     template<typename T>
-    struct is_weak_ptr<weak_ptr<T>> : true_type
+    struct is_weak_ptr<std::weak_ptr<T>> : std::true_type
     {
     };
 
@@ -136,26 +136,26 @@ namespace SF::Engine
 
     template<typename T>
     inline constexpr bool is_ptr_access_v =
-            is_pointer_v<T> || is_unique_ptr_v<T> || is_shared_ptr_v<T> || is_weak_ptr_v<T>;
+            std::is_pointer_v<T> || is_unique_ptr_v<T> || is_shared_ptr_v<T> || is_weak_ptr_v<T>;
 
     template<typename T>
-    struct is_smart_pointer : false_type
+    struct is_smart_pointer : std::false_type
     {
     };
     template<typename T>
-    struct is_smart_pointer<unique_ptr<T>> : true_type
+    struct is_smart_pointer<std::unique_ptr<T>> : std::true_type
     {
     };
     template<typename T>
-    struct is_smart_pointer<shared_ptr<T>> : true_type
+    struct is_smart_pointer<std::shared_ptr<T>> : std::true_type
     {
     };
     template<typename T>
-    struct is_smart_pointer<weak_ptr<T>> : true_type
+    struct is_smart_pointer<std::weak_ptr<T>> : std::true_type
     {
     };
     template<typename T>
-    constexpr bool is_smart_pointer_v = is_smart_pointer<remove_cvref_t<T>>::value;
+    constexpr bool is_smart_pointer_v = is_smart_pointer<std::remove_cvref_t<T>>::value;
 
     template<typename T>
     static T *to_address(T *obj) noexcept
@@ -170,13 +170,13 @@ namespace SF::Engine
     }
 
     template<typename T>
-    static T *to_address(const shared_ptr<T> &obj) noexcept
+    static T *to_address(const std::shared_ptr<T> &obj) noexcept
     {
         return obj.get();
     }
 
     template<typename T>
-    static T *to_address(const unique_ptr<T> &obj) noexcept
+    static T *to_address(const std::unique_ptr<T> &obj) noexcept
     {
         return obj.get();
     }
@@ -194,21 +194,21 @@ namespace SF::Engine
     }
 
     template<typename T>
-    static const T &to_reference(const shared_ptr<T> &obj) noexcept
+    static const T &to_reference(const std::shared_ptr<T> &obj) noexcept
     {
         return *obj.get();
     }
 
     template<typename T>
-    static const T &to_reference(const unique_ptr<T> &obj) noexcept
+    static const T &to_reference(const std::unique_ptr<T> &obj) noexcept
     {
         return *obj.get();
     }
 
-    static constexpr string ToHex(uint32_t value)
+    static constexpr std::string ToHex(uint32_t value)
     {
         static constexpr char digits[] = "0123456789ABCDEF";
-        string s;
+        std::string s;
         do
         {
             s.insert(s.begin(), digits[value & 0xF]);
@@ -217,31 +217,31 @@ namespace SF::Engine
         return s;
     }
 
-    constexpr string ToLower(const string_view s)
+    constexpr std::string ToLower(const std::string_view s)
     {
-        string out(s);
-        ranges::transform(out, out.begin(), [](const unsigned char c) { return static_cast<char>(tolower(c)); });
+        std::string out(s);
+        std::ranges::transform(out, out.begin(), [](const unsigned char c) { return static_cast<char>(tolower(c)); });
         return out;
     }
 
-    constexpr bool ContainsNoCase(string_view haystack, string_view needle)
+    constexpr bool ContainsNoCase(std::string_view haystack, std::string_view needle)
     {
         if (needle.empty())
             return true;
         const auto it =
-                ranges::search(haystack, needle, [](const char h, const char n)
-                               { return tolower(static_cast<unsigned char>(h)) == static_cast<unsigned char>(n); })
+                std::ranges::search(haystack, needle, [](const char h, const char n)
+                                    { return tolower(static_cast<unsigned char>(h)) == static_cast<unsigned char>(n); })
                         .begin();
         return it != haystack.end();
     }
 
-    constexpr bool LessNoCase(const string &a, const string &b)
+    constexpr bool LessNoCase(const std::string &a, const std::string &b)
     {
         return LexicographicalCompare(a, b, [](const unsigned char x, const unsigned char y)
                                       { return tolower(x) < tolower(y); });
     }
 
-    constexpr string CleanFileName(string s)
+    constexpr std::string CleanFileName(std::string s)
     {
         for (char &c: s)
             if (strchr("<>:\"/\\|?*", c) || static_cast<unsigned char>(c) < 32)
@@ -250,5 +250,5 @@ namespace SF::Engine
         return s;
     }
 
-    inline string SafeStr(const char *s) { return s ? string(s) : string(); }
+    inline std::string SafeStr(const char *s) { return s ? std::string(s) : std::string(); }
 } // namespace SF::Engine

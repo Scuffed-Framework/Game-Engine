@@ -18,12 +18,12 @@
 
 namespace SF::Engine::VideoImport
 {
-    using namespace std;
+
 
     /// One compressed access unit exactly as the container stores it.
     struct CompressedPacket
     {
-        vector<uint8_t> Data;
+        std::vector<uint8_t> Data;
         int64_t Pts = 0; // container ticks, informational (decoders output in presentation order)
         bool Key    = false;
     };
@@ -31,7 +31,7 @@ namespace SF::Engine::VideoImport
     class IPacketSource
     {
     public:
-        virtual ~IPacketSource()                   = default;
+        virtual ~IPacketSource()                 = default;
         virtual bool Next(CompressedPacket &out) = 0; // false = end of stream
     };
 
@@ -52,9 +52,9 @@ namespace SF::Engine::VideoImport
         if (!(fps >= 1.0 && fps <= 1000.0))
             return {30, 1};
 
-        static constexpr Rational kStandard[] = {{24000, 1001}, {24, 1},  {25, 1},        {30000, 1001}, {30, 1},
-                                                 {48, 1},       {50, 1},  {60000, 1001},  {60, 1},       {120000, 1001},
-                                                 {120, 1}};
+        static constexpr Rational kStandard[] = {{24000, 1001}, {24, 1},        {25, 1}, {30000, 1001},
+                                                 {30, 1},       {48, 1},        {50, 1}, {60000, 1001},
+                                                 {60, 1},       {120000, 1001}, {120, 1}};
         for (const auto &s: kStandard)
         {
             const double ref = static_cast<double>(s.Num) / static_cast<double>(s.Den);
@@ -62,7 +62,7 @@ namespace SF::Engine::VideoImport
                 return s;
         }
 
-        const uint64_t g = gcd(num, den);
+        const uint64_t g = std::gcd(num, den);
         num /= g;
         den /= g;
         if (num <= UINT32_MAX && den <= UINT32_MAX)
@@ -134,7 +134,7 @@ namespace SF::Engine::VideoImport
             };
             auto adjust = [&](const uint32_t v) -> uint32_t
             { return shift > 0 ? (v >> shift) : (shift < 0 ? (v << -shift) : v); };
-            auto write = [&](vector<uint8_t> &dst, const size_t index, const uint32_t v)
+            auto write = [&](std::vector<uint8_t> &dst, const size_t index, const uint32_t v)
             {
                 if (bps == 1)
                     dst[index] = static_cast<uint8_t>(v);
@@ -151,8 +151,8 @@ namespace SF::Engine::VideoImport
                     write(buf_[0], static_cast<size_t>(y) * w + x, adjust(read(in.Plane[0], in.Stride[0], x, y)));
 
             // Chroma -> 4:2:0 by box-averaging whatever the source has
-            const uint32_t rx = in.ChromaShiftX == 1 ? 1 : 2; // source samples per output sample, horizontally
-            const uint32_t ry = in.ChromaShiftY == 1 ? 1 : 2;
+            const uint32_t rx      = in.ChromaShiftX == 1 ? 1 : 2; // source samples per output sample, horizontally
+            const uint32_t ry      = in.ChromaShiftY == 1 ? 1 : 2;
             const uint32_t neutral = 1u << (depth - 1);
             for (int c = 1; c < 3; ++c)
             {
@@ -181,7 +181,7 @@ namespace SF::Engine::VideoImport
         }
 
     private:
-        vector<uint8_t> buf_[3];
+        std::vector<uint8_t> buf_[3];
     };
 
     /// Runs `writeTo(tmpFile)` and moves the result into place, so a crash or exception mid-transcode never leaves
@@ -211,7 +211,7 @@ namespace SF::Engine::VideoImport
             ec.clear();
             std::filesystem::rename(tmpPath, finalPath, ec);
             if (ec)
-                throw runtime_error("Video import: cannot move output into place: " + ec.message());
+                throw std::runtime_error("Video import: cannot move output into place: " + ec.message());
         }
     }
 

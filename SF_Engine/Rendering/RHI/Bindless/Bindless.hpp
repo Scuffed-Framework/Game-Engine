@@ -29,7 +29,7 @@ namespace SF::Engine
 
     struct BindlessReflectionData
     {
-        string name;
+        std::string name;
         uint32_t set{};
         uint32_t binding{};
     };
@@ -49,9 +49,9 @@ namespace SF::Engine
         void FreeSRV(BindlessIndex &index, Image fallback);
         void FreeSRV(BindlessIndex &index);
         void FreeUAV(BindlessIndex &index, Image fallback);
-        void FreeStorageBuffer(BindlessIndex &index, const shared_ptr<Buffer> &fallback);
-        void FreeUniformBuffer(BindlessIndex &index, const shared_ptr<Buffer> &fallback);
-        void VerifyShaderLayout(const vector<BindlessReflectionData> &reflectionData);
+        void FreeStorageBuffer(BindlessIndex &index, const std::shared_ptr<Buffer> &fallback);
+        void FreeUniformBuffer(BindlessIndex &index, const std::shared_ptr<Buffer> &fallback);
+        void VerifyShaderLayout(const std::vector<BindlessReflectionData> &reflectionData);
         [[nodiscard]] const VkDescriptorSetLayout &getSetLayout() const { return m_setLayout; }
         [[nodiscard]] const VkDescriptorSet &getSet() const { return m_set; }
         void Bind(VkCommandBuffer cmd, VkPipelineBindPoint bindPoint, VkPipelineLayout layout) const
@@ -87,18 +87,18 @@ namespace SF::Engine
             uint32_t limit;
         };
         BindingConfig m_bindingConfigs[kBindingCount]{};
-        mutex m_lockCount;
-        queue<uint32_t> m_freeCount[kBindingCount];
+        std::mutex m_lockCount;
+        std::queue<uint32_t> m_freeCount[kBindingCount];
         uint32_t m_usedCount[kBindingCount]{};
 
-        vector<PendingFree> m_pendingFrees;
+        std::vector<PendingFree> m_pendingFrees;
         uint64_t m_currentFrame = 0;
     };
 
-    inline vector<BindlessReflectionData>
+    inline std::vector<BindlessReflectionData>
     ReflectBindlessLayout(const Slang::ComPtr<slang::IComponentType> &linkedProgram)
     {
-        vector<BindlessReflectionData> reflectedBindings;
+        std::vector<BindlessReflectionData> reflectedBindings;
         slang::ProgramLayout *layout = linkedProgram->getLayout();
         if (!layout)
             return reflectedBindings;

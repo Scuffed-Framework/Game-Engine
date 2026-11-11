@@ -32,13 +32,13 @@ namespace SF::Engine::VideoImport
             int err  = OAPV_OK;
             decoder_ = oapvd_create(&cdesc, &err);
             if (!decoder_ || OAPV_FAILED(err))
-                throw runtime_error("openapv: oapvd_create failed (code " + to_string(err) + ")");
+                throw std::runtime_error("openapv: oapvd_create failed (code " + std::to_string(err) + ")");
 
             try
             {
                 pending_ = DecodeOne();
                 if (!pending_)
-                    throw runtime_error("openapv: no decodable frames in the stream");
+                    throw std::runtime_error("openapv: no decodable frames in the stream");
             } catch (...)
             {
                 Close();
@@ -84,10 +84,10 @@ namespace SF::Engine::VideoImport
 
         // Output image, reused while the frame format stays the same.
         oapv_imgb_t imgb_{};
-        vector<uint8_t> planes_[OAPV_MAX_CC];
+        std::vector<uint8_t> planes_[OAPV_MAX_CC];
         int imgW_ = 0, imgH_ = 0, imgCs_ = 0;
 
-        vector<uint8_t> au_; // scratch: AU with signature
+        std::vector<uint8_t> au_; // scratch: AU with signature
 
         DecodedPlanes cur_;
         DecodedPlanes first_;
@@ -122,7 +122,7 @@ namespace SF::Engine::VideoImport
             const int fmt   = OAPV_CS_GET_FORMAT(fi.cs);
             const int bytes = OAPV_CS_GET_BYTE_DEPTH(fi.cs);
             if (fmt == OAPV_CF_PLANAR2 || fmt == OAPV_CF_UNKNOWN)
-                throw runtime_error("openapv: unsupported output color format " + to_string(fmt));
+                throw std::runtime_error("openapv: unsupported output color format " + std::to_string(fmt));
 
             const int np = fmt == OAPV_CF_YCBCR400 ? 1 : (fmt == OAPV_CF_YCBCR4444 ? 4 : 3);
             const int xs = (fmt == OAPV_CF_YCBCR420 || fmt == OAPV_CF_YCBCR422 || fmt == OAPV_CF_YCBCR422W) ? 1 : 0;
@@ -183,7 +183,7 @@ namespace SF::Engine::VideoImport
                 first_     = cur_;
                 haveFirst_ = true;
             } else if (cur_.Width != first_.Width || cur_.Height != first_.Height)
-                throw runtime_error("openapv: resolution changed mid-stream, which import doesn't support");
+                throw std::runtime_error("openapv: resolution changed mid-stream, which import doesn't support");
         }
 
         /// Decodes until one frame is available in cur_. false = end of stream.
@@ -234,7 +234,7 @@ namespace SF::Engine::VideoImport
                     if (const int r = oapvd_decode_frame(decoder_, &bitb, &imgb_, &stat); OAPV_FAILED(r))
                     {
                         if (!produced_ && ++errors_ > 16)
-                            throw runtime_error("openapv: decode failed (code " + to_string(r) + ")");
+                            throw std::runtime_error("openapv: decode failed (code " + std::to_string(r) + ")");
                         continue;
                     }
 

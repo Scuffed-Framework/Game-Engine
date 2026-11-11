@@ -75,7 +75,7 @@ namespace SF::Engine
         void SetPitch(float pitch);
 
         std::shared_ptr<SoundBuffer> buffer;
-        uint32_t source = 0;
+        std::uint32_t source = 0;
 
         Vec3 position{};
         Vec3 direction{};

@@ -4,7 +4,7 @@
 
 namespace SF::Engine
 {
-    using namespace std;
+
     class Job : NoCopy
     {
     public:

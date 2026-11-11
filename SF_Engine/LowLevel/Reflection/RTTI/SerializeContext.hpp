@@ -53,7 +53,7 @@ namespace SF::Engine
 }
 namespace SF::Reflection
 {
-    using namespace std;
+
     enum class FieldKind : uint8_t
     {
         Object,
@@ -105,18 +105,18 @@ namespace SF::Reflection
     };
 
     template<typename T>
-    struct ReflectedTypeName<T, enable_if_t<HasRtti<T>>>
+    struct ReflectedTypeName<T, std::enable_if_t<HasRtti<T>>>
     {
         static const char *Get() { return T::RTTI_TypeName(); }
     };
 
     template<typename T, typename = void>
-    struct IsReflectable : false_type
+    struct IsReflectable : std::false_type
     {
     };
 
     template<typename T>
-    struct IsReflectable<T, void_t<decltype(ReflectedTypeName<T>::Get())>> : true_type
+    struct IsReflectable<T, std::void_t<decltype(ReflectedTypeName<T>::Get())>> : std::true_type
     {
     };
 
@@ -125,27 +125,27 @@ namespace SF::Reflection
     class IWriter
     {
     public:
-        virtual ~IWriter()                                          = default;
-        virtual void WriteFloat(const char *name, float v)          = 0;
-        virtual void WriteUInt32(const char *name, uint32_t v)      = 0;
-        virtual void WriteInt32(const char *name, int32_t v)        = 0;
-        virtual void WriteBool(const char *name, bool v)            = 0;
-        virtual void WriteString(const char *name, const string &v) = 0;
-        virtual void BeginObject(const char *name)                  = 0;
-        virtual void EndObject()                                    = 0;
+        virtual ~IWriter()                                               = default;
+        virtual void WriteFloat(const char *name, float v)               = 0;
+        virtual void WriteUInt32(const char *name, uint32_t v)           = 0;
+        virtual void WriteInt32(const char *name, int32_t v)             = 0;
+        virtual void WriteBool(const char *name, bool v)                 = 0;
+        virtual void WriteString(const char *name, const std::string &v) = 0;
+        virtual void BeginObject(const char *name)                       = 0;
+        virtual void EndObject()                                         = 0;
     };
 
     class IReader
     {
     public:
-        virtual ~IReader()                                       = default;
-        virtual bool ReadFloat(const char *name, float &out)     = 0;
-        virtual bool ReadUInt32(const char *name, uint32_t &out) = 0;
-        virtual bool ReadInt32(const char *name, int32_t &out)   = 0;
-        virtual bool ReadBool(const char *name, bool &out)       = 0;
-        virtual bool ReadString(const char *name, string &out)   = 0;
-        virtual bool BeginObject(const char *name)               = 0;
-        virtual void EndObject()                                 = 0;
+        virtual ~IReader()                                          = default;
+        virtual bool ReadFloat(const char *name, float &out)        = 0;
+        virtual bool ReadUInt32(const char *name, uint32_t &out)    = 0;
+        virtual bool ReadInt32(const char *name, int32_t &out)      = 0;
+        virtual bool ReadBool(const char *name, bool &out)          = 0;
+        virtual bool ReadString(const char *name, std::string &out) = 0;
+        virtual bool BeginObject(const char *name)                  = 0;
+        virtual void EndObject()                                    = 0;
     };
 
     struct ClassData
@@ -153,7 +153,7 @@ namespace SF::Reflection
         TypeId typeId;
         const char *name = nullptr;
         uint32_t version = 0;
-        vector<unique_ptr<class IFieldBinding>> fields;
+        std::vector<std::unique_ptr<class IFieldBinding>> fields;
     };
 
     struct FieldMeta
@@ -165,7 +165,7 @@ namespace SF::Reflection
         float min = 0, max = 0, speed = 0.1f;
         float resetVec[3] = {0, 0, 0};
         bool hasRange = false, slider = false, color = false, hidden = false, readOnly = false;
-        function<bool(const void *)> visible; // null = always
+        std::function<bool(const void *)> visible; // null = always
     };
 
     class IFieldBinding
@@ -212,20 +212,20 @@ namespace SF::Reflection
             DeserializeValue<FieldT>(reader, m_name, obj->*m_member, context);
         }
 
-        [[nodiscard]] bool IsEnum() const override { return is_enum_v<FieldT>; }
+        [[nodiscard]] bool IsEnum() const override { return std::is_enum_v<FieldT>; }
 
         [[nodiscard]] FieldKind Kind() const override { return KindOf<FieldT>(); }
         void *GetPtr(void *i) const override { return &(static_cast<ClassT *>(i)->*m_member); }
         int32_t GetEnum(const void *i) const override
         {
-            if constexpr (is_enum_v<FieldT>)
+            if constexpr (std::is_enum_v<FieldT>)
                 return static_cast<int32_t>(static_cast<const ClassT *>(i)->*m_member);
             else
                 return 0;
         }
         void SetEnum(void *i, int32_t v) const override
         {
-            if constexpr (is_enum_v<FieldT>)
+            if constexpr (std::is_enum_v<FieldT>)
                 static_cast<ClassT *>(i)->*m_member = static_cast<FieldT>(v);
         }
 
@@ -249,7 +249,7 @@ namespace SF::Reflection
         template<typename FieldT>
         ClassBuilder &Field(const char *name, FieldT T::*member)
         {
-            m_data.fields.push_back(make_unique<FieldBinding<T, FieldT>>(name, member));
+            m_data.fields.push_back(std::make_unique<FieldBinding<T, FieldT>>(name, member));
             return *this;
         }
 
@@ -353,15 +353,15 @@ namespace SF::Reflection
         {
             static_assert(IsReflectable<T>::value, "T needs SF_TYPE_INFO (or SF_RTTI/SF_RTTI_BASE) to be reflected, "
                                                    "or use SF_REFLECT_EXTERNAL_TYPE(T) for external/POD types.");
-            const TypeId id                   = GetTypeId<T>();
-            ClassData &data                   = m_classes[id];
-            m_stdTypes[type_index(typeid(T))] = id;
-            data.typeId                       = id;
-            data.name                         = ReflectedTypeName<T>::Get();
+            const TypeId id                        = GetTypeId<T>();
+            ClassData &data                        = m_classes[id];
+            m_stdTypes[std::type_index(typeid(T))] = id;
+            data.typeId                            = id;
+            data.name                              = ReflectedTypeName<T>::Get();
             return ClassBuilder<T>(data);
         }
 
-        const TypeId *FindTypeId(const type_index ti) const
+        const TypeId *FindTypeId(const std::type_index ti) const
         {
             const auto it = m_stdTypes.find(ti);
             return it != m_stdTypes.end() ? &it->second : nullptr;
@@ -398,29 +398,29 @@ namespace SF::Reflection
         }
 
     private:
-        unordered_map<TypeId, ClassData> m_classes;
-        unordered_map<std::type_index, TypeId> m_stdTypes;
+        std::unordered_map<TypeId, ClassData> m_classes;
+        std::unordered_map<std::type_index, TypeId> m_stdTypes;
     };
 
     template<typename FieldT>
     void SerializeValue(IWriter &writer, const char *name, const FieldT &value, const SerializeContext &context)
     {
-        if constexpr (is_same_v<FieldT, float>)
+        if constexpr (std::is_same_v<FieldT, float>)
         {
             writer.WriteFloat(name, value);
-        } else if constexpr (is_same_v<FieldT, uint32_t>)
+        } else if constexpr (std::is_same_v<FieldT, uint32_t>)
         {
             writer.WriteUInt32(name, value);
-        } else if constexpr (is_same_v<FieldT, int32_t>)
+        } else if constexpr (std::is_same_v<FieldT, int32_t>)
         {
             writer.WriteInt32(name, value);
-        } else if constexpr (is_same_v<FieldT, bool>)
+        } else if constexpr (std::is_same_v<FieldT, bool>)
         {
             writer.WriteBool(name, value);
-        } else if constexpr (is_same_v<FieldT, string>)
+        } else if constexpr (std::is_same_v<FieldT, std::string>)
         {
             writer.WriteString(name, value);
-        } else if constexpr (is_enum_v<FieldT>)
+        } else if constexpr (std::is_enum_v<FieldT>)
         {
             writer.WriteInt32(name, static_cast<int32_t>(value));
         } else
@@ -440,22 +440,22 @@ namespace SF::Reflection
     template<typename FieldT>
     bool DeserializeValue(IReader &reader, const char *name, FieldT &value, const SerializeContext &context)
     {
-        if constexpr (is_same_v<FieldT, float>)
+        if constexpr (std::is_same_v<FieldT, float>)
         {
             return reader.ReadFloat(name, value);
-        } else if constexpr (is_same_v<FieldT, uint32_t>)
+        } else if constexpr (std::is_same_v<FieldT, uint32_t>)
         {
             return reader.ReadUInt32(name, value);
-        } else if constexpr (is_same_v<FieldT, int32_t>)
+        } else if constexpr (std::is_same_v<FieldT, int32_t>)
         {
             return reader.ReadInt32(name, value);
-        } else if constexpr (is_same_v<FieldT, bool>)
+        } else if constexpr (std::is_same_v<FieldT, bool>)
         {
             return reader.ReadBool(name, value);
-        } else if constexpr (is_same_v<FieldT, string>)
+        } else if constexpr (std::is_same_v<FieldT, std::string>)
         {
             return reader.ReadString(name, value);
-        } else if constexpr (is_enum_v<FieldT>)
+        } else if constexpr (std::is_enum_v<FieldT>)
         {
             int32_t raw{};
             if (!reader.ReadInt32(name, raw))

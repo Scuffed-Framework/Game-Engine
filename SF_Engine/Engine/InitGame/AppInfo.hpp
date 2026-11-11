@@ -5,11 +5,11 @@
 
 namespace SF::Engine
 {
-    using namespace std;
+
     struct AppInfo
     {
     public:
-        string name;
+        std::string name;
         Version version;
     };
 } // namespace SF::Engine

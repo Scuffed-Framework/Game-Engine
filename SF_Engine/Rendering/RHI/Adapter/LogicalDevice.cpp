@@ -7,7 +7,7 @@
 
 namespace SF::Engine
 {
-    const vector<const char *> LogicalDevice::DeviceExtensions = {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
+    const std::vector<const char *> LogicalDevice::DeviceExtensions = {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
 
     LogicalDevice::LogicalDevice(const Instance &instance, const PhysicalDevice &physicalDevice) :
         instance(instance), physicalDevice(physicalDevice)
@@ -30,12 +30,12 @@ namespace SF::Engine
         uint32_t deviceQueueFamilyPropertyCount;
         vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice.GetPhysicalDevice(), &deviceQueueFamilyPropertyCount,
                                                  nullptr);
-        vector<VkQueueFamilyProperties> deviceQueueFamilyProperties(deviceQueueFamilyPropertyCount);
+        std::vector<VkQueueFamilyProperties> deviceQueueFamilyProperties(deviceQueueFamilyPropertyCount);
         vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice.GetPhysicalDevice(), &deviceQueueFamilyPropertyCount,
                                                  deviceQueueFamilyProperties.data());
 
-        optional<uint32_t> GraphicsFamily, presentFamily, computeFamily, transferFamily;
-        optional<uint32_t> dedicatedTransferFamily, dedicatedComputeFamily;
+        std::optional<uint32_t> GraphicsFamily, presentFamily, computeFamily, transferFamily;
+        std::optional<uint32_t> dedicatedTransferFamily, dedicatedComputeFamily;
 
         for (uint32_t i = 0; i < deviceQueueFamilyPropertyCount; i++)
         {
@@ -97,9 +97,9 @@ namespace SF::Engine
         }
 
         if (!GraphicsFamily)
-            throw runtime_error("Failed to find queue family supporting VK_QUEUE_GRAPHICS_BIT");
+            throw std::runtime_error("Failed to find queue family supporting VK_QUEUE_GRAPHICS_BIT");
         if (!presentFamily)
-            throw runtime_error("Failed to find queue family supporting present");
+            throw std::runtime_error("Failed to find queue family supporting present");
         if (!computeFamily)
             Log::Warning("No compute queue family found\n");
         if (!transferFamily)
@@ -108,8 +108,9 @@ namespace SF::Engine
 
     void LogicalDevice::CreateLogicalDevice()
     {
-        unordered_set<uint32_t> uniqueQueueFamilies = {GraphicsFamily, presentFamily, computeFamily, transferFamily};
-        vector<VkDeviceQueueCreateInfo> queueCreateInfos;
+        std::unordered_set<uint32_t> uniqueQueueFamilies = {GraphicsFamily, presentFamily, computeFamily,
+                                                            transferFamily};
+        std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
         float queuePriority = 1.0f;
 
         for (uint32_t qf: uniqueQueueFamilies)

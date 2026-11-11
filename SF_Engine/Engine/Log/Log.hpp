@@ -20,7 +20,7 @@
 
 namespace SF::Engine
 {
-    using namespace std;
+
     /**
      * @brief A logging class used in Engine, will write output to the standard stream and into a
      * file.

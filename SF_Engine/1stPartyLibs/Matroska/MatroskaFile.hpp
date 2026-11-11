@@ -17,7 +17,7 @@
 using namespace SF::EBML;
 namespace SF::Matroska
 {
-    using namespace std;
+
     class MatroskaFile
     {
         Schema schema_;

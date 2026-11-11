@@ -167,15 +167,15 @@ namespace SF::Engine
 
         // Components the entity already has (one per type) are greyed out.
         std::unordered_set<std::string> have;
-        for (auto &c: m_entity->components | views::values)
+        for (auto &c: m_entity->components | std::views::values)
             if (c)
                 have.emplace(c->GetTypeName());
 
         std::vector<const std::string *> names;
-        for (const auto &name: Component::Registry() | views::keys)
+        for (const auto &name: Component::Registry() | std::views::keys)
             if (ContainsNoCase(name, m_componentFilter))
                 names.push_back(&name);
-        ranges::sort(names, [](auto *a, auto *b) { return *a < *b; });
+        std::ranges::sort(names, [](auto *a, auto *b) { return *a < *b; });
 
         const std::string *picked = nullptr;
         const bool enter          = ImGui::IsKeyPressed(ImGuiKey_Enter) || ImGui::IsKeyPressed(ImGuiKey_KeypadEnter);

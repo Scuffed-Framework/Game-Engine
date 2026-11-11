@@ -10,7 +10,6 @@
 using namespace SF::EBML;
 namespace SF::Matroska
 {
-    using namespace std;
     // Lacing types as defined in Matroska spec
     enum class LacingType : uint8_t
     {
@@ -22,35 +21,35 @@ namespace SF::Matroska
 
     struct Frame
     {
-        vector<EBML::byte> data; // Use SF::EBML::byte
-        int64_t duration = 0;    // For lacing, in timecode scale units
+        std::vector<EBML::byte> data; // Use SF::EBML::byte
+        int64_t duration = 0;         // For lacing, in timecode scale units
     };
 
     struct SimpleBlock
     {
-        uint64_t trackNumber{};
-        int16_t timecode{}; // Relative to cluster timecode
+        std::uint64_t trackNumber{};
+        std::int16_t timecode{}; // Relative to cluster timecode
         bool keyframe     = true;
         bool invisible    = false;
         bool discardable  = false; // Only for SimpleBlock
         LacingType lacing = LacingType::None;
-        vector<Frame> frames;
+        std::vector<Frame> frames;
     };
 
     struct Block
     {
-        uint64_t trackNumber;
-        int16_t timecode; // Relative to cluster timecode
+        std::uint64_t trackNumber;
+        std::int16_t timecode; // Relative to cluster timecode
         bool invisible    = false;
         LacingType lacing = LacingType::None;
-        vector<Frame> frames;
+        std::vector<Frame> frames;
         // Block has no keyframe/discardable flags (those are in BlockGroup)
     };
 
     // Encode a SimpleBlock as bytes
-    inline vector<EBML::byte> encode_simple_block(const SimpleBlock &block)
+    inline std::vector<EBML::byte> encode_simple_block(const SimpleBlock &block)
     {
-        vector<EBML::byte> out;
+        std::vector<EBML::byte> out;
 
         // Track number (VINT)
         auto trackBytes = encode_size(block.trackNumber);
@@ -79,7 +78,7 @@ namespace SF::Matroska
         if (block.lacing == LacingType::None)
         {
             if (block.frames.empty())
-                throw runtime_error("No frames in block");
+                throw std::runtime_error("No frames in block");
             out.insert(out.end(), block.frames[0].data.begin(), block.frames[0].data.end());
             return out;
         }
@@ -87,11 +86,11 @@ namespace SF::Matroska
         // Lacing: number of frames - 1
         size_t frameCount = block.frames.size();
         if (frameCount < 2 || frameCount > 256)
-            throw runtime_error("Lacing requires 2-256 frames");
+            throw std::runtime_error("Lacing requires 2-256 frames");
         out.push_back(static_cast<EBML::byte>(frameCount - 1));
 
         // Calculate and encode frame sizes
-        vector<uint64_t> sizes;
+        std::vector<uint64_t> sizes;
         if (block.lacing == LacingType::Fixed)
         {
             // Fixed lacing: all frames same size
@@ -99,7 +98,7 @@ namespace SF::Matroska
             for (const auto &[data, duration]: block.frames)
             {
                 if (data.size() != frameSize)
-                    throw runtime_error("Fixed lacing requires all frames same size");
+                    throw std::runtime_error("Fixed lacing requires all frames same size");
             }
             // No size encoding needed
         } else if (block.lacing == LacingType::Xiph)
@@ -146,30 +145,30 @@ namespace SF::Matroska
     }
 
     // Decode a SimpleBlock from bytes
-    inline SimpleBlock decode_simple_block(span<const EBML::byte> data, bool isSimpleBlock = true)
+    inline SimpleBlock decode_simple_block(std::span<const EBML::byte> data, bool isSimpleBlock = true)
     {
         if (data.empty())
-            throw runtime_error("Empty SimpleBlock data");
+            throw std::runtime_error("Empty SimpleBlock data");
 
         size_t pos = 0;
 
         // Decode track number
         auto trackResult = decode_size(data.subspan(pos));
         if (!trackResult)
-            throw runtime_error("Invalid track number");
+            throw std::runtime_error("Invalid track number");
         pos += trackResult->length;
         uint64_t trackNumber = trackResult->value;
 
         // Timecode (2 bytes, big-endian, signed)
         if (pos + 2 > data.size())
-            throw runtime_error("Incomplete timecode");
+            throw std::runtime_error("Incomplete timecode");
         auto timecode =
                 static_cast<int16_t>((static_cast<uint16_t>(data[pos]) << 8) | static_cast<uint16_t>(data[pos + 1]));
         pos += 2;
 
         // Flags
         if (pos >= data.size())
-            throw runtime_error("Missing flags byte");
+            throw std::runtime_error("Missing flags byte");
         auto flags = static_cast<uint8_t>(data[pos++]);
 
         SimpleBlock block;
@@ -187,18 +186,18 @@ namespace SF::Matroska
         {
             // Single frame
             Frame frame;
-            frame.data = vector(data.begin() + static_cast<long>(pos), data.end());
+            frame.data = std::vector(data.begin() + static_cast<long>(pos), data.end());
             block.frames.push_back(std::move(frame));
             return block;
         }
 
         // Lacing: read frame count
         if (pos >= data.size())
-            throw runtime_error("Missing lacing frame count");
+            throw std::runtime_error("Missing lacing frame count");
         size_t frameCount = static_cast<size_t>(data[pos++]) + 1;
 
         // Read frame sizes
-        vector<size_t> sizes;
+        std::vector<size_t> sizes;
         sizes.reserve(frameCount);
 
         if (block.lacing == LacingType::Fixed)
@@ -206,7 +205,7 @@ namespace SF::Matroska
             // All frames same size
             const size_t totalRemaining = data.size() - pos;
             if (totalRemaining % frameCount != 0)
-                throw runtime_error("Fixed lacing: total size not divisible by frame count");
+                throw std::runtime_error("Fixed lacing: total size not divisible by frame count");
             const size_t frameSize = totalRemaining / frameCount;
             sizes.assign(frameCount, frameSize);
         } else if (block.lacing == LacingType::Xiph)
@@ -236,7 +235,7 @@ namespace SF::Matroska
             {
                 const auto sizeResult = decode_size(data.subspan(pos));
                 if (!sizeResult)
-                    throw runtime_error("Invalid EBML lacing size");
+                    throw std::runtime_error("Invalid EBML lacing size");
                 pos += sizeResult->length;
                 auto size = static_cast<size_t>(sizeResult->value);
                 sizes.push_back(size);
@@ -251,10 +250,10 @@ namespace SF::Matroska
         for (size_t i = 0; i < frameCount; ++i)
         {
             if (pos + sizes[i] > data.size())
-                throw runtime_error("Frame extends past data end");
+                throw std::runtime_error("Frame extends past data end");
             Frame frame;
-            frame.data = vector<EBML::byte>(data.begin() + static_cast<long>(pos),
-                                            data.begin() + static_cast<long>(pos) + static_cast<long>(sizes[i]));
+            frame.data = std::vector<EBML::byte>(data.begin() + static_cast<long>(pos),
+                                                 data.begin() + static_cast<long>(pos) + static_cast<long>(sizes[i]));
             block.frames.push_back(std::move(frame));
             pos += sizes[i];
         }
@@ -267,7 +266,7 @@ namespace SF::Matroska
     // single definition there avoids a conflicting redefinition here.
 
     // Encode a Block (not SimpleBlock) for use in BlockGroup
-    inline vector<EBML::byte> encode_block(const Block &block)
+    inline std::vector<EBML::byte> encode_block(const Block &block)
     {
         // Blocks are encoded the same as SimpleBlocks but without the keyframe/discardable flags
         SimpleBlock temp;

@@ -34,7 +34,7 @@ namespace SF::Engine
         {
         }
 
-        explicit DefaultScene(const string &name) :
+        explicit DefaultScene(const std::string &name) :
             Scene(std::make_unique<CameraController>(), name, SceneRendererConfig{.enableAtmosphere = true})
         {
         }

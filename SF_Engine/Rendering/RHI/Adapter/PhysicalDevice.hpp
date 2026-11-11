@@ -8,7 +8,7 @@
 
 namespace SF::Engine
 {
-    using namespace std;
+
     class Instance;
 
     class PhysicalDevice
@@ -65,25 +65,25 @@ namespace SF::Engine
                     deviceFeatures12.shaderSharedInt64Atomics == VK_TRUE);
         }
 
-        [[nodiscard]] bool IsExtensionSupported(string_view name) const;
+        [[nodiscard]] bool IsExtensionSupported(std::string_view name) const;
 
-        [[nodiscard]] const vector<VkExtensionProperties> &GetExtensions() const { return extensions; }
+        [[nodiscard]] const std::vector<VkExtensionProperties> &GetExtensions() const { return extensions; }
 
     private:
         void QueryDeviceProperties();
         void QueryDeviceFeatures();
-        VkPhysicalDevice ChoosePhysicalDevice(const vector<VkPhysicalDevice> &devices);
+        VkPhysicalDevice ChoosePhysicalDevice(const std::vector<VkPhysicalDevice> &devices);
         static uint32_t EnumeratePhysicalDevice(const VkPhysicalDevice &device);
         [[nodiscard]] VkSampleCountFlagBits GetMaxUsableSampleCount() const;
         void LogDeviceInfo() const;
 
         static void LogVulkanDevice(const VkPhysicalDeviceProperties &deviceProperties,
-                                    const vector<VkExtensionProperties> &extensionProperties);
+                                    const std::vector<VkExtensionProperties> &extensionProperties);
 
         const Instance &instance;
 
         VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
-        vector<VkExtensionProperties> extensions;
+        std::vector<VkExtensionProperties> extensions;
 
         // Core properties and features
         VkPhysicalDeviceProperties properties             = {};

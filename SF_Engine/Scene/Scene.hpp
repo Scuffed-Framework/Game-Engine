@@ -252,7 +252,7 @@ namespace SF::Engine
 
         SceneObject *AddObject(const std::string &name, Entity *parent = nullptr);
         SceneObject *AddObject(const std::string &name, const Transform &transform, Entity *parent = nullptr);
-        SceneLight *AddLight(const string &name, Lighting::LightType type, const Vec3 &color, float intensity,
+        SceneLight *AddLight(const std::string &name, Lighting::LightType type, const Vec3 &color, float intensity,
                              const Vec3 &position, Rotation rotation, Entity *parent = nullptr);
 
         SceneLight *AddLight(const std::string &name, Lighting::LightType type, const Vec3 &color, float intensity,
@@ -274,7 +274,7 @@ namespace SF::Engine
         const std::vector<SceneObject *> &GetObjects() const { return objects_; }
         const std::vector<SceneLight *> &GetLights() const { return lights_; }
 
-        static std::vector<SceneLight *> GetAllLights(Scene *scene) { return scene->lights_; }
+        std::vector<SceneLight *> GetAllLights(Scene *scene) { return scene->lights_; }
 
     private:
         // Non-owning flat caches for fast iteration (rendering, serialization,
@@ -295,6 +295,6 @@ namespace SF::Engine
         void RemoveEntitySubtree(Entity *rootEntity);
     };
 
-    inline constexpr string_view SceneFileExtension = ".scene";
+    inline constexpr std::string_view SceneFileExtension = ".scene";
 
 } // namespace SF::Engine

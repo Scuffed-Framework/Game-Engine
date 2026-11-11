@@ -263,8 +263,8 @@ namespace SF::Engine
                         {
                             std::vector<int> sorted(s_recentProjects.size());
                             std::iota(sorted.begin(), sorted.end(), 0);
-                            ranges::sort(sorted, [](int a, int b)
-                                         { return s_recentProjects[a].name < s_recentProjects[b].name; });
+                            std::ranges::sort(sorted, [](int a, int b)
+                                              { return s_recentProjects[a].name < s_recentProjects[b].name; });
 
                             for (int idx: sorted)
                             {
@@ -300,8 +300,8 @@ namespace SF::Engine
                         {
                             std::vector<int> sorted(s_templates.size());
                             std::iota(sorted.begin(), sorted.end(), 0);
-                            ranges::sort(sorted,
-                                         [](int a, int b) { return s_templates[a].name < s_templates[b].name; });
+                            std::ranges::sort(sorted,
+                                              [](int a, int b) { return s_templates[a].name < s_templates[b].name; });
 
                             for (int idx: sorted)
                             {

@@ -12,7 +12,7 @@
 
 namespace SF::Engine
 {
-    using namespace std;
+
     /**
      * @brief Factory for creating stream-based objects by name
      * @tparam Base Base class for all creatable types
@@ -23,17 +23,17 @@ namespace SF::Engine
     {
         SF_RTTI_BASE(StreamFactory)
     public:
-        using CreateReturn   = unique_ptr<Base>;
-        using CreateFunction = function<CreateReturn(Args...)>;
-        using RegistryMap    = unordered_map<string, CreateFunction>;
+        using CreateReturn   = std::unique_ptr<Base>;
+        using CreateFunction = std::function<CreateReturn(Args...)>;
+        using RegistryMap    = std::unordered_map<std::string, CreateFunction>;
 
         virtual ~StreamFactory() = default;
 
         // For factories with arguments
-        static CreateReturn Create(string_view name, Args... args)
+        static CreateReturn Create(std::string_view name, Args... args)
             requires(sizeof...(Args) > 0)
         {
-            const string nameStr(name);
+            const std::string nameStr(name);
             auto it = Registry().find(nameStr);
 
             if (it == Registry().end())
@@ -46,10 +46,10 @@ namespace SF::Engine
         }
 
         // For factories with no arguments
-        static CreateReturn Create(string_view name)
+        static CreateReturn Create(std::string_view name)
             requires(sizeof...(Args) == 0)
         {
-            const string nameStr(name);
+            const std::string nameStr(name);
             auto it = Registry().find(nameStr);
 
             if (it == Registry().end())
@@ -67,9 +67,9 @@ namespace SF::Engine
             return impl;
         }
 
-        static bool IsRegistered(string_view name)
+        static bool IsRegistered(std::string_view name)
         {
-            const string nameStr(name);
+            const std::string nameStr(name);
             return Registry().contains(nameStr);
         }
 
@@ -79,21 +79,22 @@ namespace SF::Engine
         public:
             [[nodiscard]] TypeId GetTypeId() const override { return TypeInfo<Base>::template GetTypeId<T>(); }
 
-            [[nodiscard]] string_view GetTypeName() const override { return s_name; }
+            [[nodiscard]] std::string_view GetTypeName() const override { return s_name; }
 
             ~Registrar() = default;
 
         protected:
-            static bool Register(string_view name)
+            static bool Register(std::string_view name)
             {
                 s_name = name;
 
                 if constexpr (sizeof...(Args) == 0)
                 {
-                    StreamFactory::Registry()[string(name)] = []() -> CreateReturn { return make_unique<T>(); };
+                    StreamFactory::Registry()[std::string(name)] = []() -> CreateReturn
+                    { return std::make_unique<T>(); };
                 } else
                 {
-                    StreamFactory::Registry()[string(name)] = [](Args... args) -> CreateReturn
+                    StreamFactory::Registry()[std::string(name)] = [](Args... args) -> CreateReturn
                     { return make_unique<T>(forward<Args>(args)...); };
                 }
 
@@ -101,7 +102,7 @@ namespace SF::Engine
             }
 
         private:
-            inline static string_view s_name;
+            inline static std::string_view s_name;
         };
     };
 

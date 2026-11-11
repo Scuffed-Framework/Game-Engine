@@ -54,7 +54,7 @@ namespace SF::Engine
         static AssetBrowser *Get() { return s_instance; }
 
     private:
-        using AssetList = vector<std::shared_ptr<AssetBase>>;
+        using AssetList = std::vector<std::shared_ptr<AssetBase>>;
 
         enum class InlineEditMode
         {
@@ -85,8 +85,8 @@ namespace SF::Engine
             bool editing         = false; // replaces the name with the inline rename field
             ImTextureID thumbTex = 0;     // 0 = draw `glyph` instead
             Vec2 thumbSize{};             // pixel size of thumbTex, for aspect-correct fitting (0 = square)
-            float thumbScale     = 1.0f;  // <1 for icon-style thumbnails that shouldn't fill the box
-            const char *glyph    = nullptr;
+            float thumbScale  = 1.0f;     // <1 for icon-style thumbnails that shouldn't fill the box
+            const char *glyph = nullptr;
             TileDnD dnd;
         };
 

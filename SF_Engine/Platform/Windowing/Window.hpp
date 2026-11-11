@@ -343,10 +343,7 @@ namespace SF::Engine
          * Called when a mouse button changes state.
          * @return The delegate.
          */
-        rocket::signal<void(MouseButton, InputAction, Bitmask<InputMod>)> &OnMouseButton()
-        {
-            return onMouseButton;
-        }
+        rocket::signal<void(MouseButton, InputAction, Bitmask<InputMod>)> &OnMouseButton() { return onMouseButton; }
 
         /**
          * Called when the mouse moves.
@@ -377,7 +374,7 @@ namespace SF::Engine
         size_t id;
         SDL_Window *window = nullptr;
 
-        vector<string> pendingDrops; // collected between DROP_BEGIN and DROP_COMPLETE
+        std::vector<std::string> pendingDrops; // collected between DROP_BEGIN and DROP_COMPLETE
 
         friend void CallbackWindowPosition(SDL_Window *SDL_Window, int32_t xpos, int32_t ypos);
         friend void CallbackWindowSize(SDL_Window *SDL_Window, int32_t width, int32_t height);

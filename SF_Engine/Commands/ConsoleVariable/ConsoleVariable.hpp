@@ -14,8 +14,8 @@
 
 namespace SF::Engine
 {
-    using namespace std;
-    inline constexpr string_view CommandWindowConsoleVariablePrefix{"CVar::", 6};
+
+    inline constexpr std::string_view CommandWindowConsoleVariablePrefix{"CVar::", 6};
 
     class ConsoleVariableRegistry;
     struct IConsoleVariable : public Serializable
@@ -23,11 +23,11 @@ namespace SF::Engine
     public:
         ~IConsoleVariable() override = default;
 
-        [[nodiscard]] virtual string GetFullName() const  = 0;
-        [[nodiscard]] virtual bool DidValueChange() const = 0;
+        [[nodiscard]] virtual std::string GetFullName() const = 0;
+        [[nodiscard]] virtual bool DidValueChange() const     = 0;
 
-        virtual bool SetValueFromString(string_view str)   = 0;
-        [[nodiscard]] virtual string ValueToString() const = 0;
+        virtual bool SetValueFromString(std::string_view str)   = 0;
+        [[nodiscard]] virtual std::string ValueToString() const = 0;
     };
 
     template<typename V>
@@ -36,17 +36,17 @@ namespace SF::Engine
         SF_RTTI(IConsoleVariable, ConsoleVariable)
 
     public:
-        string module;
-        string name;
+        std::string module;
+        std::string name;
         V Value;
         V LastValue;
 
-        ConsoleVariable(string module, string name, V defaultValue);
+        ConsoleVariable(std::string module, std::string name, V defaultValue);
         ~ConsoleVariable() override = default;
 
         [[nodiscard]] bool DidValueChange() const override { return !(Value == LastValue); }
 
-        [[nodiscard]] string GetFullName() const override { return module + "." + name; }
+        [[nodiscard]] std::string GetFullName() const override { return module + "." + name; }
 
         void ChangeValue(const V &New)
         {
@@ -54,9 +54,9 @@ namespace SF::Engine
             Value     = New;
         }
 
-        bool SetValueFromString(string_view str) override
+        bool SetValueFromString(std::string_view str) override
         {
-            if constexpr (is_same_v<V, bool>)
+            if constexpr (std::is_same_v<V, bool>)
             {
                 if (str == "true" || str == "1")
                 {
@@ -69,7 +69,7 @@ namespace SF::Engine
                     return true;
                 }
                 return false;
-            } else if constexpr (is_arithmetic_v<V>)
+            } else if constexpr (std::is_arithmetic_v<V>)
             {
                 V parsed{};
                 auto [ptr, ec] = std::from_chars(str.data(), str.data() + str.size(), parsed);
@@ -77,19 +77,19 @@ namespace SF::Engine
                     return false;
                 ChangeValue(parsed);
                 return true;
-            } else if constexpr (is_constructible_v<string, string_view>)
+            } else if constexpr (std::is_constructible_v<std::string, std::string_view>)
             {
-                ChangeValue(string(str.data()));
+                ChangeValue(std::string(str.data()));
                 return true;
             }
         }
 
-        [[nodiscard]] string ValueToString() const override
+        [[nodiscard]] std::string ValueToString() const override
         {
-            if constexpr (is_same_v<V, bool>)
+            if constexpr (std::is_same_v<V, bool>)
             {
                 return Value ? "true" : "false";
-            } else if constexpr (is_arithmetic_v<V>)
+            } else if constexpr (std::is_arithmetic_v<V>)
             {
                 return string(std::to_string(Value));
             } else
@@ -122,12 +122,12 @@ namespace SF::Engine
         REGISTER_MODULE_EX(ConsoleVariableRegistry, ModuleStage::Always, ModuleStartupStage::OnEngineInit);
         SF_RTTI(Module, ConsoleVariableRegistry)
 
-        inline static unordered_map<string, IConsoleVariable *> s_cvars;
+        inline static std::unordered_map<std::string, IConsoleVariable *> s_cvars;
 
     public:
-        static void RegisterCVar(const string &fullName, IConsoleVariable *cvar) { s_cvars[fullName] = cvar; }
+        static void RegisterCVar(const std::string &fullName, IConsoleVariable *cvar) { s_cvars[fullName] = cvar; }
 
-        [[nodiscard]] static IConsoleVariable *Find(string_view fullName)
+        [[nodiscard]] static IConsoleVariable *Find(std::string_view fullName)
         {
             const auto it = s_cvars.find(fullName.data());
             return it != s_cvars.end() ? it->second : nullptr;
@@ -137,13 +137,13 @@ namespace SF::Engine
         void Update() override {}
 
         [[nodiscard]] Stage GetStage() const override { return ModuleStage::Always; }
-        [[nodiscard]] string_view GetName() const override { return RTTI_GetTypeName(); }
+        [[nodiscard]] std::string_view GetName() const override { return RTTI_GetTypeName(); }
 
         // NOLINTBEGIN(readability-convert-member-functions-to-static)
         void Serialize(XMLNode &node) const
         {
             XMLNode registryNode = node.AddChild("ConsoleVariables");
-            for (const auto &cvar: s_cvars | views::values)
+            for (const auto &cvar: s_cvars | std::views::values)
                 cvar->Serialize(registryNode);
         }
 
@@ -152,10 +152,10 @@ namespace SF::Engine
             XMLNode registryNode = node.GetChild("ConsoleVariables");
             for (XMLNode child = registryNode.GetFirstChild(); child.IsValid(); child = child.GetNextSibling())
             {
-                string mod, nm;
+                std::string mod, nm;
                 child.GetAttribute("Module", mod);
                 child.GetAttribute("Name", nm);
-                if (IConsoleVariable *cvar = Find(string_view(mod + "." += nm)))
+                if (IConsoleVariable *cvar = Find(std::string_view(mod + "." += nm)))
                     cvar->Deserialize(registryNode); // each cvar re-finds its own <CVar> child
             }
         }

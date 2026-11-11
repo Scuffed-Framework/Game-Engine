@@ -6,7 +6,7 @@
 
 namespace SF::Engine
 {
-    using namespace std;
+
     struct WeatherParams
     {
         uint32_t resolution = 1024;
@@ -171,23 +171,23 @@ namespace SF::Engine
         }
 
     private:
-        unique_ptr<Image3d> BaseNoiseTexture_;
-        unique_ptr<Image3d> DetailNoiseTexture_;
-        unique_ptr<Image2d> CurlNoiseTexture_;
-        unique_ptr<Image2d> WeatherTexture_;
+        std::unique_ptr<Image3d> BaseNoiseTexture_;
+        std::unique_ptr<Image3d> DetailNoiseTexture_;
+        std::unique_ptr<Image2d> CurlNoiseTexture_;
+        std::unique_ptr<Image2d> WeatherTexture_;
 
-        unique_ptr<ComputePipeline> pipelineA_;
-        unique_ptr<ComputePipeline> pipelineB_;
-        unique_ptr<ComputePipeline> pipelineC_;
-        unique_ptr<ComputePipeline> pipelineD_;
+        std::unique_ptr<ComputePipeline> pipelineA_;
+        std::unique_ptr<ComputePipeline> pipelineB_;
+        std::unique_ptr<ComputePipeline> pipelineC_;
+        std::unique_ptr<ComputePipeline> pipelineD_;
 
-        unique_ptr<DescriptorSet> descSetA_;
-        unique_ptr<DescriptorSet> descSetB_;
-        unique_ptr<DescriptorSet> descSetC_;
-        unique_ptr<DescriptorSet> descSetD_;
+        std::unique_ptr<DescriptorSet> descSetA_;
+        std::unique_ptr<DescriptorSet> descSetB_;
+        std::unique_ptr<DescriptorSet> descSetC_;
+        std::unique_ptr<DescriptorSet> descSetD_;
 
         WeatherParams params_;
-        unique_ptr<UniformBuffer> uboD_;
+        std::unique_ptr<UniformBuffer> uboD_;
         bool baked_ = false;
     };
 } // namespace SF::Engine

@@ -25,21 +25,21 @@
 // for some reason this engine had 2 typeid systems prior to this ????
 namespace SF::Reflection
 {
-    using namespace std;
+
 
     namespace Detail
     {
-        inline constexpr uint64_t FnvOffset = 14695981039346656037ull;
-        inline constexpr uint64_t FnvPrime  = 1099511628211ull;
+        inline constexpr std::uint64_t FnvOffset = 14695981039346656037ull;
+        inline constexpr std::uint64_t FnvPrime  = 1099511628211ull;
 
         // Iterative (not recursive) so it doesn't hit MSVC's constexpr
         // recursion-depth limit on long, heavily-templated signatures.
-        constexpr uint64_t Fnv1aHash(const char *str)
+        constexpr std::uint64_t Fnv1aHash(const char *str)
         {
-            uint64_t hash = FnvOffset;
+            std::uint64_t hash = FnvOffset;
             while (*str != '\0')
             {
-                hash = (hash ^ static_cast<uint64_t>(*str)) * FnvPrime;
+                hash = (hash ^ static_cast<std::uint64_t>(*str)) * FnvPrime;
                 ++str;
             }
             return hash;
@@ -78,10 +78,10 @@ namespace SF::Reflection
 
     struct TypeId
     {
-        uint64_t value = 0;
+        std::uint64_t value = 0;
 
         constexpr TypeId() = default;
-        constexpr explicit TypeId(uint64_t v) : value(v) {}
+        constexpr explicit TypeId(std::uint64_t v) : value(v) {}
 
         constexpr bool operator==(const TypeId &rhs) const { return value == rhs.value; }
         constexpr bool operator!=(const TypeId &rhs) const { return value != rhs.value; }
@@ -100,7 +100,7 @@ namespace SF::Reflection
     template<typename T>
     constexpr TypeId GetTypeId()
     {
-        return TypeId(Detail::TypeIdOf<decay_t<T>>());
+        return TypeId(Detail::TypeIdOf<std::decay_t<T>>());
     }
 
     // Best-effort human-readable name for a type that has no compile-time
@@ -110,18 +110,18 @@ namespace SF::Reflection
     template<typename T>
     std::string GetTypeName()
     {
-        return Detail::Demangle(typeid(decay_t<T>).name());
+        return Detail::Demangle(typeid(std::decay_t<T>).name());
     }
 
     namespace Detail
     {
         template<typename T, typename = void>
-        struct HasRttiImpl : false_type
+        struct HasRttiImpl : std::false_type
         {
         };
 
         template<typename T>
-        struct HasRttiImpl<T, void_t<decltype(T::RTTI_Type())>> : true_type
+        struct HasRttiImpl<T, std::void_t<decltype(T::RTTI_Type())>> : std::true_type
         {
         };
     } // namespace Detail
@@ -135,9 +135,6 @@ namespace std
     template<>
     struct hash<SF::Reflection::TypeId>
     {
-        std::size_t operator()(const SF::Reflection::TypeId &id) const noexcept
-        {
-            return static_cast<std::size_t>(id.value);
-        }
+        std::size_t operator()(const SF::Reflection::TypeId &id) const noexcept { return id.value; }
     };
 } // namespace std

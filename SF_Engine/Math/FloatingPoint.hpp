@@ -15,7 +15,7 @@
 
 namespace SF::Engine
 {
-    using namespace std;
+
 
     inline uint8_t bit_set_to(uint8_t number, uint8_t n, bool x)
     {
@@ -41,7 +41,7 @@ namespace SF::Engine
         public:
             static constexpr size_t Count = WordCount<Bits>::Value;
 
-            array<Word, Count> words{};
+            std::array<Word, Count> words{};
 
             constexpr void Clear() noexcept { words.fill(0); }
 
@@ -203,7 +203,7 @@ namespace SF::Engine
         UInt significand{};
         Special special = Special::Zero;
 
-        static constexpr int64_t MaxExponent = numeric_limits<int64_t>::max();
+        static constexpr int64_t MaxExponent = std::numeric_limits<int64_t>::max();
 
         [[nodiscard]]
         static Float FromInteger(uint64_t value)
@@ -293,7 +293,7 @@ namespace SF::Engine
         constexpr Float &operator=(Float &&) noexcept      = default;
 
         template<typename Type>
-            requires is_integral_v<Type> && is_signed_v<Type>
+            requires std::is_integral_v<Type> && std::is_signed_v<Type>
         explicit Float(Type value)
         {
             if (value < 0)
@@ -306,7 +306,7 @@ namespace SF::Engine
         }
 
         template<typename Type>
-            requires is_integral_v<Type> && is_unsigned_v<Type>
+            requires std::is_integral_v<Type> && std::is_unsigned_v<Type>
         explicit Float(Type value)
         {
             *this = FromInteger(static_cast<uint64_t>(value));
@@ -321,15 +321,15 @@ namespace SF::Engine
         {
             Float result;
 
-            if (isnan(value))
+            if (std::isnan(value))
             {
                 result.special = Special::NaN;
                 return result;
             }
 
-            if (isinf(value))
+            if (std::isinf(value))
             {
-                result.negative = signbit(value);
+                result.negative = std::signbit(value);
                 result.special  = Special::Infinity;
                 return result;
             }
@@ -337,7 +337,7 @@ namespace SF::Engine
             if (value == 0.0)
                 return result;
 
-            result.negative = signbit(value);
+            result.negative = std::signbit(value);
             value           = fabs(value);
             result.special  = Special::Normal;
 
@@ -410,10 +410,10 @@ namespace SF::Engine
         explicit operator double() const
         {
             if (special == Special::NaN)
-                return numeric_limits<double>::quiet_NaN();
+                return std::numeric_limits<double>::quiet_NaN();
 
             if (special == Special::Infinity)
-                return negative ? -numeric_limits<double>::infinity() : numeric_limits<double>::infinity();
+                return negative ? -std::numeric_limits<double>::infinity() : std::numeric_limits<double>::infinity();
 
             if (special == Special::Zero)
                 return negative ? -0.0 : 0.0;
@@ -546,7 +546,10 @@ namespace SF::Engine
 
         friend bool operator>=(const Float &lhs, const Float &rhs) { return !(lhs < rhs); }
 
-        friend ostream &operator<<(ostream &stream, const Float &value) { return stream << static_cast<double>(value); }
+        friend std::ostream &operator<<(std::ostream &stream, const Float &value)
+        {
+            return stream << static_cast<double>(value);
+        }
     };
 
     using Float16    = Float<16>;

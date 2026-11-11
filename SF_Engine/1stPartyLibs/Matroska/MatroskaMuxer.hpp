@@ -10,6 +10,7 @@
 #include <random>
 #include <thread>
 #include <unordered_map>
+#include <utility>
 #include "../EBML/Serializer.hpp"
 #include "Block.hpp"
 #include "Cues.hpp"
@@ -21,37 +22,37 @@
 
 namespace SF::Matroska
 {
-    using namespace std;
+
     using namespace SF::EBML;
 
     // Configuration for the muxer
     struct MuxerConfig
     {
-        uint64_t timecodeScale    = 1000000;
-        uint64_t clusterTimecode  = 0;
-        bool enableCRC32          = false;
-        bool enableTwoPass        = false;
-        bool enableBackPatching   = true;
-        size_t maxClusterDuration = 5000;
-        size_t maxClusterSize     = 1024 * 1024 * 64;
-        bool useBlockGroups       = true;
-        string writingApp         = "SF::EBML/Matroska";
-        string muxingApp          = "SF::EBML/Matroska";
-        bool defaultVideoLacing   = false;
-        bool defaultAudioLacing   = false;
-        string defaultLanguage    = "eng";
-        bool strictValidation     = true;
-        bool autoFixIssues        = true;
+        std::uint64_t timecodeScale    = 1000000;
+        std::uint64_t clusterTimecode  = 0;
+        bool enableCRC32               = false;
+        bool enableTwoPass             = false;
+        bool enableBackPatching        = true;
+        std::size_t maxClusterDuration = 5000;
+        std::size_t maxClusterSize     = 1024 * 1024 * 64;
+        bool useBlockGroups            = true;
+        std::string writingApp         = "SF::EBML/Matroska";
+        std::string muxingApp          = "SF::EBML/Matroska";
+        bool defaultVideoLacing        = false;
+        bool defaultAudioLacing        = false;
+        std::string defaultLanguage    = "eng";
+        bool strictValidation          = true;
+        bool autoFixIssues             = true;
     };
 
     // Statistics struct - fixed to be copyable
     struct Statistics
     {
-        uint64_t totalFrames   = 0;
-        uint64_t totalBytes    = 0;
-        uint64_t totalClusters = 0;
-        chrono::steady_clock::time_point startTime;
-        chrono::steady_clock::time_point endTime;
+        std::uint64_t totalFrames   = 0;
+        std::uint64_t totalBytes    = 0;
+        std::uint64_t totalClusters = 0;
+        std::chrono::steady_clock::time_point startTime;
+        std::chrono::steady_clock::time_point endTime;
 
         Statistics()                              = default;
         Statistics(const Statistics &)            = default;
@@ -66,41 +67,42 @@ namespace SF::Matroska
         {
             uint64_t trackNumber{};
             int64_t timestamp{};
-            shared_ptr<vector<byte>> data;
+            std::shared_ptr<std::vector<byte>> data;
             bool keyframe{};
-            chrono::steady_clock::time_point enqueueTime;
+            std::chrono::steady_clock::time_point enqueueTime;
         };
 
-        mutable mutex mutex_;
-        condition_variable cv_;
-        queue<QueuedFrame> queue_;
-        atomic<bool> isShutdown_{false};
-        size_t maxSize_ = 1024;
+        mutable std::mutex mutex_;
+        std::condition_variable cv_;
+        std::queue<QueuedFrame> queue_;
+        std::atomic<bool> isShutdown_{false};
+        std::size_t maxSize_ = 1024;
 
     public:
         void set_max_size(size_t size) { maxSize_ = size; }
 
-        void push(uint64_t trackNumber, int64_t timestamp, vector<byte> &&data, bool keyframe)
+        void push(uint64_t trackNumber, int64_t timestamp, std::vector<byte> &&data, bool keyframe)
         {
-            unique_lock lock(mutex_);
+            std::unique_lock lock(mutex_);
             cv_.wait(lock, [this] { return queue_.size() < maxSize_ || isShutdown_; });
 
             if (isShutdown_)
-                throw runtime_error("Frame queue is shut down");
+                throw std::runtime_error("Frame queue is shut down");
 
             QueuedFrame frame;
             frame.trackNumber = trackNumber;
             frame.timestamp   = timestamp;
-            frame.data        = make_shared<vector<byte>>(std::move(data));
+            frame.data        = make_shared<std::vector<byte>>(std::move(data));
             frame.keyframe    = keyframe;
-            frame.enqueueTime = chrono::steady_clock::now();
+            frame.enqueueTime = std::chrono::steady_clock::now();
             queue_.push(std::move(frame));
             cv_.notify_one();
         }
 
-        bool pop(uint64_t &trackNumber, int64_t &timestamp, shared_ptr<vector<byte>> &data, bool &keyframe)
+        bool pop(std::uint64_t &trackNumber, int64_t &timestamp, std::shared_ptr<std::vector<byte>> &data,
+                 bool &keyframe)
         {
-            unique_lock lock(mutex_);
+            std::unique_lock lock(mutex_);
             cv_.wait(lock, [this] { return !queue_.empty() || isShutdown_; });
 
             if (queue_.empty())
@@ -118,7 +120,7 @@ namespace SF::Matroska
 
         size_t size() const
         {
-            lock_guard lock(mutex_);
+            std::lock_guard lock(mutex_);
             return queue_.size();
         }
 
@@ -130,7 +132,7 @@ namespace SF::Matroska
 
         bool empty() const
         {
-            lock_guard lock(mutex_);
+            std::lock_guard lock(mutex_);
             return queue_.empty();
         }
     };
@@ -143,60 +145,60 @@ namespace SF::Matroska
     public:
         struct Cluster
         {
-            uint64_t timecode            = 0;
-            size_t startPosition         = 0;
-            size_t endPosition           = 0;
-            uint64_t frameCount          = 0;
-            chrono::nanoseconds duration = chrono::nanoseconds::zero();
+            std::uint64_t timecode            = 0;
+            std::size_t startPosition         = 0;
+            std::size_t endPosition           = 0;
+            std::uint64_t frameCount          = 0;
+            std::chrono::nanoseconds duration = std::chrono::nanoseconds::zero();
         };
 
     private:
         MuxerConfig config_;
         Schema schema_;
 
-        unordered_map<uint64_t, Track> tracks_;
-        unordered_map<uint64_t, uint64_t> trackIndexMap_;
+        std::unordered_map<uint64_t, Track> tracks_;
+        std::unordered_map<uint64_t, uint64_t> trackIndexMap_;
 
         Timestamp timestamp_;
-        vector<CuePoint> cuePoints_;
-        mutable mutex cueMutex_;
+        std::vector<CuePoint> cuePoints_;
+        mutable std::mutex cueMutex_;
 
-        vector<Cluster> clusters_;
-        mutable mutex clusterMutex_;
+        std::vector<Cluster> clusters_;
+        mutable std::mutex clusterMutex_;
 
         struct ClusterState
         {
-            uint64_t startTimecode       = 0;
-            uint64_t currentTimecode     = 0;
-            size_t size                  = 0;
-            uint64_t frameCount          = 0;
-            bool active                  = false;
-            chrono::nanoseconds duration = chrono::nanoseconds::zero();
+            uint64_t startTimecode            = 0;
+            uint64_t currentTimecode          = 0;
+            size_t size                       = 0;
+            uint64_t frameCount               = 0;
+            bool active                       = false;
+            std::chrono::nanoseconds duration = std::chrono::nanoseconds::zero();
         } currentCluster_;
 
-        unique_ptr<BackPatchableWriter> writer_;
-        unique_ptr<TwoPassMuxer> twoPassMuxer_;
+        std::unique_ptr<BackPatchableWriter> writer_;
+        std::unique_ptr<TwoPassMuxer> twoPassMuxer_;
         bool isFinalized_   = false;
         bool isInitialized_ = false;
 
-        mt19937_64 rng_;
+        std::mt19937_64 rng_;
 
-        unique_ptr<thread> muxThread_;
-        atomic<bool> shouldStop_{false};
+        std::unique_ptr<std::thread> muxThread_;
+        std::atomic<bool> shouldStop_{false};
         FrameQueue frameQueue_;
 
-        function<void(float)> progressCallback_;
-        function<void(const string &)> errorCallback_;
-        function<void(uint64_t, int64_t)> frameWrittenCallback_;
+        std::function<void(float)> progressCallback_;
+        std::function<void(const std::string &)> errorCallback_;
+        std::function<void(uint64_t, int64_t)> frameWrittenCallback_;
 
         Statistics stats_;
 
     public:
-        MatroskaMuxer(const MuxerConfig &config = MuxerConfig{}) :
-            config_(config), schema_(create_matroska_schema()), timestamp_(config.timecodeScale),
-            rng_(random_device{}())
+        MatroskaMuxer(MuxerConfig config = MuxerConfig{}) :
+            config_(std::move(config)), schema_(create_matroska_schema()), timestamp_(config.timecodeScale),
+            rng_(std::random_device{}())
         {
-            stats_.startTime = chrono::steady_clock::now();
+            stats_.startTime = std::chrono::steady_clock::now();
         }
 
         ~MatroskaMuxer() { shutdown(); }
@@ -205,17 +207,18 @@ namespace SF::Matroska
         void add_track(const Track &track)
         {
             if (isInitialized_)
-                throw runtime_error("Cannot add tracks after initialization");
+                throw std::runtime_error("Cannot add tracks after initialization");
 
             if (!track.validate())
-                throw runtime_error("Invalid track");
+                throw std::runtime_error("Invalid track");
 
-            lock_guard lock(clusterMutex_);
+            std::lock_guard lock(clusterMutex_);
             tracks_[track.number]        = track;
             trackIndexMap_[track.number] = tracks_.size();
         }
 
-        Track add_video_track(int width, int height, const string &codecID, const vector<byte> &codecPrivate = {})
+        Track add_video_track(int width, int height, const std::string &codecID,
+                              const std::vector<byte> &codecPrivate = {})
         {
             Track track;
             track.number  = get_next_track_number();
@@ -234,8 +237,8 @@ namespace SF::Matroska
             return track;
         }
 
-        Track add_audio_track(int sampleRate, int channels, const string &codecID,
-                              const vector<byte> &codecPrivate = {})
+        Track add_audio_track(int sampleRate, int channels, const std::string &codecID,
+                              const std::vector<byte> &codecPrivate = {})
         {
             Track track;
             track.number  = get_next_track_number();
@@ -255,17 +258,17 @@ namespace SF::Matroska
         }
 
         // Initialize the muxer for writing
-        void initialize(ostream &out)
+        void initialize(std::ostream &out)
         {
             if (isInitialized_)
-                throw runtime_error("Already initialized");
+                throw std::runtime_error("Already initialized");
 
             if (tracks_.empty())
-                throw runtime_error("No tracks added");
+                throw std::runtime_error("No tracks added");
 
             if (config_.enableTwoPass)
             {
-                twoPassMuxer_ = make_unique<TwoPassMuxer>();
+                twoPassMuxer_ = std::make_unique<TwoPassMuxer>();
             } else
             {
                 writer_ = make_unique<BackPatchableWriter>(out, false);
@@ -277,22 +280,22 @@ namespace SF::Matroska
         }
 
         // Write a frame (thread-safe, with std::move semantics)
-        void write_frame(uint64_t trackNumber, int64_t timestamp, vector<byte> &&data, bool keyframe = true)
+        void write_frame(uint64_t trackNumber, int64_t timestamp, std::vector<byte> &&data, bool keyframe = true)
         {
             if (!isInitialized_)
-                throw runtime_error("Muxer not initialized");
+                throw std::runtime_error("Muxer not initialized");
             if (isFinalized_)
-                throw runtime_error("Muxer already finalized");
+                throw std::runtime_error("Muxer already finalized");
 
             // Validate track
             if (!tracks_.contains(trackNumber))
-                throw runtime_error("Invalid track number");
+                throw std::runtime_error("Invalid track number");
 
             // Update duration
-            lock_guard lock(clusterMutex_);
-            auto absTime = chrono::nanoseconds(timestamp * config_.timecodeScale);
+            std::lock_guard lock(clusterMutex_);
+            auto absTime = std::chrono::nanoseconds(timestamp * config_.timecodeScale);
             if (absTime > stats_.endTime.time_since_epoch())
-                stats_.endTime = chrono::steady_clock::time_point(absTime);
+                stats_.endTime = std::chrono::steady_clock::time_point(absTime);
 
             // Push to queue (will be processed by mux thread)
             frameQueue_.push(trackNumber, timestamp, std::move(data), keyframe);
@@ -303,11 +306,11 @@ namespace SF::Matroska
         void write_block_group(const BlockGroup &group)
         {
             if (!isInitialized_)
-                throw runtime_error("Muxer not initialized");
+                throw std::runtime_error("Muxer not initialized");
             if (isFinalized_)
-                throw runtime_error("Muxer already finalized");
+                throw std::runtime_error("Muxer already finalized");
             if (!group.validate())
-                throw runtime_error("Invalid block group");
+                throw std::runtime_error("Invalid block group");
 
             if (config_.enableTwoPass)
             {
@@ -329,7 +332,7 @@ namespace SF::Matroska
             // Wait for all frames to be processed
             while (!frameQueue_.empty())
             {
-                this_thread::sleep_for(chrono::milliseconds(10));
+                std::this_thread::sleep_for(std::chrono::milliseconds(10));
             }
 
             if (config_.enableTwoPass && twoPassMuxer_)
@@ -337,7 +340,7 @@ namespace SF::Matroska
                 // Two-pass muxing
                 twoPassMuxer_->compute_positions();
                 // Write the file
-                ofstream out("temp.mkv", ios::binary);
+                std::ofstream out("temp.mkv", std::ios::binary);
                 twoPassMuxer_->write(out, config_.enableBackPatching);
             } else if (writer_)
             {
@@ -358,7 +361,7 @@ namespace SF::Matroska
             }
 
             isFinalized_   = true;
-            stats_.endTime = chrono::steady_clock::now();
+            stats_.endTime = std::chrono::steady_clock::now();
 
             if (progressCallback_)
                 progressCallback_(1.0f);
@@ -370,7 +373,7 @@ namespace SF::Matroska
             if (muxThread_)
                 return;
 
-            muxThread_ = make_unique<thread>([this]() { mux_loop(); });
+            muxThread_ = std::make_unique<std::thread>([this]() { mux_loop(); });
         }
 
         void shutdown()
@@ -382,11 +385,14 @@ namespace SF::Matroska
         }
 
         // Callbacks
-        void set_progress_callback(function<void(float)> callback) { progressCallback_ = std::move(callback); }
+        void set_progress_callback(std::function<void(float)> callback) { progressCallback_ = std::move(callback); }
 
-        void set_error_callback(function<void(const string &)> callback) { errorCallback_ = std::move(callback); }
+        void set_error_callback(std::function<void(const std::string &)> callback)
+        {
+            errorCallback_ = std::move(callback);
+        }
 
-        void set_frame_written_callback(function<void(uint64_t, int64_t)> callback)
+        void set_frame_written_callback(std::function<void(uint64_t, int64_t)> callback)
         {
             frameWrittenCallback_ = std::move(callback);
         }
@@ -404,15 +410,15 @@ namespace SF::Matroska
         }
 
         // Getters
-        const vector<CuePoint> &get_cue_points() const { return cuePoints_; }
-        const unordered_map<uint64_t, Track> &get_tracks() const { return tracks_; }
+        const std::vector<CuePoint> &get_cue_points() const { return cuePoints_; }
+        const std::unordered_map<std::uint64_t, Track> &get_tracks() const { return tracks_; }
         const MuxerConfig &get_config() const { return config_; }
 
     private:
         uint64_t get_next_track_number()
         {
             uint64_t max = 1;
-            for (const auto &num: tracks_ | views::keys)
+            for (const auto &num: tracks_ | std::views::keys)
                 if (num >= max)
                     max = num + 1;
             return max;
@@ -459,9 +465,9 @@ namespace SF::Matroska
             info.add(Element::make_uint(ids::TimecodeScale, config_.timecodeScale));
             info.add(Element::make_utf8(ids::MuxingApp, config_.muxingApp));
             info.add(Element::make_utf8(ids::WritingApp, config_.writingApp));
-            info.add(Element::make_date(ids::DateUTC, chrono::system_clock::now()));
+            info.add(Element::make_date(ids::DateUTC, std::chrono::system_clock::now()));
 
-            vector<byte> uid(16);
+            std::vector<byte> uid(16);
             for (auto &b: uid)
                 b = static_cast<byte>(rng_() & 0xFF);
             info.add(Element::make_binary(ids::SegmentUID, std::move(uid)));
@@ -473,7 +479,7 @@ namespace SF::Matroska
         {
             auto tracks = Element::make_master(ids::Tracks);
 
-            for (const auto &track: tracks_ | views::values)
+            for (const auto &track: tracks_ | std::views::values)
             {
                 auto entry = create_track_entry(track);
                 tracks.add(std::move(entry));
@@ -487,7 +493,7 @@ namespace SF::Matroska
             if (cuePoints_.empty())
                 return;
 
-            lock_guard lock(cueMutex_);
+            std::lock_guard lock(cueMutex_);
             auto cuesElement = generate_cues(cuePoints_);
             writer_->write(cuesElement);
         }
@@ -511,7 +517,7 @@ namespace SF::Matroska
             auto blockData = encode_block(group.block);
             bg.add(Element::make_binary(ids::Block, std::move(blockData)));
 
-            for (int64_t ref: group.referenceBlocks)
+            for (std::int64_t ref: group.referenceBlocks)
             {
                 bg.add(Element::make_int(ids::ReferenceBlock, ref));
             }
@@ -534,7 +540,7 @@ namespace SF::Matroska
             return bg;
         }
 
-        void start_cluster(uint64_t timecode)
+        void start_cluster(std::uint64_t timecode)
         {
             if (currentCluster_.active)
                 flush_cluster();
@@ -544,9 +550,9 @@ namespace SF::Matroska
             currentCluster_.size            = 0;
             currentCluster_.frameCount      = 0;
             currentCluster_.active          = true;
-            currentCluster_.duration        = chrono::nanoseconds::zero();
+            currentCluster_.duration        = std::chrono::nanoseconds::zero();
 
-            timestamp_.set_cluster_start(chrono::nanoseconds(timecode * config_.timecodeScale));
+            timestamp_.set_cluster_start(std::chrono::nanoseconds(timecode * config_.timecodeScale));
 
             // Write cluster header
             auto cluster = Element::make_master(ids::Cluster);
@@ -563,8 +569,8 @@ namespace SF::Matroska
             currentCluster_.size = writer_->tell();
         }
 
-        void write_frame_to_cluster(uint64_t trackNumber, int64_t timestamp, const shared_ptr<vector<byte>> &data,
-                                    bool keyframe)
+        void write_frame_to_cluster(std::uint64_t trackNumber, std::int64_t timestamp,
+                                    const std::shared_ptr<std::vector<byte>> &data, bool keyframe)
         {
             if (!currentCluster_.active)
             {
@@ -608,7 +614,7 @@ namespace SF::Matroska
             // Add cue point for keyframes
             if (keyframe)
             {
-                lock_guard lock(cueMutex_);
+                std::lock_guard lock(cueMutex_);
                 CuePoint point;
                 point.timecode = timestamp;
                 CuePoint::TrackPosition pos;
@@ -638,7 +644,7 @@ namespace SF::Matroska
             cluster.frameCount    = currentCluster_.frameCount;
             cluster.duration      = currentCluster_.duration;
 
-            lock_guard lock(clusterMutex_);
+            std::lock_guard lock(clusterMutex_);
             clusters_.push_back(cluster);
             stats_.totalClusters++;
 
@@ -649,9 +655,9 @@ namespace SF::Matroska
         {
             while (!shouldStop_)
             {
-                uint64_t trackNumber;
-                int64_t timestamp;
-                shared_ptr<vector<byte>> data;
+                std::uint64_t trackNumber;
+                std::int64_t timestamp;
+                std::shared_ptr<std::vector<byte>> data;
                 bool keyframe;
 
                 if (frameQueue_.pop(trackNumber, timestamp, data, keyframe))
@@ -672,9 +678,9 @@ namespace SF::Matroska
                         {
                             float progress = static_cast<float>(stats_.totalFrames) /
                                              static_cast<float>(stats_.totalFrames + frameQueue_.size());
-                            progressCallback_(min(1.0f, progress));
+                            progressCallback_(std::min(1.0f, progress));
                         }
-                    } catch (const exception &e)
+                    } catch (const std::exception &e)
                     {
                         if (errorCallback_)
                             errorCallback_(e.what());
@@ -718,7 +724,7 @@ namespace SF::Matroska
             // Add specific track data
             if (track.type == TrackType::Video)
             {
-                const auto &video = get<VideoTrack>(track.specific);
+                const auto &video = std::get<VideoTrack>(track.specific);
                 entry.add(Element::make_uint(ids::PixelWidth, video.pixelWidth));
                 entry.add(Element::make_uint(ids::PixelHeight, video.pixelHeight));
                 if (video.pixelCropTop)
@@ -745,7 +751,7 @@ namespace SF::Matroska
                     entry.add(Element::make_binary(ids::CodecPrivate, video.codecPrivate));
             } else if (track.type == TrackType::Audio)
             {
-                const auto &audio = get<AudioTrack>(track.specific);
+                const auto &audio = std::get<AudioTrack>(track.specific);
                 entry.add(Element::make_float(ids::SamplingFrequency, audio.samplingFrequency));
                 if (audio.outputSamplingFrequency)
                     entry.add(Element::make_uint(ids::OutputSamplingFrequency, audio.outputSamplingFrequency));

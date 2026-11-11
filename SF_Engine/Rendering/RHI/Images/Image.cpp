@@ -127,7 +127,7 @@ namespace SF::Engine
         static const std::vector<VkFormat> DEPTH_FORMATS = {VK_FORMAT_D16_UNORM,         VK_FORMAT_X8_D24_UNORM_PACK32,
                                                             VK_FORMAT_D32_SFLOAT,        VK_FORMAT_D16_UNORM_S8_UINT,
                                                             VK_FORMAT_D24_UNORM_S8_UINT, VK_FORMAT_D32_SFLOAT_S8_UINT};
-        return ranges::find(DEPTH_FORMATS, format) != std::end(DEPTH_FORMATS);
+        return std::ranges::find(DEPTH_FORMATS, format) != std::end(DEPTH_FORMATS);
     }
 
     bool Image::HasStencil(VkFormat format)
@@ -135,7 +135,7 @@ namespace SF::Engine
         static const std::vector<VkFormat> STENCIL_FORMATS = {VK_FORMAT_S8_UINT, VK_FORMAT_D16_UNORM_S8_UINT,
                                                               VK_FORMAT_D24_UNORM_S8_UINT,
                                                               VK_FORMAT_D32_SFLOAT_S8_UINT};
-        return ranges::find(STENCIL_FORMATS, format) != std::end(STENCIL_FORMATS);
+        return std::ranges::find(STENCIL_FORMATS, format) != std::end(STENCIL_FORMATS);
     }
 
     void Image::CreateImage(VkImage &image, VmaAllocation &allocation, const UVec3 &extent, VkFormat format,

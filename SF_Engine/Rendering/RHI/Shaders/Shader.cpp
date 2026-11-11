@@ -208,8 +208,8 @@ namespace SF::Engine
                 layoutBinding.pImmutableSamplers = nullptr;
 
                 // Check if binding already exists (from another stage)
-                auto bindingIt = ranges::find_if(descriptorBindings, [&](const VkDescriptorSetLayoutBinding &b)
-                                                 { return b.binding == layoutBinding.binding; });
+                auto bindingIt = std::ranges::find_if(descriptorBindings, [&](const VkDescriptorSetLayoutBinding &b)
+                                                      { return b.binding == layoutBinding.binding; });
 
                 if (bindingIt != descriptorBindings.end())
                 {
@@ -232,8 +232,8 @@ namespace SF::Engine
             // Convert descriptor pool counts to VkDescriptorPoolSize
             for (const auto &[type, descCount]: descriptorPoolCounts)
             {
-                auto poolIt = ranges::find_if(descriptorPools,
-                                              [type](const VkDescriptorPoolSize &p) { return p.type == type; });
+                auto poolIt = std::ranges::find_if(descriptorPools,
+                                                   [type](const VkDescriptorPoolSize &p) { return p.type == type; });
 
                 if (poolIt != descriptorPools.end())
                 {
@@ -257,8 +257,8 @@ namespace SF::Engine
             for (auto *block: blocks)
             {
                 // Check if this push constant range already exists
-                auto it = ranges::find_if(pushConstants, [&](const PushConstantRange &r)
-                                          { return r.offset == block->offset && r.size == block->size; });
+                auto it = std::ranges::find_if(pushConstants, [&](const PushConstantRange &r)
+                                               { return r.offset == block->offset && r.size == block->size; });
 
                 if (it != pushConstants.end())
                 {
@@ -446,7 +446,7 @@ namespace SF::Engine
 
     bool Shader::HasStage(VkShaderStageFlagBits stage) const
     {
-        return ranges::any_of(moduleInfos, [stage](const ModuleInfo &info) { return info.stage == stage; });
+        return std::ranges::any_of(moduleInfos, [stage](const ModuleInfo &info) { return info.stage == stage; });
     }
 
     void Shader::Reload(const std::vector<uint32_t> &newSpirv, VkShaderStageFlagBits stage)

@@ -14,8 +14,6 @@
 #pragma GCC diagnostic ignored "-Wmissing-field-initializers"
 namespace SF::Engine
 {
-    using namespace std;
-
     enum class VideoCodec : uint8_t
     {
         H264,
@@ -44,7 +42,7 @@ namespace SF::Engine
         friend class ModuleRegistrar<Video>;
         REGISTER_MODULE(Video, Module::Stage::Pre);
 
-        vector<VideoCodecProfile> SupportedDecodeProfiles;
+        std::vector<VideoCodecProfile> SupportedDecodeProfiles;
 
     public:
         Video()           = default;
@@ -75,7 +73,7 @@ namespace SF::Engine
                 uint32_t Idc;
             };
 
-            constexpr array candidates = {
+            constexpr std::array candidates = {
                     Candidate{VideoCodec::H264, VK_VIDEO_CODEC_OPERATION_DECODE_H264_BIT_KHR,
                               STD_VIDEO_H264_PROFILE_IDC_HIGH},
                     Candidate{VideoCodec::H264, VK_VIDEO_CODEC_OPERATION_DECODE_H264_BIT_KHR,
@@ -93,13 +91,13 @@ namespace SF::Engine
 
             };
 
-            constexpr array ChromaFormats = {VK_VIDEO_CHROMA_SUBSAMPLING_420_BIT_KHR,
-                                             VK_VIDEO_CHROMA_SUBSAMPLING_422_BIT_KHR,
-                                             VK_VIDEO_CHROMA_SUBSAMPLING_444_BIT_KHR};
+            constexpr std::array ChromaFormats = {VK_VIDEO_CHROMA_SUBSAMPLING_420_BIT_KHR,
+                                                  VK_VIDEO_CHROMA_SUBSAMPLING_422_BIT_KHR,
+                                                  VK_VIDEO_CHROMA_SUBSAMPLING_444_BIT_KHR};
 
-            constexpr array BitDepths = {VK_VIDEO_COMPONENT_BIT_DEPTH_8_BIT_KHR,
-                                         VK_VIDEO_COMPONENT_BIT_DEPTH_10_BIT_KHR,
-                                         VK_VIDEO_COMPONENT_BIT_DEPTH_12_BIT_KHR};
+            constexpr std::array BitDepths = {VK_VIDEO_COMPONENT_BIT_DEPTH_8_BIT_KHR,
+                                              VK_VIDEO_COMPONENT_BIT_DEPTH_10_BIT_KHR,
+                                              VK_VIDEO_COMPONENT_BIT_DEPTH_12_BIT_KHR};
 
             for (const auto &c: candidates)
             {
@@ -182,8 +180,7 @@ namespace SF::Engine
 
         void Update() override {}
 
-        [[nodiscard]]
-        const vector<VideoCodecProfile> &GetSupportedDecodeProfiles() const noexcept
+        [[nodiscard]] const std::vector<VideoCodecProfile> &GetSupportedDecodeProfiles() const noexcept
         {
             return SupportedDecodeProfiles;
         }

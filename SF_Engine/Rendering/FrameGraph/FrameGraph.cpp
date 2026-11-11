@@ -9,7 +9,7 @@
 namespace SF::Engine
 {
     ResourceHandle FrameGraph::ImportResource(std::string name, std::function<Texture()> resolve,
-                                              ResourceState initialState)
+                                              const ResourceState &initialState)
     {
         assert(resourcesByName.find(name) == resourcesByName.end() &&
                "FrameGraph::ImportResource: a resource with this name is already registered");
@@ -193,7 +193,7 @@ namespace SF::Engine
         }
 
         const auto survivingCount =
-                static_cast<size_t>(ranges::count_if(nodes, [](const auto &node) { return !node.IsCulled(); }));
+                static_cast<size_t>(std::ranges::count_if(nodes, [](const auto &node) { return !node.IsCulled(); }));
 
         if (order.size() != survivingCount)
             Log::Error("FrameGraph::Compile: cycle detected among surviving passes ({} of {} passes could be "

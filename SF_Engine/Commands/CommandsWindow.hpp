@@ -5,7 +5,7 @@
 
 namespace SF::Engine
 {
-    using namespace std;
+
     class CommandWindow
     {
     public:
@@ -24,24 +24,24 @@ namespace SF::Engine
 
         void StopAllExecution();
 
-        bool IsInputCmdInRegistry(const string &in) const;
+        [[nodiscard]] bool IsInputCmdInRegistry(const std::string &in) const;
 
     private:
         void RegisterBuiltins();
-        void ParseAndExecute(const string &raw);
+        void ParseAndExecute(const std::string &raw);
 
         // Parsed input: "scene.open levels/test.scene" → {"scene.open", {"levels/test.scene"}}
         struct ParsedCmd
         {
-            string name;
-            vector<string> args;
+            std::string name;
+            std::vector<std::string> args;
         };
-        static ParsedCmd Parse(const string &raw);
+        static ParsedCmd Parse(const std::string &raw);
 
-        size_t m_uiHandle;       // whatever UIRegistry::Register returns
-        deque<string> m_history; // arrow-key recall
-        string m_inputBuf;       // ImGui InputText buffer
-        string m_pendingExec;    // set when user hits Enter, consumed next frame
+        size_t m_uiHandle;                 // whatever UIRegistry::Register returns
+        std::deque<std::string> m_history; // arrow-key recall
+        std::string m_inputBuf;            // ImGui InputText buffer
+        std::string m_pendingExec;         // set when user hits Enter, consumed next frame
         bool m_scrollToBottom = false;
 
         struct LogEntry
@@ -53,9 +53,9 @@ namespace SF::Engine
                 Warning,
                 Error
             } level;
-            string text;
+            std::string text;
         };
-        vector<LogEntry> m_log;
+        std::vector<LogEntry> m_log;
 
         static constexpr size_t k_maxHistory = 64;
     };

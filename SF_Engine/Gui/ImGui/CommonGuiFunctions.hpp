@@ -9,7 +9,7 @@ namespace SF::Engine
     class WidgetBuilder;
     struct ScopedId
     {
-        ScopedId(const char *scope, const string &name)
+        ScopedId(const char *scope, const std::string &name)
         {
             ImGui::PushID(scope);
             ImGui::PushID(name.c_str());
@@ -55,7 +55,8 @@ namespace SF::Engine
         return changed;
     }
 
-    static bool InputTextWithHint(const char *id, const string *hint, string *str, ImGuiInputTextFlags flags = 0)
+    static bool InputTextWithHint(const char *id, const std::string *hint, std::string *str,
+                                  ImGuiInputTextFlags flags = 0)
     {
         bool changed = ImGui::InputText(id, str, flags);
         if (str->empty() && !ImGui::IsItemActive())
@@ -77,12 +78,13 @@ namespace SF::Engine
     }
 
     // Done this way because I think it is easier to read
-    inline string InputStringPopup(const string &WindowName, const string &WindowComment, const string &FallBackName)
+    inline std::string InputStringPopup(const std::string &WindowName, const std::string &WindowComment,
+                                        const std::string &FallBackName)
     {
         ImGui::SetNextWindowSize(Vec2(450, 250));
 
-        string retValue;
-        string storageValue;
+        std::string retValue;
+        std::string storageValue;
 
         if (ImGui::Begin(WindowName.c_str()))
         {

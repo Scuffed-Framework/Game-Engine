@@ -4,11 +4,11 @@
 
 namespace SF::Engine::Animation
 {
-    using namespace std;
+
     class Animation
     {
         DurationAsMilliseconds length;
-        vector<Keyframe> keyframes;
+        std::vector<Keyframe> keyframes;
 
     public:
         Animation(const DurationAsMilliseconds &length, std::vector<Keyframe> keyframes) :

@@ -24,7 +24,7 @@ namespace SF::Engine
 
         std::vector<Entity *> GetEntities(const std::string &name) const { return registry.FindAllByName(name); }
 
-        Entity *FindById(const EntityId id) { return registry.Find(id); }
+        Entity *FindById(const EntityId id) const { return registry.Find(id); }
 
         Entity *Duplicate(Entity *entity) { return registry.DuplicateEntity(entity); }
 

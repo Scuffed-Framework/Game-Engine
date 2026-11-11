@@ -10,20 +10,20 @@ namespace SF::Engine
         // Matches by resource id alone -- used by the public Reads()/Writes()/Creates() queries,
         // where "does this pass touch resource X at all" shouldn't care which usage flags it
         // was declared with.
-        [[nodiscard]] bool HasId(const vector<FrameGraphRenderpassNode::AccessDeclaration> &v, ResourceHandle id)
+        [[nodiscard]] bool HasId(const std::vector<FrameGraphRenderpassNode::AccessDeclaration> &v, ResourceHandle id)
         {
             const auto match = [id](const auto &e) { return e.id == id; };
 
-            return ranges::find_if(v, match) != v.cend();
+            return std::ranges::find_if(v, match) != v.cend();
         }
 
         // Matches the full (id, flags) tuple -- used by the AddRead/AddWrite/AddCreate mutators
         // to dedupe an exact re-declaration while still allowing the same resource to appear
         // twice with genuinely different usage flags.
-        [[nodiscard]] bool Contains(const vector<FrameGraphRenderpassNode::AccessDeclaration> &v,
+        [[nodiscard]] bool Contains(const std::vector<FrameGraphRenderpassNode::AccessDeclaration> &v,
                                     FrameGraphRenderpassNode::AccessDeclaration n)
         {
-            return ranges::find(v, n) != v.cend();
+            return std::ranges::find(v, n) != v.cend();
         }
     } // namespace
 
@@ -32,7 +32,7 @@ namespace SF::Engine
     bool FrameGraphRenderpassNode::Writes(ResourceHandle id) const { return HasId(writes, id); }
 
 
-    FrameGraphRenderpassNode::FrameGraphRenderpassNode(const string_view name, uint32_t nodeId,
+    FrameGraphRenderpassNode::FrameGraphRenderpassNode(const std::string_view name, uint32_t nodeId,
                                                        EngineRenderpass *pass) :
         FrameGraphNode{name, nodeId}, pass{pass}
     {
@@ -54,13 +54,12 @@ namespace SF::Engine
 
     ResourceHandle FrameGraphRenderpassNode::AddWrite(ResourceHandle id, uint32_t flags)
     {
-        return Contains(writes, {id, flags}) ? id
-                                              : writes.emplace_back(AccessDeclaration{.id = id, .flags = flags}).id;
+        return Contains(writes, {id, flags}) ? id : writes.emplace_back(AccessDeclaration{.id = id, .flags = flags}).id;
     }
 
     ResourceHandle FrameGraphRenderpassNode::AddCreate(ResourceHandle id, uint32_t flags)
     {
         return Contains(creates, {id, flags}) ? id
-                                               : creates.emplace_back(AccessDeclaration{.id = id, .flags = flags}).id;
+                                              : creates.emplace_back(AccessDeclaration{.id = id, .flags = flags}).id;
     }
 } // namespace SF::Engine

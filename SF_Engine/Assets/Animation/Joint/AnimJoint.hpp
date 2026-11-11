@@ -7,13 +7,13 @@
 
 namespace SF::Engine::Animation
 {
-    using namespace std;
+
     class Joint
     {
         SF_RTTI_BASE(Joint)
     public:
         // give no data cuz
-        explicit Joint(uint32_t index = 0, string name = "", const Mat4 &bindLocalTransform = Mat4(0)) :
+        explicit Joint(std::uint32_t index = 0, std::string name = "", const Mat4 &bindLocalTransform = Mat4(0)) :
             index(index), name(std::move(name)), localBindTransform(bindLocalTransform)
         {
         }
@@ -29,13 +29,13 @@ namespace SF::Engine::Animation
                 child.CalculateInverseBindTransform(bindTransform);
         }
 
-        [[nodiscard]] uint32_t GetIndex() const { return index; }
-        void SetIndex(uint32_t index) { this->index = index; }
+        [[nodiscard]] std::uint32_t GetIndex() const { return index; }
+        void SetIndex(std::uint32_t index) { this->index = index; }
 
-        [[nodiscard]] const string &GetName() const { return name; }
-        void SetName(const string &name) { this->name = name; }
+        [[nodiscard]] const std::string &GetName() const { return name; }
+        void SetName(const std::string &name) { this->name = name; }
 
-        [[nodiscard]] const vector<Joint> &GetChildren() const { return children; }
+        [[nodiscard]] const std::vector<Joint> &GetChildren() const { return children; }
 
         void AddChild(const Joint &child) { children.emplace_back(child); }
 
@@ -48,9 +48,9 @@ namespace SF::Engine::Animation
         }
 
     private:
-        uint32_t index = 0;
-        string name;
-        vector<Joint> children;
+        std::uint32_t index = 0;
+        std::string name;
+        std::vector<Joint> children;
 
         Mat4 localBindTransform;
         Mat4 inverseBindTransform{};

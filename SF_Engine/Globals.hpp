@@ -3,10 +3,10 @@
 #include <vector>
 namespace SF::Engine
 {
-    using namespace std;
 
-    constexpr string EngineCVarNamespace       = "SFE";
-    constexpr string RenderSystemCVarNamespace = "RS";
+
+    constexpr std::string EngineCVarNamespace       = "SFE";
+    constexpr std::string RenderSystemCVarNamespace = "RS";
 
 } // namespace SF::Engine
 #if not defined NODISCARD

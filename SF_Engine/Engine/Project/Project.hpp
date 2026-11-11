@@ -11,7 +11,7 @@
 
 namespace SF::Engine
 {
-    constexpr string_view ProjectFileExtension = ".projxml";
+    constexpr std::string_view ProjectFileExtension = ".projxml";
     struct ProjectTemplate
     {
         std::shared_ptr<Image2d> ExampleImage;

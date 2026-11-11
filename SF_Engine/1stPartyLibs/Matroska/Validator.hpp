@@ -8,7 +8,7 @@
 
 namespace SF::Matroska
 {
-    using namespace std;
+
     struct ValidationResult
     {
         bool valid = true;

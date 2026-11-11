@@ -36,7 +36,7 @@
 // clang-format off
 namespace SF::Engine
 {
-    inline const vector<string_view> Quotes = {
+    inline const std::vector<std::string_view> Quotes = {
             "It's hard to light a candle, easy to curse the dark instead",
             "Je remue le ciel, le jour, la nuit.", // This is spelled correctly (AHEM AHEM HYPRLAND WEIRDOS) (remind me
                                                    // to make the whole engine crash if one is caught using hypr)

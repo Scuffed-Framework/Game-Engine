@@ -21,13 +21,13 @@ namespace SF::Engine::VideoImport
     class H264RawSource final : public IRawFrameSource
     {
     public:
-        H264RawSource(IPacketSource &packets, const vector<uint8_t> &avcC, const Rational fps) :
+        H264RawSource(IPacketSource &packets, const std::vector<uint8_t> &avcC, const Rational fps) :
             packets_(packets), fps_(fps)
         {
             ParseAvcC(avcC);
 
             if (WelsCreateDecoder(&decoder_) != 0 || !decoder_)
-                throw runtime_error("openh264: WelsCreateDecoder failed");
+                throw std::runtime_error("openh264: WelsCreateDecoder failed");
 
             try
             {
@@ -35,7 +35,7 @@ namespace SF::Engine::VideoImport
                 param.sVideoProperty.eVideoBsType = VIDEO_BITSTREAM_AVC;
                 param.eEcActiveIdc                = ERROR_CON_DISABLE;
                 if (decoder_->Initialize(&param) != 0)
-                    throw runtime_error("openh264: decoder Initialize failed");
+                    throw std::runtime_error("openh264: decoder Initialize failed");
 
                 int logLevel = WELS_LOG_QUIET;
                 decoder_->SetOption(DECODER_OPTION_TRACE_LEVEL, &logLevel);
@@ -50,7 +50,7 @@ namespace SF::Engine::VideoImport
                 // The encoder needs the frame size up front, so decode the first frame now and hold it.
                 pending_ = DecodeOne();
                 if (!pending_)
-                    throw runtime_error("openh264: no decodable frames in the stream");
+                    throw std::runtime_error("openh264: no decodable frames in the stream");
             } catch (...)
             {
                 Close();
@@ -95,19 +95,19 @@ namespace SF::Engine::VideoImport
         ISVCDecoder *decoder_ = nullptr;
 
         uint8_t nalLengthSize_ = 4;
-        vector<uint8_t> paramSets_; // Annex B SPS+PPS from avcC
-        vector<uint8_t> annexb_;    // scratch
+        std::vector<uint8_t> paramSets_; // Annex B SPS+PPS from avcC
+        std::vector<uint8_t> annexb_;    // scratch
 
         DecodedPlanes cur_;   // last decoded frame; pointers stay valid until the next decode call
         DecodedPlanes first_; // dimensions of the first frame
         FrameConverter conv_;
-        bool pending_       = false; // cur_ holds a frame nobody has consumed yet
-        bool flushing_      = false;
-        bool ended_         = false;
-        bool haveFirst_     = false;
-        bool produced_      = false;
-        int errors_         = 0;
-        int64_t index_      = 0;
+        bool pending_   = false; // cur_ holds a frame nobody has consumed yet
+        bool flushing_  = false;
+        bool ended_     = false;
+        bool haveFirst_ = false;
+        bool produced_  = false;
+        int errors_     = 0;
+        int64_t index_  = 0;
 
         static constexpr uint8_t kStartCode[4] = {0, 0, 0, 1};
 
@@ -121,7 +121,7 @@ namespace SF::Engine::VideoImport
             }
         }
 
-        void ParseAvcC(const vector<uint8_t> &avcC)
+        void ParseAvcC(const std::vector<uint8_t> &avcC)
         {
             paramSets_.clear();
             if (avcC.size() < 7 || avcC[0] != 1)
@@ -157,7 +157,7 @@ namespace SF::Engine::VideoImport
                     return;
         }
 
-        void ToAnnexB(const vector<uint8_t> &sample)
+        void ToAnnexB(const std::vector<uint8_t> &sample)
         {
             annexb_.clear();
             annexb_.reserve(sample.size() + 16);
@@ -200,7 +200,7 @@ namespace SF::Engine::VideoImport
                 first_     = cur_;
                 haveFirst_ = true;
             } else if (cur_.Width != first_.Width || cur_.Height != first_.Height)
-                throw runtime_error("openh264: resolution changed mid-stream, which import doesn't support");
+                throw std::runtime_error("openh264: resolution changed mid-stream, which import doesn't support");
         }
 
         /// Decodes until one frame is available in cur_. false = end of stream.
@@ -227,13 +227,13 @@ namespace SF::Engine::VideoImport
                     const int state = static_cast<int>(
                             decoder_->DecodeFrame2(annexb_.data(), static_cast<int>(annexb_.size()), dst, &info));
                     if (state & (dsInvalidArgument | dsOutOfMemory | dsInitialOptExpected))
-                        throw runtime_error("openh264: decoder failure (state " + to_string(state) + ")");
+                        throw std::runtime_error("openh264: decoder failure (state " + std::to_string(state) + ")");
 
                     if (info.iBufferStatus != 1)
                     {
                         if (!produced_ && state != dsErrorFree && state != dsFramePending && ++errors_ > 64)
-                            throw runtime_error("openh264 can't decode this stream. It only supports 8-bit 4:2:0 "
-                                                "H.264 (no High 10 / 4:2:2 / 4:4:4), or the stream is corrupt.");
+                            throw std::runtime_error("openh264 can't decode this stream. It only supports 8-bit 4:2:0 "
+                                                     "H.264 (no High 10 / 4:2:2 / 4:4:4), or the stream is corrupt.");
                         continue;
                     }
                 } else

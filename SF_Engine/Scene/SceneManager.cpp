@@ -27,7 +27,7 @@ namespace SF::Engine
         bool HasSceneExtension(const fs::path &p)
         {
             std::string ext = p.extension().string();
-            ranges::transform(ext, ext.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+            std::ranges::transform(ext, ext.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
             return ext == std::string(SceneFileExtension);
         }
 

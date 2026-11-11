@@ -356,14 +356,14 @@ namespace SF::Engine
 
         const uint64_t cutoff = m_currentFrame - kFramesInFlight;
 
-        const auto it = ranges::remove_if(m_pendingFrees,
-                                          [&](const PendingFree &pf)
-                                          {
-                                              if (pf.freedOnFrame > cutoff)
-                                                  return false;
-                                              FreeIndexImmediate(pf.type, pf.index);
-                                              return true;
-                                          })
+        const auto it = std::ranges::remove_if(m_pendingFrees,
+                                               [&](const PendingFree &pf)
+                                               {
+                                                   if (pf.freedOnFrame > cutoff)
+                                                       return false;
+                                                   FreeIndexImmediate(pf.type, pf.index);
+                                                   return true;
+                                               })
                                 .begin();
         m_pendingFrees.erase(it, m_pendingFrees.end());
     }

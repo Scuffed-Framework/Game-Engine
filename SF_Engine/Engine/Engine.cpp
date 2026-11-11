@@ -231,7 +231,7 @@ namespace SF::Engine
 
         for (const auto &[registrarId, registrar]: Module::Registry())
         {
-            auto depIt = ranges::find(registrar.dependencies, id);
+            auto depIt = std::ranges::find(registrar.dependencies, id);
             if (depIt != registrar.dependencies.end())
                 DestroyModule(registrarId);
         }

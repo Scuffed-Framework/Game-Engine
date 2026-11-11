@@ -7,17 +7,16 @@
 
 namespace SF::Engine
 {
-    using namespace std;
-    const vector DYNAMIC_STATES = {VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR, VK_DYNAMIC_STATE_LINE_WIDTH};
 
-    RhiRenderPipeline::RhiRenderPipeline(Stage stage, filesystem::path shaderPath,
-                                         vector<Shader::VertexInput> vertexInputs, vector<Shader::Define> defines,
-                                         const Mode mode, Depth depth, const VkPrimitiveTopology topology,
-                                         const VkPolygonMode polygonMode, const VkCullModeFlags cullMode,
-                                         const VkFrontFace frontFace, const bool pushDescriptors,
-                                         vector<VkDescriptorSetLayout> additionalLayouts, const Blend blend,
-                                         vector<VkPipelineColorBlendAttachmentState> blendStates,
-                                         const uint32_t patchControlPoints) :
+    const std::vector DYNAMIC_STATES = {VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR,
+                                        VK_DYNAMIC_STATE_LINE_WIDTH};
+
+    RhiRenderPipeline::RhiRenderPipeline(
+            Stage stage, std::filesystem::path shaderPath, std::vector<Shader::VertexInput> vertexInputs,
+            std::vector<Shader::Define> defines, const Mode mode, Depth depth, const VkPrimitiveTopology topology,
+            const VkPolygonMode polygonMode, const VkCullModeFlags cullMode, const VkFrontFace frontFace,
+            const bool pushDescriptors, std::vector<VkDescriptorSetLayout> additionalLayouts, const Blend blend,
+            std::vector<VkPipelineColorBlendAttachmentState> blendStates, const uint32_t patchControlPoints) :
         stage(std::move(stage)), shaderPath(std::move(shaderPath)), vertexInputs(std::move(vertexInputs)),
         defines(std::move(defines)), mode(mode), depth(depth), topology(topology), polygonMode(polygonMode),
         cullMode(cullMode), frontFace(frontFace), pushDescriptors(pushDescriptors),
@@ -42,18 +41,16 @@ namespace SF::Engine
                 CreatePipelineMrt();
                 break;
             default:
-                throw runtime_error("Unknown pipeline mode");
+                throw std::runtime_error("Unknown pipeline mode");
         }
     }
 
-    RhiRenderPipeline::RhiRenderPipeline(VkRenderPass offscreenRenderPass, uint32_t subpassIndex,
-                                         filesystem::path shaderPath, vector<Shader::VertexInput> vertexInputs,
-                                         vector<Shader::Define> defines, const Depth depth,
-                                         const VkPrimitiveTopology topology, const VkPolygonMode polygonMode,
-                                         const VkCullModeFlags cullMode, const VkFrontFace frontFace,
-                                         vector<VkDescriptorSetLayout> additionalLayouts, const Blend blend,
-                                         vector<VkPipelineColorBlendAttachmentState> blendStates,
-                                         const uint32_t patchControlPoints) :
+    RhiRenderPipeline::RhiRenderPipeline(
+            VkRenderPass offscreenRenderPass, uint32_t subpassIndex, std::filesystem::path shaderPath,
+            std::vector<Shader::VertexInput> vertexInputs, std::vector<Shader::Define> defines, const Depth depth,
+            const VkPrimitiveTopology topology, const VkPolygonMode polygonMode, const VkCullModeFlags cullMode,
+            const VkFrontFace frontFace, std::vector<VkDescriptorSetLayout> additionalLayouts, const Blend blend,
+            std::vector<VkPipelineColorBlendAttachmentState> blendStates, const uint32_t patchControlPoints) :
         stage({0, subpassIndex}), shaderPath(std::move(shaderPath)), vertexInputs(std::move(vertexInputs)),
         defines(std::move(defines)), mode(Mode::Polygon), depth(depth), topology(topology), polygonMode(polygonMode),
         cullMode(cullMode), frontFace(frontFace), pushDescriptors(false), patchControlPoints(patchControlPoints),
@@ -161,32 +158,32 @@ namespace SF::Engine
         vkDestroyDescriptorSetLayout(device_, descriptorSetLayout, nullptr);
     }
 
-    const ImageDepth *RhiRenderPipeline::GetDepthStencil(const optional<uint32_t> &stage) const
+    const ImageDepth *RhiRenderPipeline::GetDepthStencil(const std::optional<uint32_t> &stage) const
     {
         if (isOffscreen_ && !stage)
-            throw runtime_error("RenderPipeline::GetDepthStencil: this pipeline is offscreen and isn't tied to a "
-                                "RenderSystem stage; pass an explicit stage index, or query the offscreen render "
-                                "target's depth image directly instead.");
+            throw std::runtime_error("RenderPipeline::GetDepthStencil: this pipeline is offscreen and isn't tied to a "
+                                     "RenderSystem stage; pass an explicit stage index, or query the offscreen render "
+                                     "target's depth image directly instead.");
         return RenderSystem::Get()->GetRenderStage(stage ? *stage : this->stage.first)->GetDepthStencil();
     }
 
-    const Image2d *RhiRenderPipeline::GetImage(const uint32_t index, const optional<uint32_t> &stage) const
+    const Image2d *RhiRenderPipeline::GetImage(const uint32_t index, const std::optional<uint32_t> &stage) const
     {
         if (isOffscreen_ && !stage)
-            throw runtime_error("RenderPipeline::GetImage: this pipeline is offscreen and isn't tied to a "
-                                "RenderSystem stage; pass an explicit stage index, or query the offscreen render "
-                                "target's image directly instead.");
+            throw std::runtime_error("RenderPipeline::GetImage: this pipeline is offscreen and isn't tied to a "
+                                     "RenderSystem stage; pass an explicit stage index, or query the offscreen render "
+                                     "target's image directly instead.");
         return RenderSystem::Get()
                 ->GetRenderStage(stage ? *stage : this->stage.first)
                 ->GetFramebuffer()
                 ->GetAttachment(index);
     }
 
-    RhiRenderArea RhiRenderPipeline::GetRenderArea(const optional<uint32_t> &stage) const
+    RhiRenderArea RhiRenderPipeline::GetRenderArea(const std::optional<uint32_t> &stage) const
     {
         if (isOffscreen_ && !stage)
-            throw runtime_error("RenderPipeline::GetRenderArea: this pipeline is offscreen and isn't tied to a "
-                                "RenderSystem stage; pass an explicit stage index instead.");
+            throw std::runtime_error("RenderPipeline::GetRenderArea: this pipeline is offscreen and isn't tied to a "
+                                     "RenderSystem stage; pass an explicit stage index instead.");
         return RenderSystem::Get()->GetRenderStage(stage ? *stage : this->stage.first)->GetRenderArea();
     }
 
@@ -195,21 +192,22 @@ namespace SF::Engine
         const auto logicalDevice = RenderSystem::Get()->GetLogicalDevice();
 
         Shaders::ShaderParser parser;
-        const auto parsedShaderOpt = parser.parse(filesystem::path(GetExecutablePath() / shaderPath).string());
+        const auto parsedShaderOpt = parser.parse(std::filesystem::path(GetExecutablePath() / shaderPath).string());
 
         if (!parsedShaderOpt)
-            throw runtime_error("Failed to parse shader '" + shaderPath.string() + "': " + parser.getLastError());
+            throw std::runtime_error("Failed to parse shader '" + shaderPath.string() + "': " + parser.getLastError());
 
         const Shaders::ParsedShader &parsedShader = *parsedShaderOpt;
 
         auto compiledOpt = parser.compileAll(parsedShader, defines);
         if (!compiledOpt)
-            throw runtime_error("Failed to compile shader '" + shaderPath.string() + "': " + parser.getLastError());
+            throw std::runtime_error("Failed to compile shader '" + shaderPath.string() +
+                                     "': " + parser.getLastError());
 
         // Collect every graphics stage the .shader file defined. Which optional stages
         // exist (tessellation, geometry, ...) is derived from the file, not from flags the
         // caller has to keep in sync.
-        map<VkShaderStageFlagBits, vector<uint32_t>> byStage;
+        std::map<VkShaderStageFlagBits, std::vector<uint32_t>> byStage;
         for (auto &c: *compiledOpt)
         {
             if (c.stage == Shaders::ShaderStage::Compute)
@@ -223,20 +221,20 @@ namespace SF::Engine
         }
 
         if (!byStage.contains(VK_SHADER_STAGE_VERTEX_BIT) || !byStage.contains(VK_SHADER_STAGE_FRAGMENT_BIT))
-            throw runtime_error("RenderSystem pipeline requires both vertex and fragment shaders");
+            throw std::runtime_error("RenderSystem pipeline requires both vertex and fragment shaders");
 
         const bool hasTesc = byStage.contains(VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT);
         if (const bool hasTese = byStage.contains(VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT); hasTesc != hasTese)
-            throw runtime_error("Tessellation requires both control and evaluation stages");
+            throw std::runtime_error("Tessellation requires both control and evaluation stages");
 
-        vector<Shader::StageSpirv> stageList;
+        std::vector<Shader::StageSpirv> stageList;
         stageList.reserve(byStage.size());
         for (auto &[stageBit, spirv]: byStage)
             stageList.push_back({.stage = stageBit, .spirv = std::move(spirv)});
 
         shader = Shader::CreateFromStages(*logicalDevice, stageList);
         if (!shader)
-            throw runtime_error("Failed to create Vulkan shader from SPIR-V");
+            throw std::runtime_error("Failed to create Vulkan shader from SPIR-V");
 
         hasTessellationShader = shader->HasStage(VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT);
         hasGeometryShader     = shader->HasStage(VK_SHADER_STAGE_GEOMETRY_BIT);
@@ -263,7 +261,7 @@ namespace SF::Engine
         const auto logicalDevice       = RenderSystem::Get()->GetLogicalDevice();
         const auto &descriptorBindings = shader->GetDescriptorBindings();
 
-        map<VkDescriptorType, uint32_t> typeCounts;
+        std::map<VkDescriptorType, uint32_t> typeCounts;
         for (const auto &b: descriptorBindings)
             typeCounts[b.descriptorType] += b.descriptorCount;
 
@@ -275,7 +273,7 @@ namespace SF::Engine
         typeCounts[VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER] = max(typeCounts[VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER], 16u);
         typeCounts[VK_DESCRIPTOR_TYPE_STORAGE_BUFFER] = max(typeCounts[VK_DESCRIPTOR_TYPE_STORAGE_BUFFER], 16u);
 
-        vector<VkDescriptorPoolSize> poolSizes;
+        std::vector<VkDescriptorPoolSize> poolSizes;
         for (const auto &[type, count]: typeCounts)
             poolSizes.push_back({.type = type, .descriptorCount = count * 8192});
 
@@ -306,8 +304,8 @@ namespace SF::Engine
         const auto logicalDevice       = RenderSystem::Get()->GetLogicalDevice();
         const auto &descriptorBindings = shader->GetDescriptorBindings();
 
-        const vector<VkDescriptorBindingFlags> bindingFlags(descriptorBindings.size(),
-                                                            VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT);
+        const std::vector<VkDescriptorBindingFlags> bindingFlags(descriptorBindings.size(),
+                                                                 VK_DESCRIPTOR_BINDING_UPDATE_AFTER_BIND_BIT);
 
         VkDescriptorSetLayoutBindingFlagsCreateInfo flagsInfo{};
         flagsInfo.sType         = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO;
@@ -329,7 +327,7 @@ namespace SF::Engine
         const auto logicalDevice  = RenderSystem::Get()->GetLogicalDevice();
         const auto &pushConstants = shader->GetPushConstants();
 
-        vector<VkPushConstantRange> pushConstantRanges;
+        std::vector<VkPushConstantRange> pushConstantRanges;
         for (const auto &[offset, size, stageFlags]: pushConstants)
         {
             VkPushConstantRange range = {};
@@ -340,7 +338,7 @@ namespace SF::Engine
         }
 
 
-        vector<VkDescriptorSetLayout> setLayouts;
+        std::vector<VkDescriptorSetLayout> setLayouts;
 
         setLayouts.reserve(2 + additionalLayouts.size());
 
@@ -369,12 +367,12 @@ namespace SF::Engine
 
         if (polygonMode == VK_POLYGON_MODE_LINE && !logicalDevice->GetEnabledFeatures().fillModeNonSolid)
         {
-            throw runtime_error("Cannot create RenderSystem pipeline with line polygon mode when logical device "
-                                "does not support non solid fills.");
+            throw std::runtime_error("Cannot create RenderSystem pipeline with line polygon mode when logical device "
+                                     "does not support non solid fills.");
         }
 
         if (hasGeometryShader && !logicalDevice->GetEnabledFeatures().geometryShader)
-            throw runtime_error("Geometry shader used but geometryShader feature not enabled");
+            throw std::runtime_error("Geometry shader used but geometryShader feature not enabled");
 
         // Tessellation must be resolved BEFORE inputAssemblyState is filled in, since it can force the topology to
         // PATCH_LIST.
@@ -382,7 +380,7 @@ namespace SF::Engine
         if (hasTessellationShader)
         {
             if (!logicalDevice->GetEnabledFeatures().tessellationShader)
-                throw runtime_error("Tessellation shader used but tessellationShader feature not enabled");
+                throw std::runtime_error("Tessellation shader used but tessellationShader feature not enabled");
 
             if (topology != VK_PRIMITIVE_TOPOLOGY_PATCH_LIST)
             {
@@ -394,7 +392,7 @@ namespace SF::Engine
             tessellationState.patchControlPoints = patchControlPoints;
         } else if (topology == VK_PRIMITIVE_TOPOLOGY_PATCH_LIST)
         {
-            throw runtime_error("PATCH_LIST topology requires tessellation control + evaluation stages");
+            throw std::runtime_error("PATCH_LIST topology requires tessellation control + evaluation stages");
         }
 
         inputAssemblyState.sType                  = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
@@ -416,9 +414,9 @@ namespace SF::Engine
         if (blend == Blend::Custom)
         {
             if (customBlendStates.size() != 1)
-                throw runtime_error("RenderPipeline: Blend::Custom requires exactly 1 entry in blendStates for a "
-                                    "single-attachment pipeline (got " +
-                                    to_string(customBlendStates.size()) + ")");
+                throw std::runtime_error("RenderPipeline: Blend::Custom requires exactly 1 entry in blendStates for a "
+                                         "single-attachment pipeline (got " +
+                                         std::to_string(customBlendStates.size()) + ")");
             blendAttachmentStates = customBlendStates;
         } else
         {
@@ -494,8 +492,8 @@ namespace SF::Engine
             vkSubpass                             = stage.second;
         }
 
-        vector<VkVertexInputBindingDescription> bindingDescriptions;
-        vector<VkVertexInputAttributeDescription> attributeDescriptions;
+        std::vector<VkVertexInputBindingDescription> bindingDescriptions;
+        std::vector<VkVertexInputAttributeDescription> attributeDescriptions;
         uint32_t lastAttribute = 0;
 
         for (const auto &vertexInput: vertexInputs)
@@ -542,7 +540,7 @@ namespace SF::Engine
         const auto result =
                 vkCreateGraphicsPipelines(*logicalDevice, pipelineCache, 1, &pipelineCreateInfo, nullptr, &pipeline);
         if (result != VK_SUCCESS)
-            throw runtime_error("vkCreateGraphicsPipelines failed: " + RenderSystem::StrVkResult(result));
+            throw std::runtime_error("vkCreateGraphicsPipelines failed: " + RenderSystem::StrVkResult(result));
     }
 
     void RhiRenderPipeline::CreatePipelinePolygon() { CreatePipeline(); }
@@ -555,9 +553,10 @@ namespace SF::Engine
         if (blend == Blend::Custom)
         {
             if (customBlendStates.size() != attachmentCount)
-                throw runtime_error("RenderPipeline: Blend::Custom requires exactly " + to_string(attachmentCount) +
-                                    " entries in blendStates for this MRT pipeline (got " +
-                                    to_string(customBlendStates.size()) + ")");
+                throw std::runtime_error("RenderPipeline: Blend::Custom requires exactly " +
+                                         std::to_string(attachmentCount) +
+                                         " entries in blendStates for this MRT pipeline (got " +
+                                         std::to_string(customBlendStates.size()) + ")");
             blendAttachmentStates = customBlendStates;
         } else
         {

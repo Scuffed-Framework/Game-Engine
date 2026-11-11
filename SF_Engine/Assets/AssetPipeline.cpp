@@ -46,7 +46,7 @@ namespace SF::Engine
     bool AssetController::Initialize()
     {
         RegisterBuiltinFactories();
-        assets_ = vector<shared_ptr<AssetBase>>();
+        assets_ = std::vector<std::shared_ptr<AssetBase>>();
         return true;
     }
 

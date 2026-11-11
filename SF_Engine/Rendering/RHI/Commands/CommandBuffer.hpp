@@ -59,11 +59,11 @@ namespace SF::Engine
 
         operator const VkCommandBuffer &() const { return commandBuffer; }
 
-        const VkCommandBuffer &GetCommandBuffer() const { return commandBuffer; }
-        bool IsRunning() const { return running; }
+        [[nodiscard]] const VkCommandBuffer &GetCommandBuffer() const { return commandBuffer; }
+        [[nodiscard]] bool IsRunning() const { return running; }
 
     private:
-        VkQueue GetQueue() const;
+        [[nodiscard]] VkQueue GetQueue() const;
 
         std::shared_ptr<CommandPool> commandPool;
 

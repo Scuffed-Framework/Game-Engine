@@ -125,7 +125,7 @@ namespace SF::Engine
 
     bool MatroskaAudioLoader::IsAudioTrack(uint64_t trackNumber) const
     {
-        return ranges::any_of(audioTracks, [trackNumber](const auto &t) { return t.trackNumber == trackNumber; });
+        return std::ranges::any_of(audioTracks, [trackNumber](const auto &t) { return t.trackNumber == trackNumber; });
     }
 
     void MatroskaAudioLoader::ParseClusters(const Element &segment)

@@ -8,10 +8,10 @@ namespace SF::Engine
 {
     struct GameSession
     {
-        uint32_t maxSpectators;
-        uint32_t maxPlayers;
-        uint32_t maxPartySize;
-        uint32_t maxSplitscreenPlayers = 4;
+        std::uint32_t maxSpectators;
+        std::uint32_t maxPlayers;
+        std::uint32_t maxPartySize;
+        std::uint32_t maxSplitscreenPlayers = 4;
 
         MicrophoneRecordMode micMode = MicrophoneRecordMode::PushToTalk;
         std::wstring sessionName;
@@ -24,4 +24,4 @@ namespace SF::Engine
 
         virtual void RegisterPlayer(const UUID &playerID, bool fromInvitation);
     };
-}
+} // namespace SF::Engine

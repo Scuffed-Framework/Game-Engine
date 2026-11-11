@@ -158,9 +158,9 @@ namespace SF::Engine
 
         Key ToKey(const SDL_Scancode scancode)
         {
-            static constexpr array<Key, SDL_SCANCODE_COUNT> table = []
+            static constexpr std::array<Key, SDL_SCANCODE_COUNT> table = []
             {
-                array<Key, SDL_SCANCODE_COUNT> t{};
+                std::array<Key, SDL_SCANCODE_COUNT> t{};
                 t.fill(kUnknownKey);
                 for (const auto &[code, key]: kKeyMap)
                     t[static_cast<size_t>(code)] = key;
@@ -171,9 +171,9 @@ namespace SF::Engine
 
         SDL_Scancode ToScancode(Key key)
         {
-            static const unordered_map<int32_t, SDL_Scancode> table = []
+            static const std::unordered_map<int32_t, SDL_Scancode> table = []
             {
-                unordered_map<int32_t, SDL_Scancode> t;
+                std::unordered_map<int32_t, SDL_Scancode> t;
                 for (const auto &[scancode, k]: kKeyMap)
                     t[static_cast<int32_t>(k)] = scancode;
                 return t;
@@ -413,7 +413,7 @@ namespace SF::Engine
 
         window = SDL_CreateWindow(title.c_str(), static_cast<int>(size.x), static_cast<int>(size.y), flags);
         if (!window)
-            throw runtime_error(string("SDL failed to create the window: ") + SDL_GetError());
+            throw std::runtime_error(std::string("SDL failed to create the window: ") + SDL_GetError());
 
         SDL_SetPointerProperty(SDL_GetWindowProperties(window), kWindowProperty, this);
 
@@ -482,21 +482,21 @@ namespace SF::Engine
         SDL_SetWindowPosition(window, static_cast<int>(this->position.x), static_cast<int>(this->position.y));
     }
 
-    void Window::SetTitle(const string &title)
+    void Window::SetTitle(const std::string &title)
     {
         this->title = title;
         SDL_SetWindowTitle(window, title.c_str());
         onTitle(title);
     }
 
-    void Window::SetIcons(const vector<filesystem::path> &filenames) const
+    void Window::SetIcons(const std::vector<std::filesystem::path> &filenames) const
     {
-        vector<unique_ptr<Bitmap>> bitmaps;
-        vector<SDL_Surface *> surfaces;
+        std::vector<std::unique_ptr<Bitmap>> bitmaps;
+        std::vector<SDL_Surface *> surfaces;
 
         for (const auto &filename: filenames)
         {
-            auto bitmap = make_unique<Bitmap>(filename);
+            auto bitmap = std::make_unique<Bitmap>(filename);
             if (!bitmap)
                 continue;
 
@@ -590,15 +590,15 @@ namespace SF::Engine
             SDL_RestoreWindow(window);
     }
 
-    string Window::GetClipboard() const
+    std::string Window::GetClipboard() const
     {
-        char *text    = SDL_GetClipboardText();
-        string result = text ? text : "";
+        char *text         = SDL_GetClipboardText();
+        std::string result = text ? text : "";
         SDL_free(text);
         return result;
     }
 
-    void Window::SetClipboard(const string &string) const { SDL_SetClipboardText(string.c_str()); }
+    void Window::SetClipboard(const std::string &string) const { SDL_SetClipboardText(string.c_str()); }
 
     void Window::SetCursorHidden(bool hidden)
     {

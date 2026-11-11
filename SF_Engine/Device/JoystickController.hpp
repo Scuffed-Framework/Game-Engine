@@ -19,7 +19,7 @@ union SDL_Event;
 namespace SF::Engine
 {
     class JoystickController;
-    using namespace std;
+
 
     enum class JoystickPositionValue : uint8_t
     {
@@ -104,26 +104,26 @@ namespace SF::Engine
     // Static identification data of a device
     struct JoystickInfo
     {
-        string name;
-        string path;
-        string serial;
-        string guid; // SDL GUID string form
-        uint16_t vendorId        = 0;
-        uint16_t productId       = 0;
-        uint16_t productVersion  = 0;
-        uint16_t firmwareVersion = 0;
-        JoystickType type        = JoystickType::Unknown;
-        bool isGamepad           = false; // SDL has a gamepad mapping for it
-        bool isVirtual           = false;
+        std::string name;
+        std::string path;
+        std::string serial;
+        std::string guid; // SDL GUID string form
+        std::uint16_t vendorId        = 0;
+        std::uint16_t productId       = 0;
+        std::uint16_t productVersion  = 0;
+        std::uint16_t firmwareVersion = 0;
+        JoystickType type             = JoystickType::Unknown;
+        bool isGamepad                = false; // SDL has a gamepad mapping for it
+        bool isVirtual                = false;
     };
 
     struct VirtualJoystickDesc
     {
-        string name          = "Virtual Joystick";
-        JoystickType type    = JoystickType::Unknown;
-        uint16_t axisCount   = 0;
-        uint16_t buttonCount = 0;
-        uint16_t hatCount    = 0;
+        std::string name          = "Virtual Joystick";
+        JoystickType type         = JoystickType::Unknown;
+        std::uint16_t axisCount   = 0;
+        std::uint16_t buttonCount = 0;
+        std::uint16_t hatCount    = 0;
     };
 
     class Joystick
@@ -140,7 +140,7 @@ namespace SF::Engine
         uint32_t GetInstanceId() const { return instanceId; } // SDL_JoystickID
 
         const JoystickInfo &GetInfo() const { return info; }
-        string GetName() const { return info.name; }
+        std::string GetName() const { return info.name; }
         const JoystickCapabilities &GetCapabilities() const { return caps; }
         JoystickConnection GetConnection() const;
         JoystickPower GetPower() const;
@@ -210,10 +210,10 @@ namespace SF::Engine
         JoystickInfo info;
         JoystickCapabilities caps;
 
-        vector<int16_t> axes;
-        vector<int16_t> axesInitial;
-        vector<InputAction> buttons;
-        vector<Bitmask<JoystickPositionValue>> hats;
+        std::vector<int16_t> axes;
+        std::vector<int16_t> axesInitial;
+        std::vector<InputAction> buttons;
+        std::vector<Bitmask<JoystickPositionValue>> hats;
 
         rocket::signal<void(bool)> onConnect;
         rocket::signal<void(uint8_t, InputAction)> onButton;
@@ -251,7 +251,7 @@ namespace SF::Engine
         void AddJoystick(uint32_t instanceId);
         void RemoveJoystick(uint32_t instanceId);
 
-        array<Joystick, Reflection::enum_count<JoystickPort>()> joysticks;
+        std::array<Joystick, Reflection::enum_count<JoystickPort>()> joysticks;
     };
 } // namespace SF::Engine
 

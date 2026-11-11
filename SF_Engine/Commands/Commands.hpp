@@ -11,11 +11,11 @@
 
 namespace SF::Engine
 {
-    using namespace std;
+
     struct Commandlet
     {
-        string name;
-        vector<string> args;
+        std::string name;
+        std::vector<std::string> args;
         virtual void Execute() = 0;
         virtual ~Commandlet()  = default;
     };
@@ -26,33 +26,33 @@ namespace SF::Engine
 
     public:
         template<typename T>
-        shared_ptr<Commandlet> Register()
+        std::shared_ptr<Commandlet> Register()
         {
-            static_assert(derived_from<T, Commandlet>, "T must derive from Commandlet");
+            static_assert(std::derived_from<T, Commandlet>, "T must derive from Commandlet");
 
-            auto id = type_index(typeid(T));
+            auto id = std::type_index(typeid(T));
             if (const auto it = commandlets_.find(id); it != commandlets_.end())
                 return it->second;
 
-            auto cmd = make_shared<T>();
+            auto cmd = std::make_shared<T>();
             commandlets_.emplace(id, cmd);
             return cmd;
         }
 
-        void Unregister(shared_ptr<Commandlet> cmd)
+        void Unregister(std::shared_ptr<Commandlet> cmd)
         {
             erase_if(commandlets_, [&cmd](const auto &entry) // capture cmd
                      { return entry.second == cmd; });
         }
 
-        shared_ptr<Commandlet> FindByName(const string &name) const
+        std::shared_ptr<Commandlet> FindByName(const std::string &name) const
         {
-            for (const auto &cmd: commandlets_ | views::values)
+            for (const auto &cmd: commandlets_ | std::views::values)
                 if (cmd->name == name)
                     return cmd;
             return nullptr;
         }
 
-        unordered_map<type_index, shared_ptr<Commandlet>> commandlets_;
+        std::unordered_map<std::type_index, std::shared_ptr<Commandlet>> commandlets_;
     };
 } // namespace SF::Engine

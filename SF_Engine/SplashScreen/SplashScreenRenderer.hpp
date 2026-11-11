@@ -8,16 +8,16 @@
 
 namespace SF::Engine
 {
-    using namespace std;
+
     // Editor & Engine have their splashscreens, Editor is outside of a window as a floating image, like Unreal or Unity
     // Engine is in the window, a video/gif, and more images, credits
 
     // show whilst shaders compile?
     class SplashScreenRenderer
     {
-        [[nodiscard]] string RandomQuote() const
+        [[nodiscard]] std::string RandomQuote() const
         {
-            return string(Quotes[Mathematics::Rand(static_cast<size_t>(0), Quotes.size() - 1)]);
+            return std::string(Quotes[Mathematics::Rand(static_cast<std::size_t>(0), Quotes.size() - 1)]);
         }
 
     public:
@@ -40,9 +40,9 @@ namespace SF::Engine
 
             const Ui32Vec2 size = SplashScreenWindow->GetSize();
 
-            Images.emplace_back(SplashScreenInternal::Construct(size, size), chrono::seconds(5), RandomQuote());
+            Images.emplace_back(SplashScreenInternal::Construct(size, size), std::chrono::seconds(5), RandomQuote());
             CurrentImage   = 0;
-            ImageStartTime = chrono::steady_clock::now();
+            ImageStartTime = std::chrono::steady_clock::now();
             Showing        = true;
         }
 
@@ -65,10 +65,10 @@ namespace SF::Engine
                 const bool isLast   = CurrentImage + 1 == Images.size();
                 const bool holdLast = IsEditor && isLast && !LoadingDone.load();
 
-                if (!holdLast && chrono::steady_clock::now() - ImageStartTime >= sec)
+                if (!holdLast && std::chrono::steady_clock::now() - ImageStartTime >= sec)
                 {
                     ++CurrentImage;
-                    ImageStartTime = chrono::steady_clock::now();
+                    ImageStartTime = std::chrono::steady_clock::now();
                 } else
                 {
                     // Reserve room for the bar only when it is actually drawn.
@@ -116,7 +116,7 @@ namespace SF::Engine
 
         void Cancel() { Showing = false; }
 
-        void AddImage(const shared_ptr<Image2d> &img, chrono::seconds time)
+        void AddImage(const std::shared_ptr<Image2d> &img, std::chrono::seconds time)
         {
             Images.emplace_back(img, time, RandomQuote());
         }
@@ -124,14 +124,16 @@ namespace SF::Engine
         bool IsEditor = false;
         bool Showing  = false;
 
-        string Quote;
-        vector<tuple<shared_ptr<Image2d> /*Image*/, chrono::seconds /*Time*/, string /*Quote*/>> Images;
+        std::string Quote;
+        std::vector<
+                std::tuple<std::shared_ptr<Image2d> /*Image*/, std::chrono::seconds /*Time*/, std::string /*Quote*/>>
+                Images;
         Window *SplashScreenWindow = nullptr;
         ImGuiWindowFlags Flags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoDocking |
                                  ImGuiWindowFlags_NoScrollWithMouse;
-        atomic<bool> LoadingDone{false};
+        std::atomic<bool> LoadingDone{false};
 
-        size_t CurrentImage                             = 0;
-        chrono::steady_clock::time_point ImageStartTime = {};
+        std::size_t CurrentImage                             = 0;
+        std::chrono::steady_clock::time_point ImageStartTime = {};
     };
 } // namespace SF::Engine

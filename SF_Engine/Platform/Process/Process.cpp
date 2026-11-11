@@ -204,27 +204,27 @@ extern char **environ;
 
 namespace SF::Engine
 {
-    string Process::GetName() const
+    std::string Process::GetName() const
     {
         if (!IsValid())
             return {};
-        ifstream comm("/proc/" + to_string(m_PID.Value) + "/comm");
-        string name;
+        std::ifstream comm("/proc/" + std::to_string(m_PID.Value) + "/comm");
+        std::string name;
         getline(comm, name);
         return name;
     }
 
-    optional<Process> Process::GetProcessById(ProcessID pid)
+    std::optional<Process> Process::GetProcessById(ProcessID pid)
     {
         Process p(pid);
         if (!p.IsValid())
-            return nullopt;
+            return std::nullopt;
         return p;
     }
 
-    vector<Process> Process::GetProcessesByName(string_view name)
+    std::vector<Process> Process::GetProcessesByName(std::string_view name)
     {
-        vector<Process> result;
+        std::vector<Process> result;
 
         DIR *proc = opendir("/proc");
         if (!proc)
@@ -237,8 +237,8 @@ namespace SF::Engine
                 continue;
 
             pid_t pid = atoi(entry->d_name);
-            ifstream comm("/proc/" + string(entry->d_name) + "/comm");
-            string procName;
+            std::ifstream comm("/proc/" + std::string(entry->d_name) + "/comm");
+            std::string procName;
             getline(comm, procName);
 
             if (procName == name)
@@ -253,9 +253,9 @@ namespace SF::Engine
         return result;
     }
 
-    vector<Process> Process::GetProcesses()
+    std::vector<Process> Process::GetProcesses()
     {
-        vector<Process> result;
+        std::vector<Process> result;
 
         DIR *proc = opendir("/proc");
         if (!proc)
@@ -310,7 +310,8 @@ namespace SF::Engine
         return p;
     }
 
-    Process Process::Launch(const filesystem::path &exe, const vector<string> &, const filesystem::path &)
+    Process Process::Launch(const std::filesystem::path &exe, const std::vector<std::string> &,
+                            const std::filesystem::path &)
     {
         Process result;
 

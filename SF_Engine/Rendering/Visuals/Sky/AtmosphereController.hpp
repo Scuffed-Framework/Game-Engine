@@ -8,24 +8,24 @@
 #include <string>
 #include <utility>
 
-using namespace std;
+
 namespace SF::Engine
 {
     struct AtmosphereEntry
     {
-        std::string name                    = "Earth";
-        shared_ptr<AtmosphereData> data     = nullptr;
-        AtmosphereSFERenderpass *atmosphere = nullptr;
-        CloudSFERenderpass *clouds          = nullptr;
-        Vec3 planetPos                      = {0.0f, 0.0f, 0.0f};
-        bool active                         = true;
+        std::string name                     = "Earth";
+        std::shared_ptr<AtmosphereData> data = nullptr;
+        AtmosphereSFERenderpass *atmosphere  = nullptr;
+        CloudSFERenderpass *clouds           = nullptr;
+        Vec3 planetPos                       = {0.0f, 0.0f, 0.0f};
+        bool active                          = true;
     };
 
     class AtmosphereController : public StaticController<AtmosphereController>
     {
     public:
         using AtmoFactory  = std::function<AtmosphereSFERenderpass *(Pipeline::Stage, const AtmosphereParams &)>;
-        using CloudFactory = function<CloudSFERenderpass *(Pipeline::Stage, shared_ptr<AtmosphereData> &)>;
+        using CloudFactory = std::function<CloudSFERenderpass *(Pipeline::Stage, std::shared_ptr<AtmosphereData> &)>;
 
         explicit AtmosphereController(Pipeline::Stage atmoStage, Pipeline::Stage cloudStage, AtmoFactory atmo,
                                       CloudFactory cloud) :
@@ -34,9 +34,9 @@ namespace SF::Engine
         {
         }
 
-        explicit AtmosphereController(Pipeline::Stage atmoStage, Pipeline::Stage cloudStage, AtmoFactory factory,
-                                      CloudFactory cloud,
-                                      const vector<KeyValuePair<std::string, shared_ptr<AtmosphereData>>> &params) :
+        explicit AtmosphereController(
+                Pipeline::Stage atmoStage, Pipeline::Stage cloudStage, AtmoFactory factory, CloudFactory cloud,
+                const std::vector<KeyValuePair<std::string, std::shared_ptr<AtmosphereData>>> &params) :
             atmoStage_(std::move(atmoStage)), cloudStage_(std::move(cloudStage)), atmoFactory_(std::move(factory)),
             cloudFactory_(std::move(cloud))
         {
@@ -99,7 +99,8 @@ namespace SF::Engine
         void RemoveAtmosphere(const std::string &name)
         {
             const auto newEnd =
-                    ranges::remove_if(entries_, [&name](const AtmosphereEntry &e) { return e.name == name; }).begin();
+                    std::ranges::remove_if(entries_, [&name](const AtmosphereEntry &e) { return e.name == name; })
+                            .begin();
             entries_.erase(newEnd, entries_.end());
         }
 
@@ -118,6 +119,6 @@ namespace SF::Engine
         Pipeline::Stage cloudStage_;
         AtmoFactory atmoFactory_;
         CloudFactory cloudFactory_;
-        vector<AtmosphereEntry> entries_;
+        std::vector<AtmosphereEntry> entries_;
     };
 } // namespace SF::Engine

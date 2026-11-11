@@ -46,20 +46,21 @@
 
 namespace SF::Engine
 {
-    using namespace std;
+
     inline namespace Threads
     {
         [[nodiscard]] inline uint32_t
         CalculateOptimalNumWorkerThreads(float ratio = 1.0f, uint32_t minThreads = 1,
-                                         uint32_t maxThreads      = thread::hardware_concurrency(),
+                                         uint32_t maxThreads      = std::thread::hardware_concurrency(),
                                          uint32_t reservedThreads = 1)
         {
             if (maxThreads == 0)
                 maxThreads = 1;
 
-            const uint32_t availableThreads = maxThreads - min(maxThreads, reservedThreads);
+            const uint32_t availableThreads = maxThreads - std::min(maxThreads, reservedThreads);
 
-            return max(minThreads, static_cast<uint32_t>(lround(clamp(ratio, 0.0f, 1.0f) * availableThreads)));
+            return std::max(minThreads,
+                            static_cast<uint32_t>(lround(std::clamp(ratio, 0.0f, 1.0f) * availableThreads)));
         }
     } // namespace Threads
 
@@ -108,7 +109,7 @@ namespace SF::Engine
          * @brief Get the worker threads.
          */
         [[nodiscard]]
-        const vector<thread> &GetWorkers() const noexcept
+        const std::vector<std::thread> &GetWorkers() const noexcept
         {
             return workers;
         }
@@ -123,13 +124,13 @@ namespace SF::Engine
         }
 
     private:
-        vector<thread> workers;
-        queue<function<void()>> tasks;
+        std::vector<std::thread> workers;
+        std::queue<std::function<void()>> tasks;
 
-        mutex queueMutex;
+        std::mutex queueMutex;
 
-        condition_variable condition;
-        condition_variable completionCondition;
+        std::condition_variable condition;
+        std::condition_variable completionCondition;
 
         uint32_t activeTasks = 0;
         bool stop            = false;
@@ -138,17 +139,17 @@ namespace SF::Engine
     template<typename F, typename... Args>
     auto ThreadPool::Enqueue(F &&f, Args &&...args)
     {
-        using ReturnType = invoke_result_t<F, Args...>;
+        using ReturnType = std::invoke_result_t<F, Args...>;
 
-        auto task = make_shared<packaged_task<ReturnType()>>(bind(forward<F>(f), forward<Args>(args)...));
+        auto task = make_shared<std::packaged_task<ReturnType()>>(bind(forward<F>(f), forward<Args>(args)...));
 
         auto result = task->get_future();
 
         {
-            unique_lock<mutex> lock(queueMutex);
+            std::unique_lock<std::mutex> lock(queueMutex);
 
             if (stop)
-                throw runtime_error("Enqueue called on a stopped ThreadPool");
+                throw std::runtime_error("Enqueue called on a stopped ThreadPool");
 
             tasks.emplace([task]() { (*task)(); });
         }
@@ -162,10 +163,10 @@ namespace SF::Engine
     void ThreadPool::Dispatch(F &&f, Args &&...args)
     {
         {
-            unique_lock<mutex> lock(queueMutex);
+            std::unique_lock<std::mutex> lock(queueMutex);
 
             if (stop)
-                throw runtime_error("Dispatch called on a stopped ThreadPool");
+                throw std::runtime_error("Dispatch called on a stopped ThreadPool");
 
             tasks.emplace(bind(forward<F>(f), forward<Args>(args)...));
         }

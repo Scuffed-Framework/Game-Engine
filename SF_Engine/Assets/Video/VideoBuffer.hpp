@@ -18,7 +18,7 @@
 
 namespace SF::Engine
 {
-    using namespace std;
+
     class VideoBuffer;
 
     /**
@@ -38,12 +38,12 @@ namespace SF::Engine
     class IRawFrameSource
     {
     public:
-        virtual ~IRawFrameSource()                     = default;
-        [[nodiscard]] virtual uint32_t Width() const   = 0;
-        [[nodiscard]] virtual uint32_t Height() const  = 0;
-        [[nodiscard]] virtual uint32_t FpsNum() const  = 0;
-        [[nodiscard]] virtual uint32_t FpsDen() const  = 0;
-        [[nodiscard]] virtual uint8_t BitDepth() const = 0;
+        virtual ~IRawFrameSource()                          = default;
+        [[nodiscard]] virtual std::uint32_t Width() const   = 0;
+        [[nodiscard]] virtual std::uint32_t Height() const  = 0;
+        [[nodiscard]] virtual std::uint32_t FpsNum() const  = 0;
+        [[nodiscard]] virtual std::uint32_t FpsDen() const  = 0;
+        [[nodiscard]] virtual std::uint8_t BitDepth() const = 0;
         /// Fill output with the next frame (pointers valid until the next call). false = end of stream.
         virtual bool Next(RawVideoFrame &out) = 0;
     };
@@ -51,21 +51,21 @@ namespace SF::Engine
     // One AV1 temporal unit (OBUs, as stored in a Matroska block).
     struct Av1Packet
     {
-        vector<uint8_t> Data;
+        std::vector<std::uint8_t> Data;
         int64_t Pts   = 0; // in VideoInfo::TimebaseNum/Den ticks
         bool KeyFrame = false;
     };
 
     struct VideoInfo
     {
-        uint32_t Width       = 0;
-        uint32_t Height      = 0;
-        uint32_t FpsNum      = 0;
-        uint32_t FpsDen      = 1;
-        uint32_t TimebaseNum = 1;
-        uint32_t TimebaseDen = 1000; // Matroska default: ms
-        uint8_t BitDepth     = 8;
-        vector<uint8_t> CodecPrivate; // av1C box payload (needed to write MKV)
+        std::uint32_t Width       = 0;
+        std::uint32_t Height      = 0;
+        std::uint32_t FpsNum      = 0;
+        std::uint32_t FpsDen      = 1;
+        std::uint32_t TimebaseNum = 1;
+        std::uint32_t TimebaseDen = 1000; // Matroska default: ms
+        std::uint8_t BitDepth     = 8;
+        std::vector<std::uint8_t> CodecPrivate; // av1C box payload (needed to write MKV)
     };
 
     template<typename Base>
@@ -73,13 +73,13 @@ namespace SF::Engine
     {
     public:
         /// Fills the buffer with AV1 packets. Only formats that already contain AV1 (MKV) implement real work here.
-        using TLoadMethod = function<void(Base &, const File &)>;
+        using TLoadMethod = std::function<void(Base &, const File &)>;
         /// Writes the buffer's AV1 stream to a container.
-        using TWriteMethod = function<void(const Base &, const File &)>;
+        using TWriteMethod = std::function<void(const Base &, const File &)>;
         /// Foreign format = transcode. Returns false if src is already AV1 MKV and nothing was written (the caller then
         /// uses src directly), true once outMkv has been written.
-        using TImport      = function<bool(const File &, const File &outMkv)>;
-        using TRegistryMap = unordered_map<string, tuple<TLoadMethod, TWriteMethod, TImport>>;
+        using TImport      = std::function<bool(const File &, const File &outMkv)>;
+        using TRegistryMap = std::unordered_map<std::string, std::tuple<TLoadMethod, TWriteMethod, TImport>>;
 
         static TRegistryMap &Registry()
         {
@@ -114,7 +114,7 @@ namespace SF::Engine
                 if constexpr (requires { &T::Import; })
                     imp = &T::Import;
 
-                ((VideoBufferFactory::Registry()[string(names)] = make_tuple(load, write, imp)), ...);
+                ((VideoBufferFactory::Registry()[std::string(names)] = make_tuple(load, write, imp)), ...);
                 return true;
             }
         };
@@ -127,7 +127,7 @@ namespace SF::Engine
     class VideoBuffer : public VideoBufferFactory<VideoBuffer>
     {
     public:
-        static shared_ptr<VideoBuffer> Create(const File &input);
+        static std::shared_ptr<VideoBuffer> Create(const File &input);
 
         explicit VideoBuffer(File input, bool load = true);
         ~VideoBuffer();
@@ -137,7 +137,7 @@ namespace SF::Engine
         VideoBuffer(VideoBuffer &&other) noexcept;
         VideoBuffer &operator=(VideoBuffer &&other) noexcept;
 
-        [[nodiscard]] type_index GetTypeIndex() const { return typeid(VideoBuffer); }
+        [[nodiscard]] std::type_index GetTypeIndex() const { return typeid(VideoBuffer); }
 
         // load mkv
         void Load();
@@ -146,7 +146,7 @@ namespace SF::Engine
         void Write(const File &output) const;
 
         [[nodiscard]] const VideoInfo &Info() const { return info; }
-        [[nodiscard]] const vector<Av1Packet> &Packets() const { return packets; }
+        [[nodiscard]] const std::vector<Av1Packet> &Packets() const { return packets; }
         [[nodiscard]] size_t FrameCount() const { return packets.size(); }
         [[nodiscard]] bool IsLoaded() const { return loaded; }
 
@@ -164,7 +164,7 @@ namespace SF::Engine
 
         File source;
         VideoInfo info;
-        vector<Av1Packet> packets;
+        std::vector<Av1Packet> packets;
         bool loaded = false;
 
         Dav1dContext *decoder  = nullptr;
@@ -173,7 +173,7 @@ namespace SF::Engine
         bool draining          = false;
         Dav1dData pending      = {};
 
-        static unordered_map<string, weak_ptr<VideoBuffer>> cache;
-        static mutex cacheMutex;
+        static std::unordered_map<std::string, std::weak_ptr<VideoBuffer>> cache;
+        static std::mutex cacheMutex;
     };
 } // namespace SF::Engine

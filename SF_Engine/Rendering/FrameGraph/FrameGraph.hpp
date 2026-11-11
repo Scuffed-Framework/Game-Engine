@@ -136,7 +136,7 @@ namespace SF::Engine
          *        graph itself is responsible for creating/clearing first.
          */
         ResourceHandle ImportResource(std::string name, std::function<Texture()> resolve,
-                                      ResourceState initialState = {});
+                                      const ResourceState &initialState = {});
 
         [[nodiscard]] ResourceHandle FindResource(std::string_view name) const;
         [[nodiscard]] ResourceHandle RequireResource(std::string_view name) const;

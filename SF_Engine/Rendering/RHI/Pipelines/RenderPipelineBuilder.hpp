@@ -7,7 +7,7 @@
 
 namespace SF::Engine
 {
-    using namespace std;
+
     /**
      * @brief Fluent construction settings for a RhiRenderPipeline, mirroring
      * DescriptorSetWriteBuilder's style (RHI/Descriptors/DescriptorSetBuilder.hpp) the same way

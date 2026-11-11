@@ -76,35 +76,35 @@ namespace SF::Engine
                 {AssetBrowser::ViewMode::Details, ICON_MD_DETAILS, ICON_MD_DETAILS " Details"}};
 
 
-        bool IsSceneFile(const filesystem::path &p)
+        bool IsSceneFile(const std::filesystem::path &p)
         {
-            const string f            = p.filename().string();
-            constexpr string_view ext = SceneFileExtension;
+            const std::string f            = p.filename().string();
+            constexpr std::string_view ext = SceneFileExtension;
             return f.size() > ext.size() && f.compare(f.size() - ext.size(), ext.size(), ext) == 0;
         }
 
-        string SceneDisplayName(const filesystem::path &p)
+        std::string SceneDisplayName(const std::filesystem::path &p)
         {
-            string name = p.filename().string();
+            std::string name = p.filename().string();
             name.resize(name.size() - SceneFileExtension.size());
             return name;
         }
 
-        bool IsSameOrInside(const filesystem::path &path, const filesystem::path &folder)
+        bool IsSameOrInside(const std::filesystem::path &path, const std::filesystem::path &folder)
         {
             const auto rel = path.lexically_relative(folder);
-            return !rel.empty() && *rel.begin() != filesystem::path("..");
+            return !rel.empty() && *rel.begin() != std::filesystem::path("..");
         }
 
-        string PathToPayload(const filesystem::path &p)
+        std::string PathToPayload(const std::filesystem::path &p)
         {
-            const u8string u8 = p.u8string();
+            const std::u8string u8 = p.u8string();
             return {reinterpret_cast<const char *>(u8.data()), u8.size()};
         }
 
-        filesystem::path PathFromPayload(const ImGuiPayload *payload)
+        std::filesystem::path PathFromPayload(const ImGuiPayload *payload)
         {
-            return {u8string(static_cast<const char8_t *>(payload->Data), static_cast<size_t>(payload->DataSize))};
+            return {std::u8string(static_cast<const char8_t *>(payload->Data), static_cast<size_t>(payload->DataSize))};
         }
 
         // Scale "src" to fit inside "box", preserving aspect ratio.
@@ -125,7 +125,7 @@ namespace SF::Engine
             ImGui::SameLine();
         }
 
-        void DrawIcon(const shared_ptr<Image2d> &icon, Vec2 size)
+        void DrawIcon(const std::shared_ptr<Image2d> &icon, Vec2 size)
         {
             if (icon)
                 ImGui::Image(icon->GetTexID(), size);
@@ -143,7 +143,7 @@ namespace SF::Engine
             return true;
         }
 
-        void PropertyRow(const char *label, string_view value)
+        void PropertyRow(const char *label, std::string_view value)
         {
             ImGui::TableNextRow();
             ImGui::TableSetColumnIndex(0);
@@ -154,7 +154,7 @@ namespace SF::Engine
 
 
         template<typename TImage, typename Fn>
-        bool TryVisit(const shared_ptr<AssetBase> &asset, Fn &fn)
+        bool TryVisit(const std::shared_ptr<AssetBase> &asset, Fn &fn)
         {
             if (const auto image = Reflection::rtti_pointer_cast<ImageAsset<TImage>>(asset))
             {
@@ -165,7 +165,7 @@ namespace SF::Engine
         }
 
         template<typename Fn>
-        bool VisitImageAsset(const shared_ptr<AssetBase> &asset, Fn &&fn)
+        bool VisitImageAsset(const std::shared_ptr<AssetBase> &asset, Fn &&fn)
         {
             return TryVisit<Image2d>(asset, fn) || TryVisit<Image3d>(asset, fn) || TryVisit<Image2dArray>(asset, fn) ||
                    TryVisit<Cubemap>(asset, fn);
@@ -545,7 +545,7 @@ namespace SF::Engine
     }
 
 
-    void AssetBrowser::NavigateTo(const filesystem::path &path)
+    void AssetBrowser::NavigateTo(const std::filesystem::path &path)
     {
         if (path == m_currentPath)
             return;
@@ -596,10 +596,10 @@ namespace SF::Engine
     // or the folder's mtime changes (polled a couple of times per second).
     void AssetBrowser::RefreshDirectoryCache()
     {
-        namespace fs = filesystem;
+        namespace fs = std::filesystem;
 
         const double now = ImGui::GetTime();
-        error_code ec;
+        std::error_code ec;
 
         // The folder we're viewing was deleted (e.g. in Explorer): fall back to the nearest folder that exists.
         if (!fs::exists(m_currentPath, ec) && !ec)
@@ -633,7 +633,7 @@ namespace SF::Engine
 
         for (fs::directory_iterator it(m_currentPath, ec), end; !ec && it != end; it.increment(ec))
         {
-            error_code entryEc;
+            std::error_code entryEc;
             const fs::path &path = it->path();
 
             if (it->is_directory(entryEc))
@@ -643,20 +643,21 @@ namespace SF::Engine
         }
 
         const auto byName = [](const DirEntry &a, const DirEntry &b) { return LessNoCase(a.name, b.name); };
-        ranges::sort(m_folders, byName);
-        ranges::sort(m_sceneFiles, byName);
+        std::ranges::sort(m_folders, byName);
+        std::ranges::sort(m_sceneFiles, byName);
     }
 
-    filesystem::path AssetBrowser::CreateUniqueFolder(const filesystem::path &parent, const string &baseName)
+    std::filesystem::path AssetBrowser::CreateUniqueFolder(const std::filesystem::path &parent,
+                                                           const std::string &baseName)
     {
-        filesystem::path candidate = parent / baseName;
-        int suffix                 = 1;
+        std::filesystem::path candidate = parent / baseName;
+        int suffix                      = 1;
         while (File::Exists(candidate.string()))
-            candidate = parent / (baseName + " (" + to_string(suffix++) + ")");
+            candidate = parent / (baseName + " (" + std::to_string(suffix++) + ")");
         return candidate;
     }
 
-    void AssetBrowser::OpenSceneFile(const filesystem::path &file)
+    void AssetBrowser::OpenSceneFile(const std::filesystem::path &file)
     {
         if (!OpenScene(file))
             Log::Error("Failed to open scene: {}", file.string());
@@ -727,7 +728,7 @@ namespace SF::Engine
         ImGui::EndMenu();
     }
 
-    bool AssetBrowser::ShouldShowAsset(const shared_ptr<AssetBase> &asset) const
+    bool AssetBrowser::ShouldShowAsset(const std::shared_ptr<AssetBase> &asset) const
     {
         if (m_typeFilter != kAllTypes && asset->type != m_typeFilter)
             return false;
@@ -975,7 +976,7 @@ namespace SF::Engine
         ImGui::PopID();
     }
 
-    void AssetBrowser::DrawAssetTile(const shared_ptr<AssetBase> &asset, int index)
+    void AssetBrowser::DrawAssetTile(const std::shared_ptr<AssetBase> &asset, int index)
     {
         ImGui::PushID(index);
 
@@ -988,7 +989,8 @@ namespace SF::Engine
         card.selected  = m_selectedAsset && *m_selectedAsset == asset->uuid;
         card.editing   = editing;
         // Drag onto a folder to move it, or onto the 3D view to place it; see ProcessSceneAssetDrag().
-        card.dnd = TileDnD{kAssetPayload, string(reinterpret_cast<const char *>(&asset->uuid), sizeof(UUID)), nullptr};
+        card.dnd = TileDnD{kAssetPayload, std::string(reinterpret_cast<const char *>(&asset->uuid), sizeof(UUID)),
+                           nullptr};
 
         Vec2 texSize{};
         if (ImTextureID tex = 0; m_showThumbnails && ResolveThumbnail(asset, tex, texSize))
@@ -1019,7 +1021,7 @@ namespace SF::Engine
     }
 
     // Draws exactly one item: the real preview, the scene logo, or a placeholder button.
-    void AssetBrowser::DrawAssetThumbnail(const shared_ptr<AssetBase> &asset, Vec2 size)
+    void AssetBrowser::DrawAssetThumbnail(const std::shared_ptr<AssetBase> &asset, Vec2 size)
     {
         if (m_showThumbnails && TryDrawThumbnail(asset, size))
             return;
@@ -1040,7 +1042,8 @@ namespace SF::Engine
 
     // Flat button with the asset-type glyph centred on it. The glyph is painted through the draw list,
     // so the button stays the "last item" (the old SetCursorPos dance also placed it below the button).
-    void AssetBrowser::DrawPlaceholder(const shared_ptr<AssetBase> &asset, const char *id, Vec2 size, const Vec4 &color)
+    void AssetBrowser::DrawPlaceholder(const std::shared_ptr<AssetBase> &asset, const char *id, Vec2 size,
+                                       const Vec4 &color)
     {
         ImGui::PushStyleColor(ImGuiCol_Button, color);
         ImGui::Button(id, size);
@@ -1056,7 +1059,7 @@ namespace SF::Engine
     }
 
     // Resolves an image asset to a ready-to-draw texture (loading it from its source on first use).
-    bool AssetBrowser::ResolveThumbnail(const shared_ptr<AssetBase> &asset, ImTextureID &texture, Vec2 &size)
+    bool AssetBrowser::ResolveThumbnail(const std::shared_ptr<AssetBase> &asset, ImTextureID &texture, Vec2 &size)
     {
         bool ok = false;
         VisitImageAsset(asset,
@@ -1082,7 +1085,7 @@ namespace SF::Engine
     }
 
     // Draws the texture preview if the asset is an image with a ready preview. True if something was drawn.
-    bool AssetBrowser::TryDrawThumbnail(const shared_ptr<AssetBase> &asset, Vec2 box)
+    bool AssetBrowser::TryDrawThumbnail(const std::shared_ptr<AssetBase> &asset, Vec2 box)
     {
         ImTextureID texture = 0;
         Vec2 size{};
@@ -1131,7 +1134,7 @@ namespace SF::Engine
         ImGui::EndPopup();
     }
 
-    void AssetBrowser::DrawAssetContextMenu(const shared_ptr<AssetBase> &asset)
+    void AssetBrowser::DrawAssetContextMenu(const std::shared_ptr<AssetBase> &asset)
     {
         if (!ImGui::BeginPopupContextItem("AssetContext"))
             return;
@@ -1217,7 +1220,7 @@ namespace SF::Engine
             DrawFolderContextMenu(folder);
             if (ImGui::BeginDragDropSource())
             {
-                const string payload = PathToPayload(folder.path);
+                const std::string payload = PathToPayload(folder.path);
                 ImGui::SetDragDropPayload(kFolderPayload, payload.data(), payload.size());
                 ImGui::TextUnformatted(folder.name.c_str());
                 ImGui::EndDragDropSource();
@@ -1291,7 +1294,7 @@ namespace SF::Engine
             DrawSceneContextMenu(scene);
             if (ImGui::BeginDragDropSource())
             {
-                const string payload = PathToPayload(scene.path);
+                const std::string payload = PathToPayload(scene.path);
                 ImGui::SetDragDropPayload(kScenePayload, payload.data(), payload.size());
                 ImGui::TextUnformatted(scene.name.c_str());
                 ImGui::EndDragDropSource();
@@ -1312,7 +1315,7 @@ namespace SF::Engine
         }
     }
 
-    void AssetBrowser::DrawAssetRow(const shared_ptr<AssetBase> &asset, int index)
+    void AssetBrowser::DrawAssetRow(const std::shared_ptr<AssetBase> &asset, int index)
     {
         ImGui::PushID(index);
         ImGui::TableNextRow();
@@ -1354,7 +1357,7 @@ namespace SF::Engine
         ImGui::PopID();
     }
 
-    void AssetBrowser::DrawSmallPreview(const shared_ptr<AssetBase> &asset)
+    void AssetBrowser::DrawSmallPreview(const std::shared_ptr<AssetBase> &asset)
     {
         constexpr Vec2 size(kListPreviewSize, kListPreviewSize);
         if (asset->type == AssetType::Audio && m_icons.audio)
@@ -1380,7 +1383,7 @@ namespace SF::Engine
     }
 
     template<typename TImage>
-    void AssetBrowser::DrawImageDetails(const shared_ptr<ImageAsset<TImage>> &asset)
+    void AssetBrowser::DrawImageDetails(const std::shared_ptr<ImageAsset<TImage>> &asset)
     {
         ImGui::BeginGroup();
 
@@ -1413,13 +1416,13 @@ namespace SF::Engine
                 const auto extent = tex->GetExtent();
 
                 PropertyRow(ICON_MD_CROP_ORIGINAL " Dimensions",
-                            to_string(extent.x) + "x" + to_string(extent.y) + "x" + to_string(extent.z));
+                            std::to_string(extent.x) + "x" + std::to_string(extent.y) + "x" + std::to_string(extent.z));
                 PropertyRow(ICON_MD_FORMAT_COLOR_FILL " Format", GetFormatName(tex->GetFormat()));
-                PropertyRow(ICON_MD_LAYERS " Mip Levels", to_string(tex->GetMipLevels()));
-                PropertyRow(ICON_MD_VIEW_COLUMN " Array Layers", to_string(tex->GetArrayLevels()));
+                PropertyRow(ICON_MD_LAYERS " Mip Levels", std::to_string(tex->GetMipLevels()));
+                PropertyRow(ICON_MD_VIEW_COLUMN " Array Layers", std::to_string(tex->GetArrayLevels()));
                 PropertyRow(ICON_MD_FILTER " Filter", GetFilterName(tex->GetFilter()));
                 PropertyRow(ICON_MD_BORDER_ALL " Address Mode", GetAddressModeName(tex->GetAddressMode()));
-                PropertyRow(ICON_MD_LABEL " Samples", to_string(tex->GetSamples()));
+                PropertyRow(ICON_MD_LABEL " Samples", std::to_string(tex->GetSamples()));
                 PropertyRow(ICON_MD_SETTINGS " Usage", ToHex(static_cast<uint32_t>(tex->GetUsage())));
             }
 
@@ -1432,7 +1435,7 @@ namespace SF::Engine
         ImGui::EndGroup();
     }
 
-    void AssetBrowser::DrawGenericAssetDetails(const shared_ptr<AssetBase> &asset)
+    void AssetBrowser::DrawGenericAssetDetails(const std::shared_ptr<AssetBase> &asset)
     {
         ImGui::BeginGroup();
 
@@ -1460,12 +1463,13 @@ namespace SF::Engine
                     const Vec3 size = model->boundsMax - model->boundsMin;
                     char dims[96];
                     snprintf(dims, sizeof(dims), "%.2f x %.2f x %.2f", size.x, size.y, size.z);
-                    PropertyRow(ICON_MD_VIEW_IN_AR " Parts", to_string(model->parts.size()));
-                    PropertyRow(ICON_MD_SCATTER_PLOT " Vertices", to_string(verts));
-                    PropertyRow(ICON_MD_CHANGE_HISTORY " Triangles", to_string(tris));
+                    PropertyRow(ICON_MD_VIEW_IN_AR " Parts", std::to_string(model->parts.size()));
+                    PropertyRow(ICON_MD_SCATTER_PLOT " Vertices", std::to_string(verts));
+                    PropertyRow(ICON_MD_CHANGE_HISTORY " Triangles", std::to_string(tris));
                     PropertyRow(ICON_MD_STRAIGHTEN " Size", dims);
                     if (model->animationCount > 0)
-                        PropertyRow(ICON_MD_WARNING " Animations", to_string(model->animationCount) + " (ignored)");
+                        PropertyRow(ICON_MD_WARNING " Animations",
+                                    std::to_string(model->animationCount) + " (ignored)");
                 }
             } else if (const auto audio = Reflection::rtti_pointer_cast<AudioAsset>(asset))
             {
@@ -1474,8 +1478,8 @@ namespace SF::Engine
                     char dur[32];
                     snprintf(dur, sizeof(dur), "%.2f s", audio->durationSeconds);
                     PropertyRow(ICON_MD_TIMER " Duration", dur);
-                    PropertyRow(ICON_MD_SPEAKER " Channels", to_string(audio->channels));
-                    PropertyRow(ICON_MD_GRAPHIC_EQ " Sample Rate", to_string(audio->sampleRate) + " Hz");
+                    PropertyRow(ICON_MD_SPEAKER " Channels", std::to_string(audio->channels));
+                    PropertyRow(ICON_MD_GRAPHIC_EQ " Sample Rate", std::to_string(audio->sampleRate) + " Hz");
                 }
             }
             ImGui::EndTable();
@@ -1488,7 +1492,7 @@ namespace SF::Engine
     }
 
     template<typename T>
-    void AssetBrowser::DrawActionButtons(const shared_ptr<T> &asset)
+    void AssetBrowser::DrawActionButtons(const std::shared_ptr<T> &asset)
     {
         Heading(ICON_MD_SETTINGS " Actions");
 
@@ -1503,13 +1507,13 @@ namespace SF::Engine
     template<typename TImage>
     void AssetBrowser::CreateImageAsset()
     {
-        static_assert(is_base_of_v<Image, TImage>, "TImage must derive from Image");
+        static_assert(std::is_base_of_v<Image, TImage>, "TImage must derive from Image");
 
         auto asset = AssetController::Get()->RegisterAsset<ImageAsset<TImage>>(
-                "New" + string(GetAssetTypeName(AssetType::Texture)));
+                "New" + std::string(GetAssetTypeName(AssetType::Texture)));
 
         // Only 3D images take a 3D extent. Cubemap uses 2D dimensions (square face size).
-        if constexpr (is_same_v<TImage, Image3d>)
+        if constexpr (std::is_same_v<TImage, Image3d>)
             asset->Create(UVec3(kDefaultImageSize, kDefaultImageSize, kDefaultImageSize), kDefaultImageFormat);
         else
             asset->Create(UVec2(kDefaultImageSize, kDefaultImageSize), kDefaultImageFormat);
@@ -1523,7 +1527,7 @@ namespace SF::Engine
     // NOTE: once real GPU upload exists and previews can become valid later, re-try invalid entries here.
     template<typename TImage>
     const AssetBrowser::TexturePreview &AssetBrowser::GetOrCreatePreview(const UUID &guid,
-                                                                         const shared_ptr<TImage> &texture)
+                                                                         const std::shared_ptr<TImage> &texture)
     {
         if (const auto it = m_previewCache.find(guid); it != m_previewCache.end())
             return it->second;
@@ -1539,7 +1543,8 @@ namespace SF::Engine
         return m_previewCache.emplace(guid, preview).first->second;
     }
 
-    void AssetBrowser::BeginInlineEdit(const InlineEditMode mode, const filesystem::path &path, const string &text)
+    void AssetBrowser::BeginInlineEdit(const InlineEditMode mode, const std::filesystem::path &path,
+                                       const std::string &text)
     {
         m_inlineEditMode = mode;
         m_inlineEditPath = path;
@@ -1553,7 +1558,7 @@ namespace SF::Engine
         m_inlineEditPath.clear();
     }
 
-    bool AssetBrowser::IsEditing(const InlineEditMode mode, const filesystem::path &path) const
+    bool AssetBrowser::IsEditing(const InlineEditMode mode, const std::filesystem::path &path) const
     {
         return m_inlineEditMode == mode && m_inlineEditPath == path;
     }
@@ -1615,7 +1620,7 @@ namespace SF::Engine
     void AssetBrowser::CommitNewScene()
     {
 
-        if (const string name = CleanFileName(m_inlineEditBuffer); !name.empty()) // empty name = treat as cancel
+        if (const std::string name = CleanFileName(m_inlineEditBuffer); !name.empty()) // empty name = treat as cancel
         {
             if (CreateDefaultScene(m_inlineEditPath, name).empty())
                 Log::Error("Failed to create scene in {}", m_inlineEditPath.string());
@@ -1626,7 +1631,7 @@ namespace SF::Engine
         EndInlineEdit();
     }
 
-    void AssetBrowser::BeginRenameFolder(const filesystem::path &path)
+    void AssetBrowser::BeginRenameFolder(const std::filesystem::path &path)
     {
         BeginInlineEdit(InlineEditMode::RenameFolder, path, path.filename().string());
     }
@@ -1635,10 +1640,10 @@ namespace SF::Engine
     {
         // CleanFileName also strips path separators, so "a/b" can no longer move the folder somewhere else.
 
-        if (const string newName = CleanFileName(m_inlineEditBuffer);
+        if (const std::string newName = CleanFileName(m_inlineEditBuffer);
             !newName.empty() && newName != m_inlineEditPath.filename().string())
         {
-            if (const filesystem::path newPath = m_inlineEditPath.parent_path() / newName;
+            if (const std::filesystem::path newPath = m_inlineEditPath.parent_path() / newName;
                 !File::Exists(newPath.string()) && File::Rename(m_inlineEditPath.string(), newPath.string()))
             {
                 if (m_currentPath == m_inlineEditPath)
@@ -1650,19 +1655,19 @@ namespace SF::Engine
         EndInlineEdit();
     }
 
-    void AssetBrowser::BeginRenameScene(const filesystem::path &file)
+    void AssetBrowser::BeginRenameScene(const std::filesystem::path &file)
     {
         BeginInlineEdit(InlineEditMode::RenameScene, file, SceneDisplayName(file));
     }
 
     void AssetBrowser::CommitSceneRename()
     {
-        namespace fs = filesystem;
+        namespace fs = std::filesystem;
 
-        if (const string name = CleanFileName(m_inlineEditBuffer); !name.empty())
+        if (const std::string name = CleanFileName(m_inlineEditBuffer); !name.empty())
         {
-            const fs::path dst = m_inlineEditPath.parent_path() / (name + string(SceneFileExtension));
-            if (error_code ec; dst != m_inlineEditPath && !fs::exists(dst, ec))
+            const fs::path dst = m_inlineEditPath.parent_path() / (name + std::string(SceneFileExtension));
+            if (std::error_code ec; dst != m_inlineEditPath && !fs::exists(dst, ec))
             {
                 fs::rename(m_inlineEditPath, dst, ec);
                 if (ec)
@@ -1683,11 +1688,12 @@ namespace SF::Engine
     {
         // Dropped folders are expanded recursively (flattened into the destination folder).
         // Files the importer doesn't understand are only counted.
-        vector<filesystem::path> CollectImportable(const vector<filesystem::path> &dropped, size_t &unsupported)
+        std::vector<std::filesystem::path> CollectImportable(const std::vector<std::filesystem::path> &dropped,
+                                                             size_t &unsupported)
         {
-            namespace fs = filesystem;
-            vector<fs::path> out;
-            error_code ec;
+            namespace fs = std::filesystem;
+            std::vector<fs::path> out;
+            std::error_code ec;
 
             const auto consider = [&](const fs::path &p)
             {
@@ -1704,7 +1710,7 @@ namespace SF::Engine
                     for (fs::recursive_directory_iterator it(p, fs::directory_options::skip_permission_denied, ec), end;
                          !ec && it != end; it.increment(ec))
                     {
-                        if (error_code fileEc; it->is_regular_file(fileEc))
+                        if (std::error_code fileEc; it->is_regular_file(fileEc))
                             consider(it->path());
                     }
                 } else
@@ -1735,17 +1741,17 @@ namespace SF::Engine
             return;
 
         m_dropConnection = window->OnDrop().connect(
-                [this](const vector<string> &paths)
+                [this](const std::vector<std::string> &paths)
                 {
                     if (!ProjectManager::Get()->IsAProjectLoaded())
                     {
                         Log::Warning("Dropped files ignored: no project is loaded.");
                         return;
                     }
-                    for (const string &p: paths)
+                    for (const std::string &p: paths)
                     {
                         // GLFW hands out UTF-8.
-                        const u8string u8(reinterpret_cast<const char8_t *>(p.data()), p.size());
+                        const std::u8string u8(reinterpret_cast<const char8_t *>(p.data()), p.size());
                         m_pendingDrops.emplace_back(u8);
                     }
                 });
@@ -1757,7 +1763,7 @@ namespace SF::Engine
         if (m_pendingDrops.empty())
             return;
 
-        const vector<filesystem::path> dropped = std::move(m_pendingDrops);
+        const std::vector<std::filesystem::path> dropped = std::move(m_pendingDrops);
         m_pendingDrops.clear();
 
         const Vec2 mouse       = ImGui::GetIO().MousePos;
@@ -1785,9 +1791,9 @@ namespace SF::Engine
         ImportFiles(files, /*placeInScene=*/overScene);
     }
 
-    void AssetBrowser::ImportFiles(const vector<filesystem::path> &files, bool placeInScene)
+    void AssetBrowser::ImportFiles(const std::vector<std::filesystem::path> &files, bool placeInScene)
     {
-        const filesystem::path dest =
+        const std::filesystem::path dest =
                 m_currentPath.empty() ? ProjectManager::Get()->GetProjectAssetPath() : m_currentPath;
 
         const auto results = AssetImporter::ImportMany(files, dest);
@@ -1797,7 +1803,7 @@ namespace SF::Engine
         const bool canPlace = placeInScene && scene && GroundPointUnderCursor(point);
 
         int imported = 0, placed = 0, failed = 0;
-        string firstError;
+        std::string firstError;
 
         for (const ImportResult &r: results)
         {
@@ -1823,11 +1829,11 @@ namespace SF::Engine
 
         m_dirDirty = true;
 
-        string text = "Imported " + to_string(imported) + " asset(s)";
+        std::string text = "Imported " + std::to_string(imported) + " asset(s)";
         if (canPlace)
-            text += ", placed " + to_string(placed);
+            text += ", placed " + std::to_string(placed);
         if (failed > 0)
-            text += "; " + to_string(failed) + " failed (" + firstError + ")";
+            text += "; " + std::to_string(failed) + " failed (" + firstError + ")";
         SetStatus(std::move(text), failed > 0);
     }
 
@@ -1918,7 +1924,7 @@ namespace SF::Engine
     //  Rename asset / move by drag-and-drop
     // ======================================================================
 
-    void AssetBrowser::BeginRenameAsset(const shared_ptr<AssetBase> &asset)
+    void AssetBrowser::BeginRenameAsset(const std::shared_ptr<AssetBase> &asset)
     {
         if (asset && !asset->assetPath.empty())
             BeginInlineEdit(InlineEditMode::RenameAsset, asset->assetPath, asset->assetPath.stem().string());
@@ -1926,9 +1932,9 @@ namespace SF::Engine
 
     void AssetBrowser::CommitAssetRename()
     {
-        namespace fs      = filesystem;
-        const string name = CleanFileName(m_inlineEditBuffer);
-        const auto asset  = AssetController::Get()->FindByPath(m_inlineEditPath);
+        namespace fs           = std::filesystem;
+        const std::string name = CleanFileName(m_inlineEditBuffer);
+        const auto asset       = AssetController::Get()->FindByPath(m_inlineEditPath);
 
         if (asset && !name.empty() && name != asset->assetPath.stem().string())
         {
@@ -1939,7 +1945,7 @@ namespace SF::Engine
             fs::path dstMeta = dst;
             dstMeta += ".meta";
 
-            if (error_code ec; fs::exists(dst, ec) || fs::exists(dstMeta, ec))
+            if (std::error_code ec; fs::exists(dst, ec) || fs::exists(dstMeta, ec))
             {
                 SetStatus("'" + dst.filename().string() + "' already exists", true);
             } else
@@ -1950,7 +1956,7 @@ namespace SF::Engine
                     fs::rename(srcMeta, dstMeta, ec);
                     if (ec)
                     {
-                        error_code undo;
+                        std::error_code undo;
                         fs::rename(dst, src, undo); // keep file and .meta together
                     }
                 }
@@ -1972,7 +1978,7 @@ namespace SF::Engine
     }
 
     // Call right after an item that should accept drops into "destFolder" (folder tiles/rows, the Up button).
-    void AssetBrowser::AcceptBrowserDrop(const filesystem::path &destFolder)
+    void AssetBrowser::AcceptBrowserDrop(const std::filesystem::path &destFolder)
     {
         if (!ImGui::BeginDragDropTarget())
             return;
@@ -1992,9 +1998,9 @@ namespace SF::Engine
         ImGui::EndDragDropTarget();
     }
 
-    bool AssetBrowser::MoveAssetTo(const UUID &id, const filesystem::path &folder)
+    bool AssetBrowser::MoveAssetTo(const UUID &id, const std::filesystem::path &folder)
     {
-        namespace fs           = filesystem;
+        namespace fs           = std::filesystem;
         const auto *controller = AssetController::Get();
         const auto asset       = controller ? controller->FindByUUID(id) : nullptr;
         if (!asset || asset->assetPath.empty())
@@ -2010,7 +2016,7 @@ namespace SF::Engine
         fs::path dstMeta = dst;
         dstMeta += ".meta";
 
-        error_code ec;
+        std::error_code ec;
         if (fs::exists(dst, ec) || fs::exists(dstMeta, ec))
         {
             SetStatus("'" + dst.filename().string() + "' already exists in that folder", true);
@@ -2023,7 +2029,7 @@ namespace SF::Engine
             fs::rename(srcMeta, dstMeta, ec);
             if (ec)
             {
-                error_code undo;
+                std::error_code undo;
                 fs::rename(dst, src, undo);
             }
         }
@@ -2039,14 +2045,14 @@ namespace SF::Engine
         return true;
     }
 
-    bool AssetBrowser::MoveSceneTo(const filesystem::path &file, const filesystem::path &folder)
+    bool AssetBrowser::MoveSceneTo(const std::filesystem::path &file, const std::filesystem::path &folder)
     {
-        namespace fs = filesystem;
+        namespace fs = std::filesystem;
         if (file.parent_path() == folder)
             return false;
 
         const fs::path dst = folder / file.filename();
-        error_code ec;
+        std::error_code ec;
         if (fs::exists(dst, ec))
         {
             SetStatus("'" + dst.filename().string() + "' already exists in that folder", true);
@@ -2066,9 +2072,9 @@ namespace SF::Engine
         return true;
     }
 
-    bool AssetBrowser::MoveFolderTo(const filesystem::path &folder, const filesystem::path &destFolder)
+    bool AssetBrowser::MoveFolderTo(const std::filesystem::path &folder, const std::filesystem::path &destFolder)
     {
-        namespace fs = filesystem;
+        namespace fs = std::filesystem;
         if (folder.parent_path() == destFolder)
             return false;
         if (IsSameOrInside(destFolder, folder))
@@ -2078,7 +2084,7 @@ namespace SF::Engine
         }
 
         const fs::path dst = destFolder / folder.filename();
-        error_code ec;
+        std::error_code ec;
         if (fs::exists(dst, ec))
         {
             SetStatus("'" + dst.filename().string() + "' already exists in that folder", true);
@@ -2086,11 +2092,11 @@ namespace SF::Engine
         }
 
         // Scenes below the folder, so the scene system can be told where they went.
-        vector<pair<fs::path, fs::path>> movedScenes;
+        std::vector<std::pair<fs::path, fs::path>> movedScenes;
         for (fs::recursive_directory_iterator it(folder, fs::directory_options::skip_permission_denied, ec), end;
              !ec && it != end; it.increment(ec))
         {
-            if (error_code fileEc; it->is_regular_file(fileEc) && IsSceneFile(it->path()))
+            if (std::error_code fileEc; it->is_regular_file(fileEc) && IsSceneFile(it->path()))
                 movedScenes.emplace_back(it->path(), dst / it->path().lexically_relative(folder));
         }
 
@@ -2119,7 +2125,7 @@ namespace SF::Engine
         return true;
     }
 
-    void AssetBrowser::SetStatus(string text, bool isError)
+    void AssetBrowser::SetStatus(std::string text, bool isError)
     {
         m_status        = std::move(text);
         m_statusIsError = isError;
@@ -2138,7 +2144,7 @@ namespace SF::Engine
         ImGui::TextColored(m_statusIsError ? kErrorColor : kHeadingColor, "%s", m_status.c_str());
     }
 
-    void AssetBrowser::RequestDelete(const filesystem::path &path, bool isScene)
+    void AssetBrowser::RequestDelete(const std::filesystem::path &path, bool isScene)
     {
         m_deleteTargetAsset.reset();
         m_deleteTargetPath       = path;
@@ -2146,13 +2152,13 @@ namespace SF::Engine
         m_showDeleteConfirmPopup = true;
     }
 
-    void AssetBrowser::RequestDeleteAsset(const shared_ptr<AssetBase> &asset)
+    void AssetBrowser::RequestDeleteAsset(const std::shared_ptr<AssetBase> &asset)
     {
         if (!asset)
             return;
         m_deleteTargetAsset      = asset->uuid;
         m_deleteTargetIsScene    = false;
-        m_deleteTargetPath       = asset->assetPath.empty() ? filesystem::path(asset->name) : asset->assetPath;
+        m_deleteTargetPath       = asset->assetPath.empty() ? std::filesystem::path(asset->name) : asset->assetPath;
         m_showDeleteConfirmPopup = true;
     }
 
@@ -2202,11 +2208,11 @@ namespace SF::Engine
                 bool filesGone = true; // procedural assets have no files
                 if (!asset->assetPath.empty())
                 {
-                    error_code ec, metaEc;
-                    filesystem::remove(asset->assetPath, ec);
-                    filesystem::path meta = asset->assetPath;
+                    std::error_code ec, metaEc;
+                    std::filesystem::remove(asset->assetPath, ec);
+                    std::filesystem::path meta = asset->assetPath;
                     meta += ".meta";
-                    filesystem::remove(meta, metaEc);
+                    std::filesystem::remove(meta, metaEc);
 
                     if (ec || metaEc)
                     {
@@ -2232,8 +2238,8 @@ namespace SF::Engine
 
         if (m_deleteTargetIsScene)
         {
-            error_code ec;
-            filesystem::remove(m_deleteTargetPath, ec);
+            std::error_code ec;
+            std::filesystem::remove(m_deleteTargetPath, ec);
             if (ec)
                 Log::Error("Failed to delete {}: {}", m_deleteTargetPath.string(), ec.message());
             else
@@ -2251,7 +2257,7 @@ namespace SF::Engine
                 controller->RemoveAssetsUnder(m_deleteTargetPath);
                 if (m_selectedAsset && !controller->FindByUUID(*m_selectedAsset))
                     m_selectedAsset.reset();
-                erase_if(m_previewCache, [&](const auto &entry) { return !controller->FindByUUID(entry.first); });
+                std::erase_if(m_previewCache, [&](const auto &entry) { return !controller->FindByUUID(entry.first); });
             }
 
             if (viewingDeletedFolder && m_deleteTargetPath.has_parent_path())

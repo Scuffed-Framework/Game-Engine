@@ -31,7 +31,7 @@ namespace SF::Engine
         Vec3 bitangent{};
         Vec3 normal{};
 
-        optional<JointData> jointData = {};
+        std::optional<JointData> jointData = {};
 
         bool operator==(const Vertex &rhs) const
         {

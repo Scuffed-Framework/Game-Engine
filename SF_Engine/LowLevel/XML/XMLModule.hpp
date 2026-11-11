@@ -18,7 +18,7 @@
 
 namespace SF::Engine
 {
-    using namespace std;
+
     class XMLNode;
     class Serializable;
 
@@ -30,8 +30,8 @@ namespace SF::Engine
 
     template<typename T>
     concept ComponentIndexable = requires(const T &v) {
-        { T::length() } -> convertible_to<int>;
-        { v[0] } -> convertible_to<float>;
+        { T::length() } -> std::convertible_to<int>;
+        { v[0] } -> std::convertible_to<float>;
     };
 
     class XMLNode
@@ -45,13 +45,9 @@ namespace SF::Engine
 
         [[nodiscard]] std::string GetName() const;
         [[nodiscard]] std::string GetContent() const;
-        void SetContent(const std::string &content);
+        void SetContent(const std::string &content) const;
 
         [[nodiscard]] std::string GetAttribute(const std::string &name) const;
-        bool GetAttribute(const std::string &name, std::string &out) const;
-        bool GetAttribute(const std::string &name, int &out) const;
-        bool GetAttribute(const std::string &name, float &out) const;
-        bool GetAttribute(const std::string &name, bool &out) const;
 
         template<typename T>
         bool GetAttribute(const std::string &name, T &out) const;
@@ -84,11 +80,6 @@ namespace SF::Engine
                 SetAttribute(key, val);
         }
 
-        void SetAttribute(const std::string &name, const std::string &value);
-        void SetAttribute(const std::string &name, int value);
-        void SetAttribute(const std::string &name, float value);
-        void SetAttribute(const std::string &name, bool value);
-
         // Child node operations
         [[nodiscard]] XMLNode GetFirstChild() const;
         [[nodiscard]] XMLNode GetNextSibling() const;
@@ -100,6 +91,9 @@ namespace SF::Engine
 
         // Validation
         [[nodiscard]] bool IsValid() const { return node != nullptr; }
+
+        bool GetAttributeRaw(const std::string &name, std::string &out) const;
+        void SetAttributeRaw(const std::string &name, const std::string &value) const;
 
     private:
         xmlNodePtr node;
@@ -158,24 +152,24 @@ namespace SF::Engine
         static bool DeserializeValue(const std::string &str, UUID &out);
 
         template<ComponentIndexable T>
-        static string SerializeValue(const T &value)
+        static std::string SerializeValue(const T &value)
         {
-            string out;
+            std::string out;
             char buf[32];
             for (int i = 0; i < static_cast<int>(T::length()); ++i)
             {
                 if (i != 0)
                     out += ' ';
-                const auto [end, ec] = to_chars(buf, buf + sizeof(buf), static_cast<float>(value[i]));
+                const auto [end, ec] = std::to_chars(buf, buf + sizeof(buf), static_cast<float>(value[i]));
                 out.append(buf, end);
             }
             return out;
         }
 
         template<ComponentIndexable T>
-        static bool DeserializeValue(const string &str, T &out)
+        static bool DeserializeValue(const std::string &str, T &out)
         {
-            istringstream ss(str);
+            std::istringstream ss(str);
             T tmp{};
             for (int i = 0; i < static_cast<int>(T::length()); ++i)
                 if (!(ss >> tmp[i]))
@@ -200,33 +194,39 @@ namespace SF::Engine
     template<typename T>
     void XMLNode::SetAttribute(const std::string &name, const T &value)
     {
-        if constexpr (std::is_integral_v<T> && !std::is_same_v<T, bool>)
-            SetAttribute(name, std::to_string(value));
+        if constexpr (std::is_convertible_v<const T &, std::string>) // std::string, const char*, char[N]
+            SetAttributeRaw(name, std::string(value));
+        else if constexpr (std::is_integral_v<T> && !std::is_same_v<T, bool>)
+            SetAttributeRaw(name, std::to_string(value));
         else
-            SetAttribute(name, XMLModule::SerializeValue(value));
+            SetAttributeRaw(name, XMLModule::SerializeValue(value)); // bool, float, UUID, vec types
     }
 
     template<typename T>
     bool XMLNode::GetAttribute(const std::string &name, T &out) const
     {
-        std::string raw;
-        if (!GetAttribute(name, raw))
-            return false;
-
-        if constexpr (std::is_integral_v<T> && !std::is_same_v<T, bool>)
+        if constexpr (std::is_same_v<T, std::string>)
+            return GetAttributeRaw(name, out);
+        else
         {
-            T value{};
-            const char *end      = raw.data() + raw.size();
-            const auto [ptr, ec] = std::from_chars(raw.data(), end, value);
-            if (ec != std::errc{} || ptr != end) // bad digits, trailing junk, or out of range
+            std::string raw;
+            if (!GetAttributeRaw(name, raw))
                 return false;
-            out = value;
-            return true;
-        } else
-        {
-            return XMLModule::DeserializeValue(raw, out);
+
+            if constexpr (std::is_integral_v<T> && !std::is_same_v<T, bool>)
+            {
+                T value{};
+                const char *end      = raw.data() + raw.size();
+                const auto [ptr, ec] = std::from_chars(raw.data(), end, value);
+                if (ec != std::errc{} || ptr != end)
+                    return false;
+                out = value;
+                return true;
+            } else
+                return XMLModule::DeserializeValue(raw, out);
         }
     }
+
     template<typename T>
     bool XMLNode::GetChildContent(const std::string &childName, T &out) const
     {

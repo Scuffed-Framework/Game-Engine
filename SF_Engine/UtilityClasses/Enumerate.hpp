@@ -5,12 +5,13 @@
 
 namespace SF::Engine
 {
-    template <typename T, typename Iter = decltype(std::begin(std::declval<T>())), typename = decltype(std::end(std::declval<T>()))>
+    template<typename T, typename Iter = decltype(std::begin(std::declval<T>())),
+             typename = decltype(std::end(std::declval<T>()))>
     constexpr auto Enumerate(T &&iterable)
     {
         struct iterator
         {
-            size_t i;
+            std::size_t i;
             Iter iter;
             bool operator!=(const iterator &rhs) const { return iter != rhs.iter; }
             void operator++()
@@ -28,4 +29,4 @@ namespace SF::Engine
         };
         return iterable_wrapper{std::forward<T>(iterable)};
     }
-}
+} // namespace SF::Engine

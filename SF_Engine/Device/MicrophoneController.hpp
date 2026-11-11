@@ -16,7 +16,7 @@ union SDL_Event;
 
 namespace SF::Engine
 {
-    using namespace std;
+
 
     enum class MicrophoneRecordMode : uint8_t
     {
@@ -28,8 +28,8 @@ namespace SF::Engine
 
     struct MicrophoneDeviceInfo
     {
-        uint32_t id = 0; // SDL_AudioDeviceID
-        string name;
+        std::uint32_t id = 0; // SDL_AudioDeviceID
+        std::string name;
         bool isDefault = false;
     };
 
@@ -47,8 +47,8 @@ namespace SF::Engine
         void Update();
 
         bool IsOpen() const { return stream != nullptr; }
-        uint32_t GetDeviceId() const { return deviceId; }
-        const string &GetDeviceName() const { return deviceName; }
+        std::uint32_t GetDeviceId() const { return deviceId; }
+        const std::string &GetDeviceName() const { return deviceName; }
 
         bool IsFollowingDefault() const { return followDefault; }
         int GetDeviceSampleRate() const { return deviceSampleRate; }
@@ -82,7 +82,7 @@ namespace SF::Engine
         float GetPeak() const { return peak; }
 
         // Gated mono float PCM, delivered on the thread that calls Update().
-        rocket::signal<void(span<const float>)> &OnSamples() { return onSamples; }
+        rocket::signal<void(std::span<const float>)> &OnSamples() { return onSamples; }
         rocket::signal<void(bool)> &OnTransmitChanged() { return onTransmitChanged; }
         rocket::signal<void()> &OnDeviceChanged() { return onDeviceChanged; }
 
@@ -96,8 +96,8 @@ namespace SF::Engine
         void ProcessBlock(const float *block, size_t frames);
 
         SDL_AudioStream *stream = nullptr;
-        uint32_t deviceId       = 0;
-        string deviceName;
+        std::uint32_t deviceId  = 0;
+        std::string deviceName;
         bool followDefault   = true;
         int deviceSampleRate = 0;
         int deviceChannels   = 0;
@@ -113,11 +113,11 @@ namespace SF::Engine
         float peak        = 0.0f;
         bool transmitting = false;
 
-        vector<float> readBuffer;
-        vector<float> pending; // carries a partial block between updates
-        vector<float> preRoll; // last block, emitted when the gate opens so onsets aren't clipped
+        std::vector<float> readBuffer;
+        std::vector<float> pending; // carries a partial block between updates
+        std::vector<float> preRoll; // last block, emitted when the gate opens so onsets aren't clipped
 
-        rocket::signal<void(span<const float>)> onSamples;
+        rocket::signal<void(std::span<const float>)> onSamples;
         rocket::signal<void(bool)> onTransmitChanged;
         rocket::signal<void()> onDeviceChanged;
     };
@@ -138,7 +138,7 @@ namespace SF::Engine
         const Microphone &GetMicrophone() const { return microphone; }
 
         // Currently available capture devices.
-        vector<MicrophoneDeviceInfo> GetDevices() const;
+        std::vector<MicrophoneDeviceInfo> GetDevices() const;
 
         // Switch capture device. id 0 follows the system default.
         bool SelectDevice(uint32_t id);

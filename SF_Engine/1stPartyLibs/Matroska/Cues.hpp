@@ -10,31 +10,31 @@
 using namespace SF::EBML;
 namespace SF::Matroska
 {
-    using namespace std;
+
     struct CuePoint
     {
-        uint64_t timecode = 0;
+        std::uint64_t timecode = 0;
         struct TrackPosition
         {
-            uint64_t trackNumber      = 0;
-            uint64_t clusterPosition  = 0;
-            uint64_t blockNumber      = 0;
-            uint64_t codecState       = 0;
-            uint64_t reference        = 0;
-            uint64_t relativePosition = 0;
-            uint64_t duration         = 0;
+            std::uint64_t trackNumber      = 0;
+            std::uint64_t clusterPosition  = 0;
+            std::uint64_t blockNumber      = 0;
+            std::uint64_t codecState       = 0;
+            std::uint64_t reference        = 0;
+            std::uint64_t relativePosition = 0;
+            std::uint64_t duration         = 0;
         };
-        vector<TrackPosition> positions;
+        std::vector<TrackPosition> positions;
     };
 
     // Generate Cues with proper sorting
-    inline Element generate_cues(const vector<CuePoint> &cuePoints)
+    inline Element generate_cues(const std::vector<CuePoint> &cuePoints)
     {
         auto cues = Element::make_master(Matroska::ids::Cues);
 
         // Sort cue points by timecode for better seeking
         auto sortedPoints = cuePoints;
-        ranges::sort(sortedPoints, [](const CuePoint &a, const CuePoint &b) { return a.timecode < b.timecode; });
+        std::ranges::sort(sortedPoints, [](const CuePoint &a, const CuePoint &b) { return a.timecode < b.timecode; });
 
         for (const auto &point: sortedPoints)
         {
@@ -70,18 +70,19 @@ namespace SF::Matroska
     // pass nullopt (the default) to omit that entry rather than 0, since
     // 0 is a legitimate real position (e.g. Info is always the first child
     // of Segment, so its position is 0) and can't be used as a sentinel.
-    inline Element generate_seek_head(optional<uint64_t> infoPosition, optional<uint64_t> tracksPosition,
-                                      optional<uint64_t> cuesPosition, optional<uint64_t> chaptersPosition = nullopt,
-                                      optional<uint64_t> tagsPosition = nullopt)
+    inline Element generate_seek_head(std::optional<uint64_t> infoPosition, std::optional<uint64_t> tracksPosition,
+                                      std::optional<uint64_t> cuesPosition,
+                                      std::optional<uint64_t> chaptersPosition = std::nullopt,
+                                      std::optional<uint64_t> tagsPosition     = std::nullopt)
     {
         auto seekHead = Element::make_master(Matroska::ids::SeekHead);
 
-        auto add_seek = [&](uint32_t id, optional<uint64_t> position)
+        auto add_seek = [&](uint32_t id, std::optional<uint64_t> position)
         {
             if (!position)
                 return;
-            auto seek                  = Element::make_master(Matroska::ids::Seek);
-            vector<EBML::byte> idBytes = Identifier(id).encode();
+            auto seek                       = Element::make_master(Matroska::ids::Seek);
+            std::vector<EBML::byte> idBytes = Identifier(id).encode();
             seek.add(Element::make_binary(Matroska::ids::SeekID, std::move(idBytes)));
             seek.add(Element::make_uint(Matroska::ids::SeekPosition, *position));
             seekHead.add(std::move(seek));
@@ -97,9 +98,10 @@ namespace SF::Matroska
     }
 
     // Helper to find cue points for a specific track
-    inline vector<CuePoint> filter_cue_points_by_track(const vector<CuePoint> &cuePoints, uint64_t trackNumber)
+    inline std::vector<CuePoint> filter_cue_points_by_track(const std::vector<CuePoint> &cuePoints,
+                                                            uint64_t trackNumber)
     {
-        vector<CuePoint> result;
+        std::vector<CuePoint> result;
         for (const auto &point: cuePoints)
         {
             for (const auto &pos: point.positions)

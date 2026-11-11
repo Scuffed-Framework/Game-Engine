@@ -1,12 +1,15 @@
+#pragma once
+#include <vector>
+
 namespace SF::Engine
 {
-    template <typename... Args>
+    template<typename... Args>
     class MulticastDelegate
     {
     public:
         using Callback = std::function<void(Args...)>;
 
-        template <typename Callable>
+        template<typename Callable>
         void Add(Callable &&callable)
         {
             callbacks_.emplace_back(std::forward<Callable>(callable));
@@ -14,18 +17,15 @@ namespace SF::Engine
 
         void Broadcast(Args... args)
         {
-            for (auto &callback : callbacks_)
+            for (auto &callback: callbacks_)
             {
                 callback(args...);
             }
         }
 
-        bool IsBound() const noexcept
-        {
-            return !callbacks_.empty();
-        }
+        [[nodiscard]] bool IsBound() const noexcept { return !callbacks_.empty(); }
 
     private:
         std::vector<Callback> callbacks_;
     };
-}
+} // namespace SF::Engine

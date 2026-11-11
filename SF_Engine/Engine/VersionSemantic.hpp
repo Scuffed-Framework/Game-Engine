@@ -3,12 +3,13 @@
 
 namespace SF::Engine
 {
-    using namespace std;
+
     class Version
     {
     public:
-        constexpr Version(uint16_t major = Engine_VERSION_MAJOR, uint8_t minor = Engine_VERSION_MINOR,
-                          uint16_t patch = Engine_VERSION_PATCH) noexcept : major(major), minor(minor), patch(patch)
+        constexpr Version(std::uint16_t major = Engine_VERSION_MAJOR, std::uint8_t minor = Engine_VERSION_MINOR,
+                          std::uint16_t patch = Engine_VERSION_PATCH) noexcept :
+            major(major), minor(minor), patch(patch)
         {
         }
 
@@ -32,11 +33,12 @@ namespace SF::Engine
 
         [[nodiscard]] constexpr std::string_view ToString() const noexcept
         {
-            return string_view(to_string(major) + "." + to_string((minor)) + "." + to_string(patch));
+            return std::string_view(std::to_string(major) + "." + std::to_string((minor)) + "." +
+                                    std::to_string(patch));
         }
 
-        uint16_t major;
-        uint8_t minor;
-        uint16_t patch;
+        std::uint16_t major;
+        std::uint8_t minor;
+        std::uint16_t patch;
     };
 } // namespace SF::Engine

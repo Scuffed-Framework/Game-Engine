@@ -32,7 +32,7 @@ namespace SF::Engine
 
         bool EnsureLoaded() override;
         void Save() override { SaveMeta(); }
-        bool Load(span<const uint8_t> /*payload*/) override { return EnsureLoaded(); }
+        bool Load(std::span<const std::uint8_t> /*payload*/) override { return EnsureLoaded(); }
 
         void SerializeImportSettings(XMLNode &node) const override;
         void DeserializeImportSettings(const XMLNode &node) override;

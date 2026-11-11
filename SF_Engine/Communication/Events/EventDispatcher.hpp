@@ -11,7 +11,7 @@
 
 namespace SF::Engine
 {
-    using namespace std;
+
     struct Event
     {
         virtual ~Event() = default;
@@ -60,7 +60,7 @@ namespace SF::Engine
         template<typename EventType>
         EventHandle Subscribe(std::function<void(EventType &)> callback)
         {
-            static_assert(is_base_of_v<Event, EventType>, "EventType must derive from Event");
+            static_assert(std::is_base_of_v<Event, EventType>, "EventType must derive from Event");
 
             auto &listeners = _listeners[typeid(EventType)];
             size_t id       = _nextId++;
@@ -92,7 +92,7 @@ namespace SF::Engine
         template<typename EventType>
         void Dispatch(EventType &event)
         {
-            static_assert(is_base_of_v<Event, EventType>, "EventType must derive from Event");
+            static_assert(std::is_base_of_v<Event, EventType>, "EventType must derive from Event");
 
             auto it = _listeners.find(typeid(EventType));
             if (it == _listeners.end())
@@ -111,7 +111,7 @@ namespace SF::Engine
         template<typename EventType, typename... Args>
         void Dispatch(Args &&...args)
         {
-            EventType event(forward<Args>(args)...);
+            EventType event(std::forward<Args>(args)...);
             Dispatch(event);
         }
 

@@ -186,8 +186,8 @@ namespace SF::Engine
             SetTransmitting(true);
             // Gate just opened: emit the previous block too so the first syllable isn't clipped.
             if (!wasTransmitting && mode == MicrophoneRecordMode::VoiceActivated && !preRoll.empty())
-                onSamples(span<const float>(preRoll.data(), preRoll.size()));
-            onSamples(span<const float>(block, frames));
+                onSamples(std::span<const float>(preRoll.data(), preRoll.size()));
+            onSamples(std::span<const float>(block, frames));
         } else
         {
             SetTransmitting(false);
@@ -218,9 +218,9 @@ namespace SF::Engine
 
     void MicrophoneController::Update() { microphone.Update(); }
 
-    vector<MicrophoneDeviceInfo> MicrophoneController::GetDevices() const
+    std::vector<MicrophoneDeviceInfo> MicrophoneController::GetDevices() const
     {
-        vector<MicrophoneDeviceInfo> result;
+        std::vector<MicrophoneDeviceInfo> result;
 
         int count              = 0;
         SDL_AudioDeviceID *ids = SDL_GetAudioRecordingDevices(&count);

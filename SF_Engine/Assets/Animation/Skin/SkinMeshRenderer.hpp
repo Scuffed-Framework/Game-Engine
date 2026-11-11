@@ -2,7 +2,7 @@
 
 namespace SF::Engine
 {
-    using namespace std;
+
     class SkinMeshRenderer
     {
     };

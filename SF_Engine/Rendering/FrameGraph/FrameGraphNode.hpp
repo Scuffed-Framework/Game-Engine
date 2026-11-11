@@ -6,7 +6,7 @@
 
 namespace SF::Engine
 {
-    using namespace std;
+
     class EngineRenderpass;
 
     using ResourceHandle = uint32_t;
@@ -25,14 +25,14 @@ namespace SF::Engine
         FrameGraphNode &operator=(FrameGraphNode &&) noexcept = delete;
 
         [[nodiscard]] auto Id() const { return id; }
-        [[nodiscard]] string_view Name() const { return name; }
+        [[nodiscard]] std::string_view Name() const { return name; }
         [[nodiscard]] auto RefCount() const { return refCount; }
 
     protected:
-        FrameGraphNode(const string_view name, const uint32_t id) : name{name}, id{id} {}
+        FrameGraphNode(const std::string_view name, const uint32_t id) : name{name}, id{id} {}
 
     private:
-        string name;
+        std::string name;
         const uint32_t id;
         int32_t refCount{0};
     };
@@ -103,7 +103,7 @@ namespace SF::Engine
         // The frame graph only needs to declare dependencies for it and flip
         // SetEnabled()/SetOrder() at Compile() time -- it has no business co-owning the pass;
         // two owners of the same object is a lifetime bug waiting to happen.
-        FrameGraphRenderpassNode(const string_view name, uint32_t nodeId, EngineRenderpass *pass);
+        FrameGraphRenderpassNode(const std::string_view name, uint32_t nodeId, EngineRenderpass *pass);
 
         ResourceHandle AddRead(ResourceHandle id, uint32_t flags);
         ResourceHandle AddWrite(ResourceHandle id, uint32_t flags);
@@ -114,9 +114,9 @@ namespace SF::Engine
 
         EngineRenderpass *pass;
 
-        vector<AccessDeclaration> creates;
-        vector<AccessDeclaration> reads;
-        vector<AccessDeclaration> writes;
+        std::vector<AccessDeclaration> creates;
+        std::vector<AccessDeclaration> reads;
+        std::vector<AccessDeclaration> writes;
 
         bool hasSideEffect{false};
         bool culled{false};

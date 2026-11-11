@@ -23,58 +23,58 @@ namespace SF::Engine
 #pragma pack(push, 1)
     struct DDSPixelFormat
     {
-        uint32_t size;
-        uint32_t flags;
-        uint32_t fourCC;
-        uint32_t rgbBitCount;
-        uint32_t rBitMask;
-        uint32_t gBitMask;
-        uint32_t bBitMask;
-        uint32_t aBitMask;
+        std::uint32_t size;
+        std::uint32_t flags;
+        std::uint32_t fourCC;
+        std::uint32_t rgbBitCount;
+        std::uint32_t rBitMask;
+        std::uint32_t gBitMask;
+        std::uint32_t bBitMask;
+        std::uint32_t aBitMask;
     };
 
     struct DDSHeader
     {
-        uint32_t magic;
-        uint32_t size;
-        uint32_t flags;
-        uint32_t height;
-        uint32_t width;
-        uint32_t pitchOrLinearSize;
-        uint32_t depth;
-        uint32_t mipMapCount;
-        uint32_t reserved1[11];
+        std::uint32_t magic;
+        std::uint32_t size;
+        std::uint32_t flags;
+        std::uint32_t height;
+        std::uint32_t width;
+        std::uint32_t pitchOrLinearSize;
+        std::uint32_t depth;
+        std::uint32_t mipMapCount;
+        std::uint32_t reserved1[11];
         DDSPixelFormat pixelFormat;
-        uint32_t caps;
-        uint32_t caps2;
-        uint32_t caps3;
-        uint32_t caps4;
-        uint32_t reserved2;
+        std::uint32_t caps;
+        std::uint32_t caps2;
+        std::uint32_t caps3;
+        std::uint32_t caps4;
+        std::uint32_t reserved2;
     };
 #pragma pack(pop)
 
-    constexpr uint32_t DDS_MAGIC       = 0x20534444;
-    constexpr uint32_t DDS_HEADER_SIZE = 124;
+    constexpr std::uint32_t DDS_MAGIC       = 0x20534444;
+    constexpr std::uint32_t DDS_HEADER_SIZE = 124;
 
-    constexpr uint32_t DDSD_CAPS        = 0x1;
-    constexpr uint32_t DDSD_HEIGHT      = 0x2;
-    constexpr uint32_t DDSD_WIDTH       = 0x4;
-    constexpr uint32_t DDSD_PITCH       = 0x8;
-    constexpr uint32_t DDSD_PIXELFORMAT = 0x1000;
-    constexpr uint32_t DDSD_MIPMAPCOUNT = 0x20000;
-    constexpr uint32_t DDSD_LINEARSIZE  = 0x80000;
+    constexpr std::uint32_t DDSD_CAPS        = 0x1;
+    constexpr std::uint32_t DDSD_HEIGHT      = 0x2;
+    constexpr std::uint32_t DDSD_WIDTH       = 0x4;
+    constexpr std::uint32_t DDSD_PITCH       = 0x8;
+    constexpr std::uint32_t DDSD_PIXELFORMAT = 0x1000;
+    constexpr std::uint32_t DDSD_MIPMAPCOUNT = 0x20000;
+    constexpr std::uint32_t DDSD_LINEARSIZE  = 0x80000;
 
-    constexpr uint32_t DDPF_ALPHAPIXELS = 0x1;
-    constexpr uint32_t DDPF_ALPHA       = 0x2;
-    constexpr uint32_t DDPF_FOURCC      = 0x4;
-    constexpr uint32_t DDPF_RGB         = 0x40;
-    constexpr uint32_t DDPF_LUMINANCE   = 0x20000;
+    constexpr std::uint32_t DDPF_ALPHAPIXELS = 0x1;
+    constexpr std::uint32_t DDPF_ALPHA       = 0x2;
+    constexpr std::uint32_t DDPF_FOURCC      = 0x4;
+    constexpr std::uint32_t DDPF_RGB         = 0x40;
+    constexpr std::uint32_t DDPF_LUMINANCE   = 0x20000;
 
-    constexpr uint32_t FOURCC_DXT1 = 0x31545844;
-    constexpr uint32_t FOURCC_DXT3 = 0x33545844;
-    constexpr uint32_t FOURCC_DXT5 = 0x35545844;
+    constexpr std::uint32_t FOURCC_DXT1 = 0x31545844;
+    constexpr std::uint32_t FOURCC_DXT3 = 0x33545844;
+    constexpr std::uint32_t FOURCC_DXT5 = 0x35545844;
 
-    constexpr uint32_t DDSCAPS_TEXTURE = 0x1000;
+    constexpr std::uint32_t DDSCAPS_TEXTURE = 0x1000;
 
     class BitmapDDS : public Bitmap::Registrar<BitmapDDS>
     {
@@ -93,23 +93,23 @@ namespace SF::Engine
             if (header.size != DDS_HEADER_SIZE)
                 throw std::runtime_error("Invalid DDS header size");
 
-            const uint32_t width  = header.width;
-            const uint32_t height = header.height;
-            const auto &pf        = header.pixelFormat;
+            const std::uint32_t width  = header.width;
+            const std::uint32_t height = header.height;
+            const auto &pf             = header.pixelFormat;
 
             if (pf.flags & DDPF_FOURCC)
             {
-                uint32_t blockSize = (pf.fourCC == FOURCC_DXT1) ? 8 : 16;
-                uint32_t blocksW   = std::max(1u, (width + 3) / 4);
-                uint32_t blocksH   = std::max(1u, (height + 3) / 4);
-                size_t compressed  = blocksW * blocksH * blockSize;
+                std::uint32_t blockSize = (pf.fourCC == FOURCC_DXT1) ? 8 : 16;
+                std::uint32_t blocksW   = std::max(1u, (width + 3) / 4);
+                std::uint32_t blocksH   = std::max(1u, (height + 3) / 4);
+                std::size_t compressed  = blocksW * blocksH * blockSize;
 
-                std::vector<uint8_t> src(compressed);
+                std::vector<std::uint8_t> src(compressed);
                 file.read(reinterpret_cast<char *>(src.data()), compressed);
                 if (!file)
                     throw std::runtime_error("Failed to read DXT data");
 
-                auto rgba = std::make_unique<uint8_t[]>(width * height * 4);
+                auto rgba = std::make_unique<std::uint8_t[]>(width * height * 4);
 
                 if (pf.fourCC == FOURCC_DXT1)
                     DecompressDXT1(src, rgba.get(), width, height);
@@ -129,17 +129,17 @@ namespace SF::Engine
 
             if ((pf.flags & (DDPF_ALPHA | DDPF_LUMINANCE)) && pf.rgbBitCount == 16)
             {
-                size_t pixels = width * height;
-                std::vector<uint8_t> raw(pixels * 2);
+                std::size_t pixels = width * height;
+                std::vector<std::uint8_t> raw(pixels * 2);
                 file.read(reinterpret_cast<char *>(raw.data()), pixels * 2);
                 if (!file)
                     throw std::runtime_error("Failed to read A8L8 data");
 
-                auto rgba = std::make_unique<uint8_t[]>(pixels * 4);
+                auto rgba = std::make_unique<std::uint8_t[]>(pixels * 4);
                 for (size_t i = 0; i < pixels; ++i)
                 {
-                    uint8_t l       = raw[i * 2 + 0];
-                    uint8_t a       = raw[i * 2 + 1];
+                    std::uint8_t l  = raw[i * 2 + 0];
+                    std::uint8_t a  = raw[i * 2 + 1];
                     rgba[i * 4 + 0] = l;
                     rgba[i * 4 + 1] = l;
                     rgba[i * 4 + 2] = l;
@@ -181,9 +181,9 @@ namespace SF::Engine
             if (!bitmap.GetData())
                 throw std::runtime_error("Cannot write empty bitmap");
 
-            const uint32_t width  = bitmap.GetSize().x;
-            const uint32_t height = bitmap.GetSize().y;
-            const uint32_t srcBpp = bitmap.GetBytesPerPixel();
+            const std::uint32_t width  = bitmap.GetSize().x;
+            const std::uint32_t height = bitmap.GetSize().y;
+            const std::uint32_t srcBpp = bitmap.GetBytesPerPixel();
 
             DDSHeader header        = {};
             header.magic            = DDS_MAGIC;
@@ -275,18 +275,18 @@ namespace SF::Engine
             if (format == DDSFormat::A8L8)
             {
                 // RGBA8 → A8L8
-                auto buf = std::make_unique<uint8_t[]>(pixels * 2);
-                for (size_t i = 0; i < pixels; ++i)
+                auto buf = std::make_unique<std::uint8_t[]>(pixels * 2);
+                for (std::size_t i = 0; i < pixels; ++i)
                 {
-                    uint8_t r      = src[i * srcBpp + 0];
-                    uint8_t g      = src[i * srcBpp + 1];
-                    uint8_t b      = src[i * srcBpp + 2];
-                    uint8_t a      = (srcBpp == 4) ? src[i * srcBpp + 3] : 0xFF;
-                    uint8_t l      = static_cast<uint8_t>(0.299f * r + 0.587f * g + 0.114f * b);
+                    std::uint8_t r = src[i * srcBpp + 0];
+                    std::uint8_t g = src[i * srcBpp + 1];
+                    std::uint8_t b = src[i * srcBpp + 2];
+                    std::uint8_t a = (srcBpp == 4) ? src[i * srcBpp + 3] : 0xFF;
+                    auto l = static_cast<std::uint8_t>(0.299f * (float) r + 0.587f * (float) g + 0.114f * (float) b);
                     buf[i * 2 + 0] = l;
                     buf[i * 2 + 1] = a;
                 }
-                out.write(reinterpret_cast<const char *>(buf.get()), pixels * 2);
+                out.write(reinterpret_cast<const char *>(buf.get()), (long) pixels * 2);
             } else
             {
                 // RGBA → BGRA for ARGB8 / XRGB8
@@ -300,7 +300,7 @@ namespace SF::Engine
                         std::swap(buf[i], buf[i + 2]);
                 }
 
-                out.write(reinterpret_cast<const char *>(buf.get()), dataSize);
+                out.write(reinterpret_cast<const char *>(buf.get()), (long) dataSize);
             }
 
             if (!out)

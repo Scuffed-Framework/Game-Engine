@@ -46,7 +46,7 @@ namespace SF::Engine
         bool m_needsRefresh        = true;
         size_t reg;
 
-        string m_componentFilter;
+        std::string m_componentFilter;
         bool m_focusFilter = false;
     };
 } // namespace SF::Engine

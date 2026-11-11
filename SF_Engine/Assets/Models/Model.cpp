@@ -136,7 +136,7 @@ namespace SF::Engine
             maxExtents = max(maxExtents, position);
         }
 
-        radius = std::max(minExtents.length(), maxExtents.length());
+        radius = (float)std::max(minExtents.length(), maxExtents.length());
     }
 
     std::vector<float> Model::GetPointCloud() const

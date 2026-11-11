@@ -25,14 +25,14 @@ namespace SF::Engine::VideoImport
             cfg.threads = std::clamp(std::thread::hardware_concurrency(), 1u, 8u);
 
             if (vpx_codec_dec_init(&ctx_, vp9 ? vpx_codec_vp9_dx() : vpx_codec_vp8_dx(), &cfg, 0) != VPX_CODEC_OK)
-                throw runtime_error("libvpx: decoder init failed");
+                throw std::runtime_error("libvpx: decoder init failed");
             open_ = true;
 
             try
             {
                 pending_ = DecodeOne();
                 if (!pending_)
-                    throw runtime_error("libvpx: no decodable frames in the stream");
+                    throw std::runtime_error("libvpx: no decodable frames in the stream");
             } catch (...)
             {
                 Close();
@@ -120,7 +120,7 @@ namespace SF::Engine::VideoImport
                 first_     = cur_;
                 haveFirst_ = true;
             } else if (cur_.Width != first_.Width || cur_.Height != first_.Height)
-                throw runtime_error("libvpx: resolution changed mid-stream, which import doesn't support");
+                throw std::runtime_error("libvpx: resolution changed mid-stream, which import doesn't support");
         }
 
         /// Decodes until one frame is available in cur_. false = end of stream.
@@ -152,7 +152,8 @@ namespace SF::Engine::VideoImport
                                             0) != VPX_CODEC_OK)
                 {
                     if (!produced_ && ++errors_ > 64)
-                        throw runtime_error(string("libvpx can't decode this stream: ") + vpx_codec_error(&ctx_));
+                        throw std::runtime_error(std::string("libvpx can't decode this stream: ") +
+                                                 vpx_codec_error(&ctx_));
                     continue;
                 }
 

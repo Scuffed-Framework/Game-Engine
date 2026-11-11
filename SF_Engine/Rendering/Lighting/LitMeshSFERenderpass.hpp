@@ -16,7 +16,7 @@
 
 namespace SF::Engine
 {
-    using namespace std;
+
     //  Push constant layout matching Lit.shader
     // Fits in 128 bytes (Vulkan minimum guarantee):
     //   model mat4     = 64 bytes
@@ -58,10 +58,10 @@ namespace SF::Engine
             return true;
         }
 
-        shared_ptr<Image2d> albedo;   // bind=4  (white if null)
-        shared_ptr<Image2d> normal;   // bind=5  (flat if null)
-        shared_ptr<Image2d> pbr;      // bind=6  (r=rough g=metal b=ao, white if null)
-        shared_ptr<Image2d> emissive; // bind=7  (black if null)
+        std::shared_ptr<Image2d> albedo;   // bind=4  (white if null)
+        std::shared_ptr<Image2d> normal;   // bind=5  (flat if null)
+        std::shared_ptr<Image2d> pbr;      // bind=6  (r=rough g=metal b=ao, white if null)
+        std::shared_ptr<Image2d> emissive; // bind=7  (black if null)
 
         Vec4 baseColor        = {1, 1, 1, 1};
         float roughnessFactor = 1.0f;
@@ -78,7 +78,10 @@ namespace SF::Engine
             emissiveFactor  = 0.0f;
         }
 
-        [[nodiscard]] unique_ptr<Component> Clone() const override { return make_unique<MeshMaterial>(*this); }
+        [[nodiscard]] std::unique_ptr<Component> Clone() const override
+        {
+            return std::make_unique<MeshMaterial>(*this);
+        }
 
         void Serialize(XMLNode &node) const override
         {
@@ -121,23 +124,26 @@ namespace SF::Engine
             // Only deserialize if the child node exists
             if (XMLNode n = node.GetChild("albedo"); n.IsValid())
             {
-                albedo = make_shared<Image2d>("", VK_FILTER_LINEAR, VK_SAMPLER_ADDRESS_MODE_REPEAT, true, true, false);
+                albedo = std::make_shared<Image2d>("", VK_FILTER_LINEAR, VK_SAMPLER_ADDRESS_MODE_REPEAT, true, true,
+                                                   false);
                 albedo->Deserialize(n);
             }
             if (XMLNode n = node.GetChild("normal"); n.IsValid())
             {
-                normal = make_shared<Image2d>("", VK_FILTER_LINEAR, VK_SAMPLER_ADDRESS_MODE_REPEAT, true, true, false);
+                normal = std::make_shared<Image2d>("", VK_FILTER_LINEAR, VK_SAMPLER_ADDRESS_MODE_REPEAT, true, true,
+                                                   false);
                 normal->Deserialize(n);
             }
             if (XMLNode n = node.GetChild("pbr"); n.IsValid())
             {
-                pbr = make_shared<Image2d>("", VK_FILTER_LINEAR, VK_SAMPLER_ADDRESS_MODE_REPEAT, true, true, false);
+                pbr = std::make_shared<Image2d>("", VK_FILTER_LINEAR, VK_SAMPLER_ADDRESS_MODE_REPEAT, true, true,
+                                                false);
                 pbr->Deserialize(n);
             }
             if (XMLNode n = node.GetChild("emissive"); n.IsValid())
             {
-                emissive =
-                        make_shared<Image2d>("", VK_FILTER_LINEAR, VK_SAMPLER_ADDRESS_MODE_REPEAT, true, true, false);
+                emissive = std::make_shared<Image2d>("", VK_FILTER_LINEAR, VK_SAMPLER_ADDRESS_MODE_REPEAT, true, true,
+                                                     false);
                 emissive->Deserialize(n);
             }
 
@@ -160,7 +166,7 @@ namespace SF::Engine
     //  Drawable instance
     struct MeshInstance
     {
-        shared_ptr<Mesh> mesh;
+        std::shared_ptr<Mesh> mesh;
         MeshMaterial material;
         Mat4 transform = Mat4(1.0f);
     };
@@ -194,7 +200,7 @@ namespace SF::Engine
         ~LitMeshSFERenderpass() override = default;
 
         /// Queue a mesh+material+transform for drawing this frame.
-        void Submit(shared_ptr<Mesh> mesh, const MeshMaterial &material, const Mat4 &transform);
+        void Submit(std::shared_ptr<Mesh> mesh, const MeshMaterial &material, const Mat4 &transform);
 
         void Submit(const MeshInstance &instance);
 
@@ -206,20 +212,20 @@ namespace SF::Engine
 
         LightManager &lm_;
 
-        unique_ptr<RhiRenderPipeline> pipeline_;
-        unique_ptr<DescriptorSet> descSet_;
+        std::unique_ptr<RhiRenderPipeline> pipeline_;
+        std::unique_ptr<DescriptorSet> descSet_;
 
         // Fallback 1x1 textures so shaders never get unbound samplers
-        unique_ptr<Image2d> fallbackWhite_;
-        unique_ptr<Image2d> fallbackNormal_;
+        std::unique_ptr<Image2d> fallbackWhite_;
+        std::unique_ptr<Image2d> fallbackNormal_;
 
         struct DrawCall
         {
-            shared_ptr<Mesh> mesh;
+            std::shared_ptr<Mesh> mesh;
             MeshMaterial material;
             Mat4 transform;
         };
-        vector<DrawCall> drawList_;
+        std::vector<DrawCall> drawList_;
 
         bool frameDescriptorsWritten_ = false;
     };

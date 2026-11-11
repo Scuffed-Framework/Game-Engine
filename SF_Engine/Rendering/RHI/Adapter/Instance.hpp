@@ -8,7 +8,7 @@
 
 namespace SF::Engine
 {
-    using namespace std;
+
     class Instance
     {
         friend class RenderSystem;
@@ -41,15 +41,15 @@ namespace SF::Engine
         [[nodiscard]] bool AreValidationLayersEnabled() const { return validationLayersEnabled; }
         [[nodiscard]] const VkInstance &GetInstance() const { return instance; }
 
-        static const vector<const char *> ValidationLayers;
+        static const std::vector<const char *> ValidationLayers;
 
     private:
         [[nodiscard]] bool CheckValidationLayerSupport() const;
-        [[nodiscard]] vector<const char *> GetExtensions() const;
+        [[nodiscard]] std::vector<const char *> GetExtensions() const;
         void CreateInstance();
         void CreateDebugMessenger();
 
-        static void LogVulkanLayers(const vector<VkLayerProperties> &layerProperties);
+        static void LogVulkanLayers(const std::vector<VkLayerProperties> &layerProperties);
 
     public:
         bool validationLayersEnabled = false;

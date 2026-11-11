@@ -54,15 +54,15 @@ Clang/GCC. Prefer "enum class Foo : Type", or use SF_ENUM_RANGE(Foo, 0, N).
 
 namespace SF::Reflection
 {
-    using namespace std;
+
     namespace Detail
     {
 #if defined(_MSC_VER)
-        inline constexpr string_view TypeKey = "TypeSig<";
-        inline constexpr string_view EnumKey = "EnumSig<";
+        inline constexpr std::string_view TypeKey = "TypeSig<";
+        inline constexpr std::string_view EnumKey = "EnumSig<";
 #else
-        inline constexpr string_view TypeKey = "T = ";
-        inline constexpr string_view EnumKey = "V = ";
+        inline constexpr std::string_view TypeKey = "T = ";
+        inline constexpr std::string_view EnumKey = "V = ";
 #endif
 
         template<typename T>
@@ -78,10 +78,10 @@ namespace SF::Reflection
         }
 
         // Get the template argument text out of a compiler function signature
-        constexpr string_view ExtractArg(const string_view sig, const string_view key)
+        constexpr std::string_view ExtractArg(const std::string_view sig, const std::string_view key)
         {
             const auto b = sig.find(key);
-            if (b == string_view::npos)
+            if (b == std::string_view::npos)
                 return {};
             const auto start = b + key.size();
 #if defined(_MSC_VER)
@@ -89,20 +89,20 @@ namespace SF::Reflection
 #else
             const auto e = sig.rfind(']');
 #endif
-            if (e == string_view::npos || e < start)
+            if (e == std::string_view::npos || e < start)
                 return {};
             return sig.substr(start, e - start);
         }
 
-        constexpr bool StartsWith(const string_view s, const string_view p)
+        constexpr bool StartsWith(const std::string_view s, const std::string_view p)
         {
             return s.size() >= p.size() && s.substr(0, p.size()) == p;
         }
 
-        constexpr string_view StripKeyword(const string_view s)
+        constexpr std::string_view StripKeyword(const std::string_view s)
         {
-            for (const string_view kw:
-                 {string_view("struct "), string_view("class "), string_view("enum "), string_view("union ")})
+            for (const std::string_view kw: {std::string_view("struct "), std::string_view("class "),
+                                             std::string_view("enum "), std::string_view("union ")})
             {
                 if (StartsWith(s, kw))
                     return s.substr(kw.size());
@@ -115,13 +115,13 @@ namespace SF::Reflection
             return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_';
         }
 
-        constexpr string_view LastSegment(const string_view s)
+        constexpr std::string_view LastSegment(const std::string_view s)
         {
             const auto p = s.rfind("::");
-            return p == string_view::npos ? s : s.substr(p + 2);
+            return p == std::string_view::npos ? s : s.substr(p + 2);
         }
 
-        constexpr uint64_t Fnv1a(const string_view s)
+        constexpr uint64_t Fnv1a(const std::string_view s)
         {
             uint64_t h = FnvOffset;
             for (const char c: s)
@@ -132,7 +132,7 @@ namespace SF::Reflection
 
     // Fully qualified, compiler-spelled type name, e.g. "namespace::Foo<int>".
     template<typename T>
-    constexpr string_view TypeName()
+    constexpr std::string_view TypeName()
     {
         return Detail::StripKeyword(Detail::ExtractArg(Detail::TypeSig<T>(), Detail::TypeKey));
     }
@@ -140,14 +140,14 @@ namespace SF::Reflection
     template<typename T>
     constexpr TypeId StaticTypeId()
     {
-        return TypeId(Detail::Fnv1a(TypeName<decay_t<T>>()));
+        return TypeId(Detail::Fnv1a(TypeName<std::decay_t<T>>()));
     }
 
     template<typename E>
     struct EnumRange
     {
-        using U                       = underlying_type_t<E>;
-        static constexpr int Min      = is_signed_v<U> ? -128 : 0;
+        using U                       = std::underlying_type_t<E>;
+        static constexpr int Min      = std::is_signed_v<U> ? -128 : 0;
         static constexpr int Max      = 128; // inclusive
         static constexpr bool IsFlags = false;
     };
@@ -159,7 +159,7 @@ namespace SF::Reflection
         {
             using R = EnumRange<E>;
             if constexpr (R::IsFlags)
-                return static_cast<int>(sizeof(underlying_type_t<E>) * 8) + 1; // zero + each bit
+                return static_cast<int>(sizeof(std::underlying_type_t<E>) * 8) + 1; // zero + each bit
             else
             {
                 static_assert(R::Max >= R::Min, "EnumRange: Max must be >= Min");
@@ -171,10 +171,10 @@ namespace SF::Reflection
         constexpr E Candidate()
         {
             using R = EnumRange<E>;
-            using U = underlying_type_t<E>;
+            using U = std::underlying_type_t<E>;
             if constexpr (R::IsFlags)
             {
-                using UU = make_unsigned_t<U>;
+                using UU = std::make_unsigned_t<U>;
                 if constexpr (I == 0)
                     return static_cast<E>(static_cast<U>(0));
                 else
@@ -187,10 +187,10 @@ namespace SF::Reflection
 
         // Empty result == "not a named enumerator".
         template<auto V>
-        constexpr string_view EnumNameOf()
+        constexpr std::string_view EnumNameOf()
         {
-            static_assert(is_enum_v<decltype(V)>, "EnumNameOf expects an enum value");
-            if constexpr (constexpr string_view raw = Detail::ExtractArg(EnumSig<V>(), EnumKey);
+            static_assert(std::is_enum_v<decltype(V)>, "EnumNameOf expects an enum value");
+            if constexpr (constexpr std::string_view raw = Detail::ExtractArg(EnumSig<V>(), EnumKey);
                           raw.empty() || !IsIdentStart(raw[0]))
                 return {}; // "(Color)5" / "(enum Color)0x5" style output for unnamed values
             else
@@ -198,19 +198,19 @@ namespace SF::Reflection
         }
 
         template<typename E, int... I>
-        constexpr array<string_view, sizeof...(I)> RawNames(integer_sequence<int, I...>)
+        constexpr std::array<std::string_view, sizeof...(I)> RawNames(std::integer_sequence<int, I...>)
         {
             return {{EnumNameOf<Candidate<E, I>()>()...}};
         }
 
         template<typename E, int... I>
-        constexpr array<E, sizeof...(I)> RawValues(integer_sequence<int, I...>)
+        constexpr std::array<E, sizeof...(I)> RawValues(std::integer_sequence<int, I...>)
         {
             return {{Candidate<E, I>()...}};
         }
 
         template<size_t N>
-        constexpr size_t CountNamed(const array<string_view, N> &names)
+        constexpr size_t CountNamed(const std::array<std::string_view, N> &names)
         {
             size_t n = 0;
             for (const auto &s: names)
@@ -221,12 +221,13 @@ namespace SF::Reflection
         template<typename E, size_t Count>
         struct Compacted
         {
-            array<E, Count> values{};
-            array<string_view, Count> names{};
+            std::array<E, Count> values{};
+            std::array<std::string_view, Count> names{};
         };
 
         template<typename E, size_t Count, size_t N>
-        constexpr Compacted<E, Count> Compact(const array<E, N> &vals, const array<string_view, N> &names)
+        constexpr Compacted<E, Count> Compact(const std::array<E, N> &vals,
+                                              const std::array<std::string_view, N> &names)
         {
             Compacted<E, Count> out{};
             size_t k = 0;
@@ -245,18 +246,18 @@ namespace SF::Reflection
         template<typename E>
         struct EnumTable
         {
-            static_assert(is_enum_v<E>, "enum reflection requires an enum type");
+            static_assert(std::is_enum_v<E>, "enum reflection requires an enum type");
 
             static constexpr int N          = CandidateCount<E>();
-            static constexpr auto AllNames  = RawNames<E>(make_integer_sequence<int, N>{});
-            static constexpr auto AllValues = RawValues<E>(make_integer_sequence<int, N>{});
+            static constexpr auto AllNames  = RawNames<E>(std::make_integer_sequence<int, N>{});
+            static constexpr auto AllValues = RawValues<E>(std::make_integer_sequence<int, N>{});
             static constexpr size_t Count   = CountNamed(AllNames);
             static constexpr auto Data      = Compact<E, Count>(AllValues, AllNames);
         };
 
         constexpr char ToLower(const char c) { return (c >= 'A' && c <= 'Z') ? static_cast<char>(c - 'A' + 'a') : c; }
 
-        constexpr bool EqualsNoCase(const string_view a, const string_view b)
+        constexpr bool EqualsNoCase(const std::string_view a, const std::string_view b)
         {
             if (a.size() != b.size())
                 return false;
@@ -266,7 +267,7 @@ namespace SF::Reflection
             return true;
         }
 
-        constexpr string_view Trim(string_view s)
+        constexpr std::string_view Trim(std::string_view s)
         {
             while (!s.empty() && (s.front() == ' ' || s.front() == '\t'))
                 s.remove_prefix(1);
@@ -301,26 +302,26 @@ namespace SF::Reflection
     constexpr auto enum_entries() noexcept
     {
         constexpr size_t N = enum_count<E>();
-        array<pair<E, string_view>, N> out{};
+        std::array<std::pair<E, std::string_view>, N> out{};
         for (size_t i = 0; i < N; ++i)
             out[i] = {enum_values<E>()[i], enum_names<E>()[i]};
         return out;
     }
 
     template<typename E>
-    constexpr string_view enum_type_name() noexcept
+    constexpr std::string_view enum_type_name() noexcept
     {
         return TypeName<E>();
     }
 
     template<typename E>
-    constexpr optional<size_t> enum_index(E value) noexcept
+    constexpr std::optional<size_t> enum_index(E value) noexcept
     {
         const auto &vals = enum_values<E>();
         for (size_t i = 0; i < vals.size(); ++i)
             if (vals[i] == value)
                 return i;
-        return nullopt;
+        return std::nullopt;
     }
 
     template<typename E>
@@ -330,7 +331,7 @@ namespace SF::Reflection
     }
 
     template<typename E>
-    constexpr string_view enum_name(E value) noexcept
+    constexpr std::string_view enum_name(E value) noexcept
     {
         if (auto i = enum_index(value))
             return enum_names<E>()[*i];
@@ -338,7 +339,7 @@ namespace SF::Reflection
     }
 
     template<typename E>
-    constexpr optional<E> enum_cast(string_view name, bool ignoreCase = false) noexcept
+    constexpr std::optional<E> enum_cast(std::string_view name, bool ignoreCase = false) noexcept
     {
         const auto &names = enum_names<E>();
         for (size_t i = 0; i < names.size(); ++i)
@@ -346,25 +347,25 @@ namespace SF::Reflection
             if (ignoreCase ? Detail::EqualsNoCase(names[i], name) : names[i] == name)
                 return enum_values<E>()[i];
         }
-        return nullopt;
+        return std::nullopt;
     }
 
-    template<typename E, typename I, typename = enable_if_t<is_integral_v<I>>>
-    constexpr optional<E> enum_cast(I raw) noexcept
+    template<typename E, typename I, typename = std::enable_if_t<std::is_integral_v<I>>>
+    constexpr std::optional<E> enum_cast(I raw) noexcept
     {
         for (const auto &vals = enum_values<E>(); const E v: vals)
-            if (static_cast<underlying_type_t<E>>(v) == static_cast<underlying_type_t<E>>(raw))
+            if (static_cast<std::underlying_type_t<E>>(v) == static_cast<std::underlying_type_t<E>>(raw))
                 return v;
-        return nullopt;
+        return std::nullopt;
     }
 
     template<typename E>
     constexpr auto enum_underlying(E value) noexcept
     {
-        return static_cast<underlying_type_t<E>>(value);
+        return static_cast<std::underlying_type_t<E>>(value);
     }
 
-    // f(E value, string_view name) for every enumerator, in value order.
+    // f(E value, std::string_view name) for every enumerator, in value order.
     template<typename E, typename F>
     constexpr void enum_for_each(F &&f)
     {
@@ -377,20 +378,20 @@ namespace SF::Reflection
     // "Vertex|Uniform". Unnamed leftover bits are appended as hex ("0x40").
     // Zero returns the name of the zero enumerator if any, else "0".
     template<typename E>
-    string enum_flags_name(E value, const string_view sep = "|")
+    std::string enum_flags_name(E value, const std::string_view sep = "|")
     {
         static_assert(EnumRange<E>::IsFlags, "enum_flags_name requires SF_ENUM_FLAGS(E)");
-        using U  = underlying_type_t<E>;
-        using UU = make_unsigned_t<U>;
+        using U  = std::underlying_type_t<E>;
+        using UU = std::make_unsigned_t<U>;
 
         UU remaining = static_cast<UU>(static_cast<U>(value));
         if (remaining == 0)
         {
             const auto n = enum_name(value);
-            return n.empty() ? string("0") : string(n);
+            return n.empty() ? std::string("0") : string(n);
         }
 
-        string out;
+        std::string out;
         const auto &vals  = enum_values<E>();
         const auto &names = enum_names<E>();
         for (size_t i = 0; i < vals.size(); ++i)
@@ -407,7 +408,7 @@ namespace SF::Reflection
         if (remaining != 0)
         {
             static constexpr char digits[] = "0123456789abcdef";
-            string hex;
+            std::string hex;
             for (UU r = remaining; r != 0; r = static_cast<UU>(r >> 4))
                 hex.insert(hex.begin(), digits[r & 0xF]);
             if (!out.empty())
@@ -419,11 +420,11 @@ namespace SF::Reflection
     }
 
     template<typename E>
-    optional<E> enum_flags_cast(string_view text, const char sep = '|', const bool ignoreCase = false)
+    std::optional<E> enum_flags_cast(std::string_view text, const char sep = '|', const bool ignoreCase = false)
     {
         static_assert(EnumRange<E>::IsFlags, "enum_flags_cast requires SF_ENUM_FLAGS(E)");
-        using U  = underlying_type_t<E>;
-        using UU = make_unsigned_t<U>;
+        using U  = std::underlying_type_t<E>;
+        using UU = std::make_unsigned_t<U>;
 
         UU acc = 0;
         while (true)
@@ -431,12 +432,12 @@ namespace SF::Reflection
             const auto p   = text.find(sep);
             const auto tok = Detail::Trim(text.substr(0, p));
             if (tok.empty())
-                return nullopt;
+                return std::nullopt;
             const auto e = enum_cast<E>(tok, ignoreCase);
             if (!e)
-                return nullopt;
+                return std::nullopt;
             acc = static_cast<UU>(acc | static_cast<UU>(static_cast<U>(*e)));
-            if (p == string_view::npos)
+            if (p == std::string_view::npos)
                 break;
             text.remove_prefix(p + 1);
         }
@@ -449,7 +450,7 @@ namespace SF::Reflection
         using ClassType  = C;
         using MemberType = M;
 
-        string_view name;
+        std::string_view name;
         M C::*ptr;
 
         template<typename O>
@@ -460,7 +461,7 @@ namespace SF::Reflection
     };
 
     template<typename C, typename M>
-    constexpr FieldInfo<C, M> MakeField(string_view name, M C::*ptr) noexcept
+    constexpr FieldInfo<C, M> MakeField(std::string_view name, M C::*ptr) noexcept
     {
         return FieldInfo<C, M>{name, ptr};
     }
@@ -474,24 +475,24 @@ namespace SF::Reflection
     namespace Detail
     {
         template<typename T, typename = void>
-        struct HasFieldsImpl : false_type
+        struct HasFieldsImpl : std::false_type
         {
         };
 
         template<typename T>
-        struct HasFieldsImpl<T, void_t<decltype(T::RTTI_Fields())>> : true_type
+        struct HasFieldsImpl<T, std::void_t<decltype(T::RTTI_Fields())>> : std::true_type
         {
         };
     } // namespace Detail
 
     template<typename T>
-    inline constexpr bool HasFields = Detail::HasFieldsImpl<remove_cv_t<remove_reference_t<T>>>::value;
+    inline constexpr bool HasFields = Detail::HasFieldsImpl<std::remove_cv_t<std::remove_reference_t<T>>>::value;
 
     template<typename T>
     constexpr size_t field_count() noexcept
     {
         static_assert(HasFields<T>, "Type has no SF_FIELDS declared.");
-        return tuple_size_v<decltype(remove_cv_t<remove_reference_t<T>>::RTTI_Fields())>;
+        return std::tuple_size_v<decltype(std::remove_cv_t<std::remove_reference_t<T>>::RTTI_Fields())>;
     }
 
     // f(const FieldInfo&) for each field; works on the type alone (no instance).
@@ -499,7 +500,8 @@ namespace SF::Reflection
     constexpr void for_each_field_info(F &&f)
     {
         static_assert(HasFields<T>, "Type has no SF_FIELDS declared.");
-        apply([&](const auto &...fi) { (void) (f(fi), ...); }, remove_cv_t<remove_reference_t<T>>::RTTI_Fields());
+        apply([&](const auto &...fi) { (void) (f(fi), ...); },
+              std::remove_cv_t<std::remove_reference_t<T>>::RTTI_Fields());
     }
 
     // f(string_view name, FieldRef value) for each field.
@@ -508,18 +510,18 @@ namespace SF::Reflection
     {
         static_assert(HasFields<T>, "Type has no SF_FIELDS declared.");
         apply([&](const auto &...fi) { (f(fi.name, fi.Get(obj)), ...); },
-              remove_cv_t<remove_reference_t<T>>::RTTI_Fields());
+              std::remove_cv_t<std::remove_reference_t<T>>::RTTI_Fields());
     }
 
     // Calls f(FieldRef) on the field called "name". Returns false if none matches.
     template<typename T, typename F>
-    constexpr bool visit_field(T &&obj, string_view name, F &&f)
+    constexpr bool visit_field(T &&obj, std::string_view name, F &&f)
     {
         static_assert(HasFields<T>, "Type has no SF_FIELDS declared.");
         bool found = false;
         apply([&](const auto &...fi)
               { ((fi.name == name ? (void) ((void) f(fi.Get(obj)), found = true) : (void) 0), ...); },
-              remove_cv_t<remove_reference_t<T>>::RTTI_Fields());
+              std::remove_cv_t<std::remove_reference_t<T>>::RTTI_Fields());
         return found;
     }
 } // namespace SF::Reflection

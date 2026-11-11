@@ -37,8 +37,8 @@ namespace SF::Engine
         // Filter entities based on search
         if (!searchStr.empty())
         {
-            visibleEntities.erase(ranges::remove_if(visibleEntities, [&searchStr](SF::Engine::Entity *e)
-                                                    { return e->GetName().find(searchStr) == std::string::npos; })
+            visibleEntities.erase(std::ranges::remove_if(visibleEntities, [&searchStr](SF::Engine::Entity *e)
+                                                         { return e->GetName().find(searchStr) == std::string::npos; })
                                           .begin(),
                                   visibleEntities.end());
         }

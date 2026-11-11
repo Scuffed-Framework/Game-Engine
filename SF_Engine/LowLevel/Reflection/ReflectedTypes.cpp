@@ -17,7 +17,7 @@ namespace SF::Engine
 
         bool DrawQuat(WidgetBuilder &wb, Quaternion &q, const FieldMeta &m)
         {
-            static unordered_map<uint64_t, EulerCache> cache; // keyed by the PushID stack
+            static std::unordered_map<std::uint64_t, EulerCache> cache; // keyed by the PushID stack
             EulerCache &c = cache[ImGui::GetID("##euler")];
 
             // Re-derive Euler only if the quat changed from elsewhere (gizmo, undo, load)

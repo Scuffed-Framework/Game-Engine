@@ -9,7 +9,7 @@
 
 namespace SF::Engine
 {
-    using namespace std;
+
 
     /**
      * @brief Class used to describe the video mode for a monitor.
@@ -84,7 +84,7 @@ namespace SF::Engine
          * Gets the name of this monitor.
          * @return The name of the monitor.
          */
-        [[nodiscard]] string GetName() const;
+        [[nodiscard]] std::string GetName() const;
 
         /**
          * Gets the available fullscreen video modes for this monitor.

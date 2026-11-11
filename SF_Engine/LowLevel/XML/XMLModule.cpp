@@ -25,7 +25,7 @@ namespace SF::Engine
         return result;
     }
 
-    void XMLNode::SetContent(const std::string &content)
+    void XMLNode::SetContent(const std::string &content) const
     {
         if (!node)
             return;
@@ -44,82 +44,6 @@ namespace SF::Engine
         std::string result(reinterpret_cast<const char *>(val));
         xmlFree(val);
         return result;
-    }
-
-    bool XMLNode::GetAttribute(const std::string &name, std::string &out) const
-    {
-        if (!node)
-            return false;
-        xmlChar *val = xmlGetProp(node, reinterpret_cast<const xmlChar *>(name.c_str()));
-        if (!val)
-            return false;
-        out = reinterpret_cast<const char *>(val);
-        xmlFree(val);
-        return true;
-    }
-
-    bool XMLNode::GetAttribute(const std::string &name, int &out) const
-    {
-        std::string s;
-        if (!GetAttribute(name, s))
-            return false;
-        try
-        {
-            out = std::stoi(s);
-            return true;
-        } catch (...)
-        {
-            return false;
-        }
-    }
-
-    bool XMLNode::GetAttribute(const std::string &name, float &out) const
-    {
-        std::string s;
-        if (!GetAttribute(name, s))
-            return false;
-        try
-        {
-            out = std::stof(s);
-            return true;
-        } catch (...)
-        {
-            return false;
-        }
-    }
-
-    bool XMLNode::GetAttribute(const std::string &name, bool &out) const
-    {
-        std::string s;
-        if (!GetAttribute(name, s))
-            return false;
-        out = (s == "true" || s == "1");
-        return true;
-    }
-
-    // Attribute setters
-
-    void XMLNode::SetAttribute(const std::string &name, const std::string &value)
-    {
-        if (!node)
-            return;
-        xmlSetProp(node, reinterpret_cast<const xmlChar *>(name.c_str()),
-                   reinterpret_cast<const xmlChar *>(value.c_str()));
-    }
-
-    void XMLNode::SetAttribute(const std::string &name, int value) { SetAttribute(name, std::to_string(value)); }
-
-    void XMLNode::SetAttribute(const std::string &name, float value)
-    {
-        std::ostringstream ss;
-        ss.precision(8);
-        ss << value;
-        SetAttribute(name, ss.str());
-    }
-
-    void XMLNode::SetAttribute(const std::string &name, bool value)
-    {
-        SetAttribute(name, value ? std::string("true") : std::string("false"));
     }
 
     // Child navigation
@@ -353,6 +277,26 @@ namespace SF::Engine
     {
         out = UUID::FromString(str);
         return true;
+    }
+
+    bool XMLNode::GetAttributeRaw(const std::string &name, std::string &out) const
+    {
+        if (!node)
+            return false;
+        xmlChar *v = xmlGetProp(node, reinterpret_cast<const xmlChar *>(name.c_str()));
+        if (!v)
+            return false;
+        out = reinterpret_cast<const char *>(v);
+        xmlFree(v);
+        return true;
+    }
+
+    void XMLNode::SetAttributeRaw(const std::string &name, const std::string &value) const
+    {
+        if (!node)
+            return;
+        xmlSetProp(node, reinterpret_cast<const xmlChar *>(name.c_str()),
+                   reinterpret_cast<const xmlChar *>(value.c_str()));
     }
 
 } // namespace SF::Engine

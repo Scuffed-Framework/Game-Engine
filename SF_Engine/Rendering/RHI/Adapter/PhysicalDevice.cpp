@@ -284,10 +284,10 @@ namespace SF::Engine
         return score;
     }
 
-    bool PhysicalDevice::IsExtensionSupported(string_view name) const
+    bool PhysicalDevice::IsExtensionSupported(std::string_view name) const
     {
-        return ranges::any_of(extensions,
-                              [name](const VkExtensionProperties &ext) { return name == ext.extensionName; });
+        return std::ranges::any_of(extensions,
+                                   [name](const VkExtensionProperties &ext) { return name == ext.extensionName; });
     }
 
     VkSampleCountFlagBits PhysicalDevice::GetMaxUsableSampleCount() const
