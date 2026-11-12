@@ -87,6 +87,10 @@ namespace SF::Engine
         auto *dev            = RenderSystem::Get()->GetLogicalDevice();
         const auto &bindings = shader->GetDescriptorBindings();
 
+        layoutBindings_.clear();
+        for (const auto &b: bindings)
+            layoutBindings_.insert(b.binding);
+
         VkDescriptorSetLayoutCreateInfo info{};
         info.sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
         info.flags        = pushDescriptors ? VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR : 0;

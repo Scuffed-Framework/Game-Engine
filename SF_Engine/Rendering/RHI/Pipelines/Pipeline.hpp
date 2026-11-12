@@ -2,6 +2,7 @@
 
 #include <Rendering/RHI/Commands/CommandBuffer.hpp>
 #include <Rendering/RHI/Shaders/Shader.hpp>
+#include <unordered_set>
 
 namespace SF::Engine
 {
@@ -32,5 +33,13 @@ namespace SF::Engine
         [[nodiscard]] virtual const VkPipeline &GetPipeline() const                       = 0;
         [[nodiscard]] virtual const VkPipelineLayout &GetPipelineLayout() const           = 0;
         [[nodiscard]] virtual const VkPipelineBindPoint &GetPipelineBindPoint() const     = 0;
+
+        [[nodiscard]] bool HasBinding(uint32_t binding) const
+        {
+            return layoutBindings_.empty() || layoutBindings_.contains(binding);
+        }
+
+    protected:
+        std::unordered_set<uint32_t> layoutBindings_;
     };
 } // namespace SF::Engine

@@ -93,9 +93,12 @@ namespace SF::Engine
         return dynamic_cast<const ImageDepth *>(rs->GetAttachment(attachmentName));
     }
 
-    void BindSharedCameraData(int bind, int count, DescriptorSet *set)
+    void BindSharedCameraData(int bind, int count, DescriptorSet *set, const Pipeline *pipeline = nullptr)
     {
-        VkDescriptorBufferInfo bi{GetSharedCameraBuffer().GetBuffer(), 0, VK_WHOLE_SIZE};
+        if (pipeline && !pipeline->HasBinding(static_cast<uint32_t>(bind)))
+            return;
+
+        const VkDescriptorBufferInfo bi{GetSharedCameraBuffer().GetBuffer(), 0, VK_WHOLE_SIZE};
         VkWriteDescriptorSet w0{};
         w0.sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
         w0.dstSet          = set->GetDescriptorSet();

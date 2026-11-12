@@ -60,7 +60,7 @@ namespace SF::Engine
             clearColor.float32[1] = 0.0f;
             clearColor.float32[2] = 0.0f;
             clearColor.float32[3] = 1.0f;
-            const VkImageSubresourceRange range{VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
+            constexpr VkImageSubresourceRange range{VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
 
             vkCmdClearColorImage(cmd, dummyTexture_->GetImage(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, &clearColor, 1,
                                  &range);
@@ -150,7 +150,7 @@ namespace SF::Engine
                 VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, VK_POLYGON_MODE_FILL, VK_CULL_MODE_NONE,
                 VK_FRONT_FACE_COUNTER_CLOCKWISE, false);
         blitSet_ = std::make_unique<DescriptorSet>(*blitPipeline_);
-        DescriptorSetWriteBuilder(*blitSet_)
+        DescriptorSetWriteBuilder(*blitSet_, *blitPipeline_)
                 .CombinedImageSampler(1, cloudCompositeRT_->GetView(), cloudCompositeRT_->GetSampler(),
                                       VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
                 .Build()
@@ -165,55 +165,43 @@ namespace SF::Engine
     void CloudSFERenderpass::BindDescriptors() const
     {
         // --- Raymarch set ---
-        auto raymarchWrites =
-                DescriptorSetWriteBuilder(*raymarchSet_)
-                        .Image(2, cloudRenderRT_->GetView(), VK_IMAGE_LAYOUT_GENERAL, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE)
-                        .Image(6, cloudNoise_->GetBaseTexture()->GetView(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
-                        .Image(7, cloudNoise_->GetDetailTexture()->GetView(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
-                        .Image(8, cloudNoise_->GetWeatherTexture()->GetView(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
-                        .Image(9, cloudNoise_->GetCurlTexture()->GetView(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
-                        .Image(10, AtmoLUTs::Get().GetTransmittanceLUT()->GetTexture()->GetView(),
-                               VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
-                        .Image(11, AtmoLUTs::Get().GetAerialPerspectiveLUT()->GetAerialPerspectiveRange()->GetView(),
-                               VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
-                        .Image(14, cloudDepthRT_->GetView(), VK_IMAGE_LAYOUT_GENERAL, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE)
-                        .CombinedImageSampler(20, AtmoLUTs::Get().GetSkyViewLUT()->GetTexture()->GetView(),
-                                              AtmoLUTs::Get().GetSkyViewLUT()->GetTexture()->GetSampler(),
-                                              VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
-                        .Image(22, cloudFogRT_->GetView(), VK_IMAGE_LAYOUT_GENERAL, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE)
-                        .Buffer(21, CloudData_->GetBuffer())
-                        .CombinedImageSampler(27, AtmoLUTs::Get().GetMultiScatterLUT()->GetTexture()->GetView(),
-                                              SharedSamplers::GetLinearClampSampler(),
-                                              VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
-                        .Buffer(29, atmoUBO_->GetBuffer())
-                        .Build();
-        raymarchWrites.Apply();
-        BindSharedCameraData(31, 1, raymarchSet_.get());
+
+        DescriptorSetWriteBuilder(*raymarchSet_, *raymarchPipeline_)
+                .Image(2, cloudRenderRT_->GetView(), VK_IMAGE_LAYOUT_GENERAL, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE)
+                .Image(6, cloudNoise_->GetBaseTexture()->GetView(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+                .Image(7, cloudNoise_->GetDetailTexture()->GetView(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+                .Image(8, cloudNoise_->GetWeatherTexture()->GetView(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+                .Image(9, cloudNoise_->GetCurlTexture()->GetView(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+                .Image(14, cloudDepthRT_->GetView(), VK_IMAGE_LAYOUT_GENERAL, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE)
+                .Image(22, cloudFogRT_->GetView(), VK_IMAGE_LAYOUT_GENERAL, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE)
+                .Buffer(21, CloudData_->GetBuffer())
+                .Buffer(29, atmoUBO_->GetBuffer())
+                .Build()
+                .Apply();
+
+        BindSharedCameraData(31, 1, raymarchSet_.get(), raymarchPipeline_.get());
 
         for (uint32_t i = 0; i < kFramesInFlight; ++i)
         {
             // --- Reconstruct set: only static bindings ---
-            auto reconstructWrites =
-                    DescriptorSetWriteBuilder(*reconstructSet_[i])
-                            .Image(3, cloudRenderRT_->GetView(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
-                            .Image(15, cloudDepthRT_->GetView(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
-                            .Image(23, cloudFogRT_->GetView(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
-                            .Buffer(21, CloudData_->GetBuffer())
-                            .Buffer(29, atmoUBO_->GetBuffer())
-                            // Initialize write targets with GENERAL layout
-                            .Image(12, reconColor_[i]->GetView(), VK_IMAGE_LAYOUT_GENERAL,
-                                   VK_DESCRIPTOR_TYPE_STORAGE_IMAGE)
-                            .Image(16, reconDepth_[i]->GetView(), VK_IMAGE_LAYOUT_GENERAL,
-                                   VK_DESCRIPTOR_TYPE_STORAGE_IMAGE)
-                            .Image(24, reconFog_[i]->GetView(), VK_IMAGE_LAYOUT_GENERAL,
-                                   VK_DESCRIPTOR_TYPE_STORAGE_IMAGE)
-                            // Initialize history with dummy texture
-                            .Image(18, dummyTexture_->GetView(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
-                            .Image(19, dummyTexture_->GetView(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
-                            .Image(26, dummyTexture_->GetView(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
-                            .Build();
-            reconstructWrites.Apply();
-            BindSharedCameraData(31, 1, reconstructSet_[i].get());
+
+            DescriptorSetWriteBuilder(*reconstructSet_[i], *reconstructPipeline_)
+                    .Image(3, cloudRenderRT_->GetView(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+                    .Image(15, cloudDepthRT_->GetView(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+                    .Image(23, cloudFogRT_->GetView(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+                    .Buffer(21, CloudData_->GetBuffer())
+                    .Buffer(29, atmoUBO_->GetBuffer())
+                    // Initialize write targets with GENERAL layout
+                    .Image(12, reconColor_[i]->GetView(), VK_IMAGE_LAYOUT_GENERAL, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE)
+                    .Image(16, reconDepth_[i]->GetView(), VK_IMAGE_LAYOUT_GENERAL, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE)
+                    .Image(24, reconFog_[i]->GetView(), VK_IMAGE_LAYOUT_GENERAL, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE)
+                    // Initialize history with dummy texture
+                    .Image(18, dummyTexture_->GetView(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+                    .Image(19, dummyTexture_->GetView(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+                    .Image(26, dummyTexture_->GetView(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+                    .Build()
+                    .Apply();
+            BindSharedCameraData(31, 1, reconstructSet_[i].get(), reconstructPipeline_.get());
 
             // --- Composite set: nothing static. The simplified Composite.shader no longer reads the
             // transmittance/multiscatter LUTs, CloudData, AtmosphereFrameUBO or camera UBO, so those

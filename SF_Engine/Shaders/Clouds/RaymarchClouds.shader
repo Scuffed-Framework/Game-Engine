@@ -6,7 +6,7 @@
 //   bottom-right : R = cloudMap density*50 at mid layer, G = coverage, B = densityScale/10
 //                  (R=1,G=0,B=1 solid magenta = ray misses mid shell)
 // 1..6 = single full-screen views of the same things (6 = camera/radii sanity).
-#define CLOUD_DEBUG 9
+#define CLOUD_DEBUG 0
 #include "Clouds/CloudCommon.si"
 #include "Noise/BlueNoise.si"
 
@@ -44,9 +44,9 @@ void main(uint3 dispatchThreadID : SV_DispatchThreadID)
     float blueNoise2 = BlueNoiseErrorDistrib(offsetId.x, offsetId.y, 0, 0u);
 
     // Same unprojection as Composite.shader (reverse-z far plane).
-    float4 clipSpace = float4(uv.x * 2.0f - 1.0f, 1.0f - uv.y * 2.0f, 0.0, 1.0);
+    float4 clipSpace = float4(uv.x * 2.0f - 1.0f, uv.y * 2.0f - 1.0f, 0.5, 1.0); // z=0.5: z=0 is w=0 (infinite far) with reverse-z -> NaN
     float4 viewPosH = mul(kAtmo.invProj, clipSpace);
-    float3 viewSpaceDir = viewPosH.xyz / viewPosH.w;
+    float3 viewSpaceDir = normalize(viewPosH.xyz / viewPosH.w);
     float3 rayDir = normalize(mul(kAtmo.invView, float4(viewSpaceDir, 0.0)).xyz);
 
 #if CLOUD_DEBUG != 0

@@ -3,6 +3,8 @@
 #include <Math/Time/Time.hpp>
 #include <string>
 
+#include <Rendering/RHI/Pipelines/Pipeline.hpp>
+
 namespace SF::Engine
 {
     // too many :(
@@ -35,5 +37,5 @@ namespace SF::Engine
 
     const Image2d *GetGBufferAlbedo();
 
-    void BindSharedCameraData(int bind, int count, DescriptorSet *set);
+    void BindSharedCameraData(int bind, int count, DescriptorSet *set, const Pipeline *pipeline);
 } // namespace SF::Engine

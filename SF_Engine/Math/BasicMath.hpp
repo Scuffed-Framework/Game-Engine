@@ -6,26 +6,98 @@
 #include "Quaternion/Quaternion.hpp"
 #include "Vectors/Vector.hpp"
 
-// so we dont have to put using namespace glm; everywhere
 namespace SF::Engine
 {
-    using glm::cross;
-    using glm::inverse;
-    using glm::inversesqrt;
-    using glm::normalize;
-
-    using glm::max;
-    using glm::min;
-
     using glm::abs;
     using glm::acos;
     using glm::acosh;
+    using glm::all;
+    using glm::any;
     using glm::asin;
     using glm::asinh;
+    using glm::atan;
+    using glm::atanh;
+    using glm::bitCount;
+    using glm::bitfieldExtract;
+    using glm::bitfieldInsert;
+    using glm::bitfieldReverse;
+    using glm::ceil;
+    using glm::clamp;
+    using glm::cos;
+    using glm::cosh;
+    using glm::cross;
+    using glm::degrees;
+    using glm::determinant;
+    using glm::distance;
+    using glm::dot;
+    using glm::equal;
+    using glm::exp;
+    using glm::exp2;
+    using glm::faceforward;
+    using glm::findLSB;
+    using glm::findMSB;
+    using glm::floatBitsToInt;
+    using glm::floatBitsToUint;
+    using glm::floor;
+    using glm::fma;
+    using glm::fract;
+    using glm::frexp;
+    using glm::greaterThan;
+    using glm::greaterThanEqual;
+    using glm::imulExtended;
+    using glm::intBitsToFloat;
+    using glm::inverse;
+    using glm::inversesqrt;
+    using glm::isinf;
+    using glm::isnan;
+    using glm::ldexp;
     using glm::length;
-
-    using glm::rotate;
-    using glm::translate;
+    using glm::lessThan;
+    using glm::lessThanEqual;
+    using glm::log;
+    using glm::log2;
+    using glm::matrixCompMult;
+    using glm::max;
+    using glm::min;
+    using glm::mix;
+    using glm::mod;
+    using glm::modf;
+    using glm::normalize;
+    using glm::not_;
+    using glm::notEqual;
+    using glm::outerProduct;
+    using glm::packDouble2x32;
+    using glm::packHalf2x16;
+    using glm::packSnorm2x16;
+    using glm::packSnorm4x8;
+    using glm::packUnorm2x16;
+    using glm::packUnorm4x8;
+    using glm::pow;
+    using glm::radians;
+    using glm::reflect;
+    using glm::refract;
+    using glm::round;
+    using glm::roundEven;
+    using glm::sign;
+    using glm::sin;
+    using glm::sinh;
+    using glm::smoothstep;
+    using glm::sqrt;
+    using glm::step;
+    using glm::tan;
+    using glm::tanh;
+    using glm::transpose;
+    using glm::trunc;
+    using glm::uaddCarry;
+    using glm::uintBitsToFloat;
+    using glm::umulExtended;
+    using glm::unpackDouble2x32;
+    using glm::unpackHalf2x16;
+    using glm::unpackSnorm2x16;
+    using glm::unpackSnorm4x8;
+    using glm::unpackUnorm2x16;
+    using glm::unpackUnorm4x8;
+    using glm::usubBorrow;
 
     using glm::double2;
     using glm::double2x2;

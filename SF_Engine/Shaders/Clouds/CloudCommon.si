@@ -5,7 +5,10 @@
 #define kGroundOcc 0.5
 // cloudMap returns a 0..1 shape value; scene units are metres, so scale to a physical per-metre
 // extinction (~0.01-0.05 for cumulus). Without this a single step is already fully opaque.
-#define kExtinctionPerMetre 0.02
+#define kExtinctionPerMetre 0.006
+// Lighting debug (shows the term at the first cloud hit, alpha 0 so it overlays opaquely; values are HDR):
+// 0 off | 1 sun visibility | 2 ambientLit | 3 groundLit | 4 skyBackgroundColor | 5 sun term (unshadowed, *phase) | 6 optical depth/5 | 7 upScaleColor | 8 sunDirection (rgb = xyz*0.5+0.5)
+#define CLOUD_LIGHT_DEBUG 9
 #include "../Atmosphere/Atmosphere.si"
 #include "../Common/Camera.si"
 
@@ -466,6 +469,8 @@ float4 cloudColorCompute(
 
     float transmittance = 1.0;
     float3 scatteredLight = float3(0.0, 0.0, 0.0);
+    float3 dbgVal = float3(0.0, 0.0, 0.0);
+    bool dbgSet = false;
 
     float3 groundToCloudTransfertIsoScatter;
     {
@@ -548,8 +553,44 @@ float4 cloudColorCompute(
                 float3 groundLit = lerp(skyBackgroundColor, groundToCloudTransfertIsoScatter, saturate(cloud.cloudBaseNoiseScale - normalizeHeight))
                     * saturate(1.0 - kGroundOcc + normalizeHeight) * 1.0;
 
-                float3 ambientLit = upScaleColor * powderEffect * (1.0 - sunDirection.y) * atmosphereTransmittance;
+                float3 ambientLit = upScaleColor * powderEffect * (0.5 + 0.5 * (1.0 - sunDirection.y)) * atmosphereTransmittance; // keep some sky ambient when the sun is high
 
+                #if CLOUD_LIGHT_DEBUG != 0
+                if (!dbgSet)
+                {
+                    dbgSet = true;
+#if CLOUD_LIGHT_DEBUG == 1
+                    dbgVal = participatingMedia.transmittanceToLight[0].xxx;
+#elif CLOUD_LIGHT_DEBUG == 2
+                    dbgVal = ambientLit;
+#elif CLOUD_LIGHT_DEBUG == 3
+                    dbgVal = groundLit;
+#elif CLOUD_LIGHT_DEBUG == 4
+                    dbgVal = skyBackgroundColor;
+#elif CLOUD_LIGHT_DEBUG == 5
+                    dbgVal = sunlightTerm * participatingMediaPhase.phase[0] * powderEffect;
+#elif CLOUD_LIGHT_DEBUG == 6
+                    dbgVal = (stepCloudDensity * stepT / 5.0).xxx;
+#elif CLOUD_LIGHT_DEBUG == 7
+                    dbgVal = upScaleColor;
+#elif CLOUD_LIGHT_DEBUG == 8
+                    dbgVal = sunDirection * 0.5 + 0.5;
+#elif CLOUD_LIGHT_DEBUG == 9
+                    {
+                        // QUADRANTS (shown as 1-exp(-4x) so tiny values are visible):
+                        // TL ambientLit | TR groundLit | BL sun term (unshadowed) | BR skyBackgroundColor
+                        float3 sunTerm = sunlightTerm * participatingMediaPhase.phase[0] * powderEffect;
+                        bool qr = uv.x >= 0.5;
+                        bool qb = uv.y >= 0.5;
+                        float3 pick = skyBackgroundColor;
+                        if (!qb && !qr) pick = ambientLit;
+                        else if (!qb && qr) pick = groundLit;
+                        else if (qb && !qr) pick = sunTerm;
+                        dbgVal = pick; // RAW HDR value: hover a pixel in RenderDoc and read it
+                    }
+#endif
+                }
+#endif
                 float sigmaS = stepCloudDensity;
                 float sigmaE = max(sigmaS, 1e-8);
 
@@ -578,7 +619,7 @@ float4 cloudColorCompute(
                     float3 sunSkyLuminance = sunVisibilityTerm * sunlightTerm * participatingMediaPhase.phase[ms] * powderEffect;
 
                     {
-                        float skyVisibilityTerm = participatingMediaAmbient.transmittanceToLight[ms];
+                        float skyVisibilityTerm = lerp(participatingMediaAmbient.transmittanceToLight[ms], 1.0, 0.35); // sky light is diffuse: never fully shadowed
                         sunSkyLuminance += skyVisibilityTerm * ambientLit;
                     }
 
@@ -612,7 +653,7 @@ float4 cloudColorCompute(
 
             // Convert to camera-relative meters for projection
             float3 rayHitCameraRelative = rayHitPos - worldPos;
-            float4 rayInH = mul(kCam.viewProjection, float4(rayHitCameraRelative, 1.0));
+            float4 rayInH = mul(kCam.viewProjection, float4(kCam.cameraPosition.xyz + rayHitCameraRelative, 1.0)); // viewProjection takes ABSOLUTE world pos; rayHitCameraRelative is a delta
             cloudZ = rayInH.z / rayInH.w;
 
             float rayHitHeight = length(rayHitCameraRelative);
@@ -701,6 +742,9 @@ float4 cloudColorCompute(
         lightingFog.xyz = scatteredLightTotal;
     }
 
+    #if CLOUD_LIGHT_DEBUG != 0
+    return float4(dbgVal, 0.0);
+#endif
     float4 result = float4(scatteredLight, transmittance);
     if (anyBadFloat(result) || any(isinf(result)))
     {

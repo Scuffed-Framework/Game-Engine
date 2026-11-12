@@ -201,7 +201,7 @@ namespace SF::Engine
                         .Image(5, rayDataRT_->GetView(), VK_IMAGE_LAYOUT_GENERAL, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE)
                         .Build();
         rayGenWrites.Apply();
-        BindSharedCameraData(kSSRCameraBind, 1, rayGenSet_.get());
+        BindSharedCameraData(kSSRCameraBind, 1, rayGenSet_.get(), rayGenPipeline_.get());
 
         auto traceWrites =
                 DescriptorSetWriteBuilder(*traceSet_)
@@ -212,7 +212,7 @@ namespace SF::Engine
                         .Image(7, traceHitRT_->GetView(), VK_IMAGE_LAYOUT_GENERAL, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE)
                         .Build();
         traceWrites.Apply();
-        BindSharedCameraData(kSSRCameraBind, 1, traceSet_.get());
+        BindSharedCameraData(kSSRCameraBind, 1, traceSet_.get(), tracePipeline_.get());
 
         auto compositeWrites = DescriptorSetWriteBuilder(*compositeSet_)
                                        .Buffer(0, ssrUBO_->GetBuffer())
@@ -223,7 +223,7 @@ namespace SF::Engine
                                        .Build();
         compositeWrites.Apply();
         compositeHizGeneration_ = ~0ull; // binding 9 (pyramid) is rewritten from Render()
-        BindSharedCameraData(kSSRCameraBind, 1, compositeSet_.get());
+        BindSharedCameraData(kSSRCameraBind, 1, compositeSet_.get(), compositePipeline_.get());
 
         for (uint32_t i = 0; i < kFramesInFlight; ++i)
         {
@@ -239,7 +239,7 @@ namespace SF::Engine
                                                  VK_DESCRIPTOR_TYPE_STORAGE_IMAGE)
                                           .Build();
             temporalWrites.Apply();
-            BindSharedCameraData(kSSRCameraBind, 1, temporalSet_[i].get());
+            BindSharedCameraData(kSSRCameraBind, 1, temporalSet_[i].get(), temporalPipeline_.get());
 
             auto spatialWrites =
                     DescriptorSetWriteBuilder(*spatialSet_[i])
@@ -249,7 +249,7 @@ namespace SF::Engine
                             .Image(6, filteredRT_->GetView(), VK_IMAGE_LAYOUT_GENERAL, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE)
                             .Build();
             spatialWrites.Apply();
-            BindSharedCameraData(kSSRCameraBind, 1, spatialSet_[i].get());
+            BindSharedCameraData(kSSRCameraBind, 1, spatialSet_[i].get(), spatialPipeline_.get());
         }
     }
 

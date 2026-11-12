@@ -21,7 +21,7 @@ namespace SF::Engine
 
         void BindDescriptor(const CommandBuffer &commandBuffer) const;
 
-        const VkDescriptorSet &GetDescriptorSet() const { return descriptorSet; }
+        [[nodiscard]] const VkDescriptorSet &GetDescriptorSet() const { return descriptorSet; }
 
     private:
         VkPipelineLayout pipelineLayout = VK_NULL_HANDLE;
