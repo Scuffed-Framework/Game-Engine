@@ -20,7 +20,6 @@
 
 namespace SF::Engine
 {
-
     struct Std140 CloudData
     {
         float cloudBottomRadius;
@@ -41,7 +40,7 @@ namespace SF::Engine
         float cloudCurlNoiseScale;
 
         float cloudWeatherUVScale;
-        float percipitationBias;
+        float precipitationBias;
         float FadeDistance2d;
         float fadeSmoothDist;
 
@@ -81,7 +80,7 @@ namespace SF::Engine
         float cloudCurlNoiseScale = 1.0f;
 
         float cloudWeatherUVScale = 0.020f; // 1/km: one weather tile = 50 km
-        float percipitationBias   = 1.0f;
+        float precipitationBias   = 1.0f;
         float FadeDistance2d      = 1.0f;
         float fadeSmoothDist      = 1.0f;
         float time{};

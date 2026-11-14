@@ -47,13 +47,29 @@
 
 namespace SF::Engine
 {
-
-
     inline constexpr float Pi       = 3.14159265358979323846f;
     inline constexpr float TwoPi    = 2.0f * Pi;
     inline constexpr float HalfPi   = 0.5f * Pi;
     inline constexpr float DegToRad = Pi / 180.0f;
     inline constexpr float RadToDeg = 180.0f / Pi;
+
+    namespace Extensions
+    {
+        template<std::floating_point T = float>
+        static constexpr T Pi = T(3.14159265358979323846);
+
+        template<std::floating_point T = float>
+        static constexpr T TwoPi = T(2) * Pi<T>;
+
+        template<std::floating_point T = float>
+        static constexpr T HalfPi = T(0.5) * Pi<T>;
+
+        template<std::floating_point T = float>
+        static constexpr T DegToRad = Pi<T> / T(180);
+
+        template<std::floating_point T = float>
+        static constexpr T RadToDeg = T(180) / Pi<T>;
+    }; // namespace Extensions
 
     /**
      * @brief Concept for arithmetic types

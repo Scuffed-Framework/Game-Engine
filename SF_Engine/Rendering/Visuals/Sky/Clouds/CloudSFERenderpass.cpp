@@ -6,7 +6,6 @@
 #include <Rendering/SharedFunctions.hpp>
 #include <Rendering/SharedSamplers.hpp>
 #include <Rendering/Visuals/Sky/Atmosphere/LUT/AtmoLUTs.hpp>
-
 #include "CloudSFERenderpass.hpp"
 
 namespace SF::Engine
@@ -172,6 +171,14 @@ namespace SF::Engine
                 .Image(7, cloudNoise_->GetDetailTexture()->GetView(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
                 .Image(8, cloudNoise_->GetWeatherTexture()->GetView(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
                 .Image(9, cloudNoise_->GetCurlTexture()->GetView(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+                // Atmosphere LUTs: were missing -> inTransmittanceLut/inSkyViewLut/inMultiScatterLUT unbound -> all
+                // cloud lighting zero
+                .Image(10, AtmoLUTs::Get().GetTransmittanceLUT()->GetTexture()->GetView(),
+                       VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+                .CombinedImageSampler(20, AtmoLUTs::Get().GetSkyViewLUT()->GetTexture()->GetView(),
+                                      SharedSamplers::GetLinearClampSampler(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+                .CombinedImageSampler(27, AtmoLUTs::Get().GetMultiScatterLUT()->GetTexture()->GetView(),
+                                      SharedSamplers::GetLinearClampSampler(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
                 .Image(14, cloudDepthRT_->GetView(), VK_IMAGE_LAYOUT_GENERAL, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE)
                 .Image(22, cloudFogRT_->GetView(), VK_IMAGE_LAYOUT_GENERAL, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE)
                 .Buffer(21, CloudData_->GetBuffer())

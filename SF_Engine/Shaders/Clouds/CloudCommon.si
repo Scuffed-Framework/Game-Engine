@@ -8,7 +8,7 @@
 #define kExtinctionPerMetre 0.006
 // Lighting debug (shows the term at the first cloud hit, alpha 0 so it overlays opaquely; values are HDR):
 // 0 off | 1 sun visibility | 2 ambientLit | 3 groundLit | 4 skyBackgroundColor | 5 sun term (unshadowed, *phase) | 6 optical depth/5 | 7 upScaleColor | 8 sunDirection (rgb = xyz*0.5+0.5)
-#define CLOUD_LIGHT_DEBUG 9
+#define CLOUD_LIGHT_DEBUG 0
 #include "../Atmosphere/Atmosphere.si"
 #include "../Common/Camera.si"
 
@@ -134,7 +134,7 @@ struct CloudUBO
     float cloudCurlNoiseScale;
 
     float cloudWeatherUVScale;
-    float percipitationBias;
+    float precipitationBias;
     float FadeDistance2d;
     float fadeSmoothDist;
     
