@@ -1,4 +1,5 @@
-#include "../Clouds/CloudCommon.si"
+#include "Clouds/CloudCommon.si"
+#define kCloudExposure 0.35 // tune: overall cloud brightness
 #include "../Atmosphere/Atmosphere.si"
 
 // Writes a PREMULTIPLIED cloud layer into a private RT (binding 0, imageHdrSceneColor).
@@ -51,6 +52,7 @@ void main(uint3 dispatchThreadID : SV_DispatchThreadID)
             trans *= fogColor.a;
         }
 
+        rgb = 1.0 - exp(-rgb * kCloudExposure); // same tonemap the sky uses (1-exp), so clouds don't blow out against it
         outColor = float4(rgb, saturate(1.0 - trans));
     }
 

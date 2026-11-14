@@ -1,11 +1,14 @@
 #ifndef VOLUMETRIC_CLOUD_COMMON_GLSL
 #define VOLUMETRIC_CLOUD_COMMON_GLSL
 
+#define kAmbientScale 0.2
+
 #define kSkyMsExition 0.5
 #define kGroundOcc 0.5
 // cloudMap returns a 0..1 shape value; scene units are metres, so scale to a physical per-metre
 // extinction (~0.01-0.05 for cumulus). Without this a single step is already fully opaque.
 #define kExtinctionPerMetre 0.006
+#define kCloudSunIlluminance 40.0 // = atmosphereParams.sunIntensity. Scales BOTH the direct sun term and the multi-scatter LUT terms (the LUT is per unit illuminance)
 // Lighting debug (shows the term at the first cloud hit, alpha 0 so it overlays opaquely; values are HDR):
 // 0 off | 1 sun visibility | 2 ambientLit | 3 groundLit | 4 skyBackgroundColor | 5 sun term (unshadowed, *phase) | 6 optical depth/5 | 7 upScaleColor | 8 sunDirection (rgb = xyz*0.5+0.5)
 #define CLOUD_LIGHT_DEBUG 0
@@ -217,9 +220,11 @@ float3 cloudTypeGradient(float type, float normalizeHeight)
     return float3(lerp(stratus, stratocumulus, a), lerp(stratocumulus, cumulus, b), 0);
 }
 
-float getUniformPhase()
+float getUniformPhase() { return 1.0 / (4.0 * 3.14159265); }
+// VoL = dot(viewDir, sunDir): +1 means looking INTO the sun (forward scatter / silver lining)
+float cloudPhase(float VoL)
 {
-    return 0.5;
+    return lerp(hgPhase(-0.25, VoL), hgPhase(0.7, VoL), 0.6);
 }
 
 float dualLobPhase(float forward, float backward, float mixFactor, float VoL)
@@ -332,7 +337,7 @@ ParticipatingMedia volumetricShadow(float3 pos, float3 sunDirection, AtmoUBO atm
 
     const uint kStepLight = (uint)fixNum;
     // stepL in meters (cloud thickness / numSteps)
-    float stepL = (kCloud.cloudTopRadius - kCloud.cloudBottomRadius) / float(kStepLight);
+    float stepL = (kCloud.cloudTopRadius - kCloud.cloudBottomRadius) / float(kStepLight) / 8.0f;
 
     float d = stepL * 0.5;
 
@@ -460,7 +465,7 @@ float4 cloudColorCompute(
     float sampleT = tMin + 0.001 * stepT;
     sampleT += stepT * blueNoise;
 
-    float3 sunColor = float3(1); // physically correct :)
+    float3 sunColor = float3(kCloudSunIlluminance); // phase has a 1/(4*pi) factor, so the sun needs ~4*pi to compete with the sky LUT
     float3 sunDirection = normalize(kAtmo.sunDir.xyz);
 
     float VoL = dot(worldDir, sunDirection);
@@ -483,7 +488,7 @@ float4 cloudColorCompute(
 
     if (!bEarlyOutCloud)
     {
-        float phase = dualLobPhase(1.0, 1.0, 1.0, -VoL);
+        float phase = cloudPhase(VoL);
         ParticipatingMediaPhase participatingMediaPhase = getParticipatingMediaPhase(phase, 0.5);
 
         float3 rayHitPos = float3(0.0);
@@ -496,7 +501,7 @@ float4 cloudColorCompute(
             const float3 upVector = samplePos / sampleHeight;
             float viewZenithCosAngle = dot(sunDirection, upVector);
             float2 sampleUv = atmosUV(viewHeight, viewZenithCosAngle, atmosphere.bottomRadius, atmosphere.topRadius);
-            atmosphereTransmittance0 = inTransmittanceLut.SampleLevel(linearClampEdgeSampler, sampleUv, 0).rgb;
+            atmosphereTransmittance0 = inTransmittanceLut.SampleLevel(linearClampEdgeSampler, atmosUV(sampleHeight, viewZenithCosAngle, atmosphere.bottomRadius, atmosphere.topRadius), 0).rgb; // sampleHeight, NOT camera viewHeight: cloud at 1.5-6km still sees a low sun
         }
 
         float3 atmosphereTransmittance1;
@@ -506,7 +511,7 @@ float4 cloudColorCompute(
             const float3 upVector = samplePos / sampleHeight;
             float viewZenithCosAngle = dot(sunDirection, upVector);
             float2 sampleUv = atmosUV(viewHeight, viewZenithCosAngle, atmosphere.bottomRadius, atmosphere.topRadius);
-            atmosphereTransmittance1 = inTransmittanceLut.SampleLevel(linearClampEdgeSampler, sampleUv, 0).rgb;
+            atmosphereTransmittance1 = inTransmittanceLut.SampleLevel(linearClampEdgeSampler, atmosUV(sampleHeight, viewZenithCosAngle, atmosphere.bottomRadius, atmosphere.topRadius), 0).rgb;
         }
 
         float3 upScaleColor;
@@ -538,22 +543,26 @@ float4 cloudColorCompute(
                 float stepTransmittance = max(exp(-opticalDepth), exp(-opticalDepth * 0.25) * 0.7);
 
                 ParticipatingMedia participatingMedia = volumetricShadow(samplePos, sunDirection, atmosphere, (int)cloud.lightStepCount, 0.5 /* was 1.0 */);
-                ParticipatingMedia participatingMediaAmbient = participatingMedia; // kSkyMsExition == 0.5 == factor above; same result
+                ParticipatingMedia participatingMediaAmbient = volumetricShadow(samplePos, float3(0.0, 1.0, 0.0), atmosphere, (int)cloud.lightStepCount, kSkyMsExition); // sky light comes from ABOVE, so shadow it toward up (as in flower), not toward the sun
 
                 float powderEffect;
                 {
-                    float depthProbability = pow(clamp(stepCloudDensity * 8.0, 0.0, 1.0), remap(normalizeHeight, 0.3, 0.85, 0.5, 2.0));
+                    float densityN = stepCloudDensity / kExtinctionPerMetre;
+                    float depthProbability = pow(clamp(densityN * 8.0, 0.0, 1.0), remap(normalizeHeight, 0.3, 0.85, 0.5, 2.0));
                     depthProbability += 0.05;
+
                     float verticalProbability = pow(remap(normalizeHeight, 0.07, 0.22, 0.1, 1.0), 0.8);
                     powderEffect = getPowderEffect(depthProbability, verticalProbability, VoL);
                 }
 
                 float3 sunlightTerm = atmosphereTransmittance * sunColor;
 
-                float3 groundLit = lerp(skyBackgroundColor, groundToCloudTransfertIsoScatter, saturate(cloud.cloudBaseNoiseScale - normalizeHeight))
+                float3 groundLit = lerp(skyBackgroundColor, groundToCloudTransfertIsoScatter * kCloudSunIlluminance, saturate(cloud.cloudBaseNoiseScale - normalizeHeight))
                     * saturate(1.0 - kGroundOcc + normalizeHeight) * 1.0;
 
-                float3 ambientLit = upScaleColor * powderEffect * (0.5 + 0.5 * (1.0 - sunDirection.y)) * atmosphereTransmittance; // keep some sky ambient when the sun is high
+                float3 ambientLit = upScaleColor * kCloudSunIlluminance * kAmbientScale
+                    * lerp(0.5, 1.0, normalizeHeight)
+                    * (0.5 + 0.5 * (1.0 - sunDirection.y));
 
                 #if CLOUD_LIGHT_DEBUG != 0
                 if (!dbgSet)
@@ -619,7 +628,7 @@ float4 cloudColorCompute(
                     float3 sunSkyLuminance = sunVisibilityTerm * sunlightTerm * participatingMediaPhase.phase[ms] * powderEffect;
 
                     {
-                        float skyVisibilityTerm = lerp(participatingMediaAmbient.transmittanceToLight[ms], 1.0, 0.35); // sky light is diffuse: never fully shadowed
+                        float skyVisibilityTerm = participatingMediaAmbient.transmittanceToLight[ms];
                         sunSkyLuminance += skyVisibilityTerm * ambientLit;
                     }
 
