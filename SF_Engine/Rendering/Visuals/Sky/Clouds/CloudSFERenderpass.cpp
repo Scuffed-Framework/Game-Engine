@@ -84,12 +84,16 @@ namespace SF::Engine
 
         for (uint32_t i = 0; i < kFramesInFlight; ++i)
         {
+            // TRANSFER_DST: the history ring is cleared once below so every descriptor set can point at real history
+            // from frame 0.
+            constexpr VkImageUsageFlags kReconUsage =
+                    VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
             reconColor_[i] = std::make_unique<Image2d>(fullRes, VK_FORMAT_R16G16B16A16_SFLOAT, VK_IMAGE_LAYOUT_GENERAL,
-                                                       VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
-            reconDepth_[i] = std::make_unique<Image2d>(fullRes, VK_FORMAT_R32_SFLOAT, VK_IMAGE_LAYOUT_GENERAL,
-                                                       VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
-            reconFog_[i]   = std::make_unique<Image2d>(fullRes, VK_FORMAT_R16G16B16A16_SFLOAT, VK_IMAGE_LAYOUT_GENERAL,
-                                                       VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
+                                                       kReconUsage);
+            reconDepth_[i] =
+                    std::make_unique<Image2d>(fullRes, VK_FORMAT_R32_SFLOAT, VK_IMAGE_LAYOUT_GENERAL, kReconUsage);
+            reconFog_[i] = std::make_unique<Image2d>(fullRes, VK_FORMAT_R16G16B16A16_SFLOAT, VK_IMAGE_LAYOUT_GENERAL,
+                                                     kReconUsage);
         }
 
         // Transition all images to SHADER_READ_ONLY_OPTIMAL before BindDescriptors()
@@ -102,9 +106,22 @@ namespace SF::Engine
 
             for (uint32_t i = 0; i < kFramesInFlight; ++i)
             {
-                TransitionToReadOnly(cmd, reconColor_[i].get());
-                TransitionToReadOnly(cmd, reconDepth_[i].get());
-                TransitionToReadOnly(cmd, reconFog_[i].get());
+                // History ring starts as "no cloud": colour/fog (0,0,0,1) = no light, transmittance 1; depth r = 0
+                // (far). Cleared so every reconstruct descriptor set can point at real history from frame 0 (no dummy
+                // swap).
+                VkClearColorValue clearVal{};
+                clearVal.float32[3] = 1.0f;
+                constexpr VkImageSubresourceRange clearRange{VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
+
+                for (Image2d *img: {reconColor_[i].get(), reconDepth_[i].get(), reconFog_[i].get()})
+                {
+                    vkCmdClearColorImage(cmd, img->GetImage(), VK_IMAGE_LAYOUT_GENERAL, &clearVal, 1, &clearRange);
+                    Image::InsertImageMemoryBarrier(
+                            cmd, img->GetImage(), VK_ACCESS_TRANSFER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT,
+                            VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                            VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+                            VK_IMAGE_ASPECT_COLOR_BIT, 1, 0, 1, 0);
+                }
             }
 
             cmd.SubmitIdle();
@@ -173,8 +190,9 @@ namespace SF::Engine
                 .CombinedImageSampler(27, AtmoLUTs::Get().GetMultiScatterLUT()->GetTexture()->GetView(),
                                       SharedSamplers::GetLinearClampSampler(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
                 // Aerial perspective froxel volume + range: the same three resources Atmosphere.shader samples for
-                // geometry. Baked in AtmosphereSFERenderpass::PreRender (order 1) before this pass (order 100), and left
-                // in SHADER_READ_ONLY_OPTIMAL by AerialPerspectiveLUT::Bake. Own samplers, as the atmosphere pass does.
+                // geometry. Baked in AtmosphereSFERenderpass::PreRender (order 1) before this pass (order 100), and
+                // left in SHADER_READ_ONLY_OPTIMAL by AerialPerspectiveLUT::Bake. Own samplers, as the atmosphere pass
+                // does.
                 .CombinedImageSampler(30, apLut->GetAerialPerspectiveColorRGBTransR()->GetView(),
                                       apLut->GetAerialPerspectiveColorRGBTransR()->GetSampler(),
                                       VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
@@ -195,7 +213,11 @@ namespace SF::Engine
 
         for (uint32_t i = 0; i < kFramesInFlight; ++i)
         {
-            // --- Reconstruct set: only static bindings ---
+            // --- Reconstruct set: fully static. Slot i writes recon[i] and reads recon[i-1] as history, both fixed per
+            // slot, and layouts are fixed too (write target GENERAL after the pre-dispatch barrier, history READ_ONLY).
+            // Never re-write these per frame: without UPDATE_AFTER_BIND that is invalid while a submit using the set is
+            // pending.
+            const uint32_t hist = (i + kFramesInFlight - 1) % kFramesInFlight;
 
             DescriptorSetWriteBuilder(*reconstructSet_[i], *reconstructPipeline_)
                     .Image(3, cloudRenderRT_->GetView(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
@@ -207,18 +229,24 @@ namespace SF::Engine
                     .Image(12, reconColor_[i]->GetView(), VK_IMAGE_LAYOUT_GENERAL, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE)
                     .Image(16, reconDepth_[i]->GetView(), VK_IMAGE_LAYOUT_GENERAL, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE)
                     .Image(24, reconFog_[i]->GetView(), VK_IMAGE_LAYOUT_GENERAL, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE)
-                    // Initialize history with dummy texture
-                    .Image(18, dummyTexture_->GetView(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
-                    .Image(19, dummyTexture_->GetView(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
-                    .Image(26, dummyTexture_->GetView(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+                    // History = previous slot's reconstruction (cleared in the ctor, so valid from frame 0)
+                    .Image(18, reconColor_[hist]->GetView(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+                    .Image(19, reconDepth_[hist]->GetView(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+                    .Image(26, reconFog_[hist]->GetView(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
                     .Build()
                     .Apply();
             BindSharedCameraData(31, 1, reconstructSet_[i].get(), reconstructPipeline_.get());
 
-            // --- Composite set: nothing static. The simplified Composite.shader no longer reads the
-            // transmittance/multiscatter LUTs, CloudData, AtmosphereFrameUBO or camera UBO, so those
-            // bindings are stripped from its layout and writing them is invalid. Per-frame writes
-            // (RT, depth, recon colour/fog) happen in PreRender.
+            // --- Composite set: static too, except scene depth (binding 4), which PreRender rewrites only when the
+            // attachment changes (after a vkDeviceWaitIdle). The simplified Composite.shader no longer reads the
+            // transmittance/multiscatter LUTs, CloudData, AtmosphereFrameUBO or camera UBO; the builder skips bindings
+            // that aren't in its layout.
+            DescriptorSetWriteBuilder(*compositeSet_[i], *compositePipeline_)
+                    .Image(0, cloudCompositeRT_->GetView(), VK_IMAGE_LAYOUT_GENERAL, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE)
+                    .Image(13, reconColor_[i]->GetView(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+                    .Image(25, reconFog_[i]->GetView(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+                    .Build()
+                    .Apply();
         }
     }
 
@@ -256,10 +284,8 @@ namespace SF::Engine
         if (!depthImg || !colorImg)
             return;
 
-        const uint32_t cur    = frameSlot_ % kFramesInFlight;
-        const uint32_t hist   = (frameSlot_ + kFramesInFlight - 1) % kFramesInFlight;
-        const bool hasHistory = (framesSinceStart_ > 0);
-        drawThisFrame_        = false;
+        const uint32_t cur = frameSlot_ % kFramesInFlight;
+        drawThisFrame_     = false;
 
         // Composite writes a private RT (never "hdr"): READ_ONLY -> GENERAL for the compute write.
         Image::InsertImageMemoryBarrier(cmd, cloudCompositeRT_->GetImage(), VK_ACCESS_SHADER_READ_BIT,
@@ -268,33 +294,24 @@ namespace SF::Engine
                                         VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_IMAGE_ASPECT_COLOR_BIT, 1, 0, 1, 0);
         cloudCompositeRT_->SetLayout(VK_IMAGE_LAYOUT_GENERAL);
 
+        // Descriptor sets are written once in BindDescriptors(). Only the scene depth view can change (resize);
+        // rewriting a set a pending submit still uses is invalid (no UPDATE_AFTER_BIND), so idle first and only on
+        // change.
         {
-            VkDescriptorImageInfo colorInfo{};
-            colorInfo.sampler     = VK_NULL_HANDLE;
-            colorInfo.imageView   = cloudCompositeRT_->GetView();
-            colorInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
-
-            VkDescriptorImageInfo depthInfo{};
-            depthInfo.sampler     = VK_NULL_HANDLE;
-            depthInfo.imageView   = depthImg->GetView();
-            depthInfo.imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
-
-            VkWriteDescriptorSet writes[2]{};
-            writes[0].sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-            writes[0].dstSet          = compositeSet_[cur]->GetDescriptorSet();
-            writes[0].dstBinding      = 0;
-            writes[0].descriptorCount = 1;
-            writes[0].descriptorType  = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-            writes[0].pImageInfo      = &colorInfo;
-
-            writes[1].sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-            writes[1].dstSet          = compositeSet_[cur]->GetDescriptorSet();
-            writes[1].dstBinding      = 4;
-            writes[1].descriptorCount = 1;
-            writes[1].descriptorType  = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-            writes[1].pImageInfo      = &depthInfo;
-
-            DescriptorSet::Update({writes[0], writes[1]});
+            const uint64_t generation = RenderSystem::Get()->GetAttachmentGeneration();
+            if (generation != lastAttachmentGeneration_ || depthImg != lastDepthImg_)
+            {
+                vkDeviceWaitIdle(RenderSystem::Get()->GetLogicalDevice()->GetLogicalDevice());
+                for (const auto &i: compositeSet_)
+                {
+                    DescriptorSetWriteBuilder(*i, *compositePipeline_)
+                            .Image(4, depthImg->GetView(), VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL)
+                            .Build()
+                            .Apply();
+                }
+                lastAttachmentGeneration_ = generation;
+                lastDepthImg_             = depthImg;
+            }
         }
 
         totalTime_ += 0.016f;
@@ -357,114 +374,6 @@ namespace SF::Engine
                         VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_IMAGE_ASPECT_COLOR_BIT, 1, 0, 1, 0);
                 reconTarget->SetLayout(VK_IMAGE_LAYOUT_GENERAL);
             }
-        }
-
-        {
-            VkDescriptorImageInfo imageInfos[9]{};
-            VkDescriptorBufferInfo bufferInfos[2]{};
-            VkWriteDescriptorSet writes[11]{};
-            uint32_t writeCount = 0;
-
-            auto addImageWrite = [&](uint32_t binding, VkImageView view, VkImageLayout layout, VkDescriptorType type)
-            {
-                imageInfos[writeCount].sampler     = VK_NULL_HANDLE;
-                imageInfos[writeCount].imageView   = view;
-                imageInfos[writeCount].imageLayout = layout;
-
-                writes[writeCount].sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-                writes[writeCount].dstSet          = reconstructSet_[cur]->GetDescriptorSet();
-                writes[writeCount].dstBinding      = binding;
-                writes[writeCount].descriptorCount = 1;
-                writes[writeCount].descriptorType  = type;
-                writes[writeCount].pImageInfo      = &imageInfos[writeCount];
-                writeCount++;
-            };
-
-            auto addBufferWrite = [&](uint32_t binding, VkBuffer buffer)
-            {
-                const uint32_t bufIdx      = writeCount - 9;
-                bufferInfos[bufIdx].buffer = buffer;
-                bufferInfos[bufIdx].offset = 0;
-                bufferInfos[bufIdx].range  = VK_WHOLE_SIZE;
-
-                writes[writeCount].sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-                writes[writeCount].dstSet          = reconstructSet_[cur]->GetDescriptorSet();
-                writes[writeCount].dstBinding      = binding;
-                writes[writeCount].descriptorCount = 1;
-                writes[writeCount].descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-                writes[writeCount].pBufferInfo     = &bufferInfos[bufIdx];
-                writeCount++;
-            };
-
-            // Static read-only inputs (quarter-res targets are in SHADER_READ_ONLY_OPTIMAL)
-            addImageWrite(3, cloudRenderRT_->GetView(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                          VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
-            addImageWrite(15, cloudDepthRT_->GetView(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                          VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
-            addImageWrite(23, cloudFogRT_->GetView(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                          VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
-
-            // Current frame write targets (in GENERAL layout)
-            addImageWrite(12, reconColor_[cur]->GetView(), VK_IMAGE_LAYOUT_GENERAL, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
-            addImageWrite(16, reconDepth_[cur]->GetView(), VK_IMAGE_LAYOUT_GENERAL, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
-            addImageWrite(24, reconFog_[cur]->GetView(), VK_IMAGE_LAYOUT_GENERAL, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
-
-            // History read bindings
-            if (hasHistory)
-            {
-                // Valid history: use previous frame's reconstruction outputs
-                addImageWrite(18, reconColor_[hist]->GetView(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                              VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
-                addImageWrite(19, reconDepth_[hist]->GetView(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                              VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
-                addImageWrite(26, reconFog_[hist]->GetView(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                              VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
-            } else
-            {
-                // Frame 0: use dummy texture to avoid layout conflict
-                // (current frame's images are in GENERAL, can't be read as SHADER_READ_ONLY_OPTIMAL)
-                addImageWrite(18, dummyTexture_->GetView(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                              VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
-                addImageWrite(19, dummyTexture_->GetView(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                              VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
-                addImageWrite(26, dummyTexture_->GetView(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                              VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE);
-            }
-
-            // Uniform buffers
-            addBufferWrite(21, CloudData_->GetBuffer());
-            addBufferWrite(29, atmoUBO_->GetBuffer());
-
-            DescriptorSet::Update(std::vector<VkWriteDescriptorSet>(writes, writes + writeCount));
-        }
-
-        {
-            VkDescriptorImageInfo imageInfos[2]{};
-
-            imageInfos[0].sampler     = VK_NULL_HANDLE;
-            imageInfos[0].imageView   = reconColor_[cur]->GetView();
-            imageInfos[0].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-
-            imageInfos[1].sampler     = VK_NULL_HANDLE;
-            imageInfos[1].imageView   = reconFog_[cur]->GetView();
-            imageInfos[1].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-
-            VkWriteDescriptorSet writes[2]{};
-            writes[0].sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-            writes[0].dstSet          = compositeSet_[cur]->GetDescriptorSet();
-            writes[0].dstBinding      = 13;
-            writes[0].descriptorCount = 1;
-            writes[0].descriptorType  = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-            writes[0].pImageInfo      = &imageInfos[0];
-
-            writes[1].sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-            writes[1].dstSet          = compositeSet_[cur]->GetDescriptorSet();
-            writes[1].dstBinding      = 25;
-            writes[1].descriptorCount = 1;
-            writes[1].descriptorType  = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-            writes[1].pImageInfo      = &imageInfos[1];
-
-            DescriptorSet::Update({writes[0], writes[1]});
         }
 
         reconstructPipeline_->BindPipeline(cmd);
