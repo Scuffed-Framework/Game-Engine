@@ -152,22 +152,27 @@ namespace SF::Engine
             uint32_t groupsY = (height_ + 7) / 8;
             vkCmdDispatch(cmd, groupsX, groupsY, 1);
 
+            // Consumers read this volume from compute (Atmosphere.shader, RaymarchClouds.shader) as well as fragment shaders,
+            // so the post-bake barrier has to make the writes visible to both stages.
+            constexpr VkPipelineStageFlags kConsumerStages =
+                    VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
+
             Image::InsertImageMemoryBarrier(cmd, aerialPerspColorRGBTransR_->GetImage(), VK_ACCESS_SHADER_WRITE_BIT,
                                             VK_ACCESS_SHADER_READ_BIT, VK_IMAGE_LAYOUT_GENERAL,
                                             VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                                            VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+                                            VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, kConsumerStages,
                                             VK_IMAGE_ASPECT_COLOR_BIT, 1, 0, 1, 0);
 
             Image::InsertImageMemoryBarrier(cmd, aerialPerspTransGB_->GetImage(), VK_ACCESS_SHADER_WRITE_BIT,
                                             VK_ACCESS_SHADER_READ_BIT, VK_IMAGE_LAYOUT_GENERAL,
                                             VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                                            VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+                                            VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, kConsumerStages,
                                             VK_IMAGE_ASPECT_COLOR_BIT, 1, 0, 1, 0);
 
             Image::InsertImageMemoryBarrier(cmd, aerialPerspRange_->GetImage(), VK_ACCESS_SHADER_WRITE_BIT,
                                             VK_ACCESS_SHADER_READ_BIT, VK_IMAGE_LAYOUT_GENERAL,
                                             VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                                            VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+                                            VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, kConsumerStages,
                                             VK_IMAGE_ASPECT_COLOR_BIT, 1, 0, 1, 0);
 
             everBaked_ = true;
