@@ -1,5 +1,4 @@
 #include "Clouds/CloudCommon.si"
-#define kCloudExposure 0.35 // tune: overall cloud brightness
 #include "../Atmosphere/Atmosphere.si"
 
 // Writes a PREMULTIPLIED cloud layer into a private RT (binding 0, imageHdrSceneColor).

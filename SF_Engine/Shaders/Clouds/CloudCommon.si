@@ -4,13 +4,21 @@
 #define kAmbientScale 0.2
 
 #define kSkyMsExition 0.5
+#define kLightStepMul 1.6 // light-ray step growth (flower: cloudLightStepMul). First step ~35m, 8 steps reach ~2.4km
 #define kGroundOcc 0.5
+#define kCloudExposure 0.35 // tune: overall cloud brightness. Composite.shader tonemaps with 1-exp(-rgb*kCloudExposure); the aerial-perspective term is pre-divided by this so it lands on the sky's exposure-1 curve.
+// Dual-lobe Henyey-Greenstein (octave 0). MS octave n scales both eccentricities by c^n (Wrenninge), so the lobes widen with each octave.
+#define kPhaseForwardG 0.7
+#define kPhaseBackwardG -0.25
+#define kPhaseForwardMix 0.6 // weight of the forward lobe
+#define kMaxMsOctaves 8
 // cloudMap returns a 0..1 shape value; scene units are metres, so scale to a physical per-metre
 // extinction (~0.01-0.05 for cumulus). Without this a single step is already fully opaque.
 #define kExtinctionPerMetre 0.006
 #define kCloudSunIlluminance 40.0 // = atmosphereParams.sunIntensity. Scales BOTH the direct sun term and the multi-scatter LUT terms (the LUT is per unit illuminance)
 // Lighting debug (shows the term at the first cloud hit, alpha 0 so it overlays opaquely; values are HDR):
 // 0 off | 1 sun visibility | 2 ambientLit | 3 groundLit | 4 skyBackgroundColor | 5 sun term (unshadowed, *phase) | 6 optical depth/5 | 7 upScaleColor | 8 sunDirection (rgb = xyz*0.5+0.5)
+// 10 full MS sun term (octave sum, powder on octave 0) | 11 sky MS visibility sum/4
 #define CLOUD_LIGHT_DEBUG 0
 #include "../Atmosphere/Atmosphere.si"
 #include "../Common/Camera.si"
@@ -107,6 +115,15 @@ Texture2D<float> inSDSMShadowDepth;
 [[vk::binding(29, 0)]]
 ConstantBuffer<AtmoUBO> kAtmo;
 
+// Aerial perspective froxel volume (AtmoLUTs::GetAerialPerspectiveLUT, baked every frame in AtmosphereSFERenderpass::PreRender).
+// Indexed by SCREEN uv: the bake uses the same invProj/invView as this pass, so a ray's full-res uv works as-is.
+[[vk::binding(30, 0)]]
+Sampler3D inAerialPerspColorRGBTransR; // rgb = in-scatter (already x sun illuminance), a = T.r
+[[vk::binding(32, 0)]]
+Sampler3D inAerialPerspTransGB;        // rg = T.gb
+[[vk::binding(33, 0)]]
+Sampler2D inAerialPerspRange;          // r = distToTravel of this ray (<0: ray misses the atmosphere)
+
 [[vk::binding(31, 0)]]
 ConstantBuffer<Camera> kCam;
 
@@ -144,6 +161,12 @@ struct CloudUBO
     float2 Wind;
     float Speed;
     float unused;
+
+    // Wrenninge "Oz" multiple-scattering octaves
+    float msAttenuation;      // a: extinction falloff per octave
+    float msContribution;     // b: energy weight per octave
+    float msPhaseAttenuation; // c: eccentricity falloff per octave, g_n = g * (1 - c)^n
+    float msOctaves;
 };
 
 float saturate(float x) { return clamp(x, 0.0, 1.0); }
@@ -222,9 +245,15 @@ float3 cloudTypeGradient(float type, float normalizeHeight)
 
 float getUniformPhase() { return 1.0 / (4.0 * 3.14159265); }
 // VoL = dot(viewDir, sunDir): +1 means looking INTO the sun (forward scatter / silver lining)
+// Dual-lobe HG for MS octave n. eccScale = (1 - c)^n (1.0 = the real single-scatter phase).
+float cloudPhaseOctave(float VoL, float eccScale)
+{
+    return lerp(hgPhase(kPhaseBackwardG * eccScale, VoL), hgPhase(kPhaseForwardG * eccScale, VoL), kPhaseForwardMix);
+}
+
 float cloudPhase(float VoL)
 {
-    return lerp(hgPhase(-0.25, VoL), hgPhase(0.7, VoL), 0.6);
+    return cloudPhaseOctave(VoL, 1.0);
 }
 
 float dualLobPhase(float forward, float backward, float mixFactor, float VoL)
@@ -297,77 +326,117 @@ float cloudMap(float3 posMeter, float normalizeHeight)
     return cloudDensity * densityShape * kExtinctionPerMetre;
 }
 
-struct ParticipatingMedia
+// Optical depth (dimensionless: extinction in 1/m integrated over metres) from `pos` along `dir` through the cloud layer.
+// ONE march feeds every multiple-scattering octave: octave n simply sees od * a^n (Wrenninge), so the octave
+// count costs no extra cloudMap taps. pos: world position in METERS (absolute from planet center).
+float cloudLightOpticalDepth(float3 pos, float3 dir, int lightSteps)
 {
-    float extinctionCoefficients[2];
-    float transmittanceToLight[2];
-    float extinctionAcc[2];
-};
+    const float layerThickness = kCloud.cloudTopRadius - kCloud.cloudBottomRadius;
+    float stepL = layerThickness / float(lightSteps) / 16.0; // FIRST step; grows by kLightStepMul
+    float travelled = 0.0;
+    float od = 0.0;
 
-struct ParticipatingMediaPhase
-{
-    float phase[2];
-};
-
-ParticipatingMediaPhase getParticipatingMediaPhase(float basePhase, float baseMsPhaseFactor)
-{
-    ParticipatingMediaPhase participatingMediaPhase;
-    participatingMediaPhase.phase[0] = basePhase;
-
-    const float uniformPhase = getUniformPhase();
-    float MsPhaseFactor = baseMsPhaseFactor;
-
-    for (int ms = 1; ms < 2; ms++)
+    for (int j = 0; j < lightSteps; j++)
     {
-        participatingMediaPhase.phase[ms] = lerp(uniformPhase, participatingMediaPhase.phase[0], MsPhaseFactor);
-        MsPhaseFactor *= MsPhaseFactor;
+        float3 samplePos = pos + dir * (travelled + 0.5 * stepL);
+        float normalizeHeight = (length(samplePos) - kCloud.cloudBottomRadius) / layerThickness;
+        od += cloudMap(samplePos, normalizeHeight) * stepL;
+        travelled += stepL;
+        stepL *= kLightStepMul;
     }
-
-    return participatingMediaPhase;
+    return od;
 }
 
-// pos: world position in METERS (absolute from planet center)
-ParticipatingMedia volumetricShadow(float3 pos, float3 sunDirection, AtmoUBO atmo, int fixNum, float msExtinctionFactor)
+// Wrenninge et al. multiple-scattering octaves (Sony Imageworks, Oz the Great and Powerful):
+//   L = sum_n  b^n * phase(g * (1-c)^n) * exp(-od * a^n)
+// a = attenuation (light penetrates deeper each octave), b = contribution (energy per octave), c = phase attenuation.
+// `powder` multiplies octave 0 ONLY: dark powder edges are a single-scatter effect, and applying them to the MS octaves
+// would black out thin edges that multiple scattering exists to fill back in.
+// Returns the phase-weighted sun visibility; multiply by the sun colour.
+float cloudMultiScatterSun(float od, float VoL, float powder)
 {
-    ParticipatingMedia participatingMedia;
+    const int octaves = clamp((int)kCloud.msOctaves, 1, kMaxMsOctaves);
+    float a = 1.0;
+    float b = 1.0;
+    float ecc = 1.0;
+    float L = 0.0;
 
-    int ms;
-    float extinctionAccumulation[2] = {0.0, 0.0};
-    float extinctionCoefficients[2] = {0.0, 0.0};
-
-    const uint kStepLight = (uint)fixNum;
-    // stepL in meters (cloud thickness / numSteps)
-    float stepL = (kCloud.cloudTopRadius - kCloud.cloudBottomRadius) / float(kStepLight) / 8.0f;
-
-    float d = stepL * 0.5;
-
-    for (uint j = 0; j < kStepLight; j++)
+    for (int n = 0; n < octaves; n++)
     {
-        float3 samplePos = pos + sunDirection * d;
-        float sampleHeight = length(samplePos);
-        float normalizeHeight = (sampleHeight - kCloud.cloudBottomRadius) / (kCloud.cloudTopRadius - kCloud.cloudBottomRadius);
+        const float phase = cloudPhaseOctave(VoL, ecc);
+        const float beers = exp(-od * a);
+        L += b * phase * beers * (n == 0 ? powder : 1.0);
 
-        extinctionCoefficients[0] = cloudMap(samplePos, normalizeHeight);
-        extinctionAccumulation[0] += extinctionCoefficients[0] * stepL;
-
-        float MsExtinctionFactorLocal = msExtinctionFactor;
-        for (ms = 1; ms < 2; ms++)
-        {
-            extinctionCoefficients[ms] = extinctionCoefficients[ms - 1] * MsExtinctionFactorLocal;
-            MsExtinctionFactorLocal *= MsExtinctionFactorLocal;
-            extinctionAccumulation[ms] += extinctionCoefficients[ms] * stepL;
-        }
-
-        d += stepL;
+        a *= kCloud.msAttenuation;
+        b *= kCloud.msContribution;
+        ecc *= 1.0 - kCloud.msPhaseAttenuation;
     }
+    return L;
+}
 
-    for (ms = 0; ms < 2; ms++)
+// Same octave series for the sky/ambient term: isotropic, so no phase and no powder.
+float cloudMultiScatterSky(float od)
+{
+    const int octaves = clamp((int)kCloud.msOctaves, 1, kMaxMsOctaves);
+    float a = 1.0;
+    float b = 1.0;
+    float L = 0.0;
+
+    for (int n = 0; n < octaves; n++)
     {
-        participatingMedia.transmittanceToLight[ms] = exp(-extinctionAccumulation[ms]);
-        participatingMedia.extinctionAcc[ms] = extinctionAccumulation[ms];
+        L += b * exp(-od * a);
+        a *= kCloud.msAttenuation;
+        b *= kCloud.msContribution;
     }
+    return L;
+}
 
-    return participatingMedia;
+// Aerial perspective between the camera and a cloud hit, from the same froxel volume the geometry path uses
+// (Atmosphere.shader::sampleAerialPerspective). uv = screen uv of this ray, dist = metres from the camera to the hit.
+void sampleCloudAerialPerspective(float2 uv, float dist, float3 camPos, float3 dir, float topRadius,
+                                  out float3 outScatter, out float3 outTransmit)
+{
+    outScatter = float3(0.0);
+    outTransmit = float3(1.0);
+
+    const float maxDist = inAerialPerspRange.SampleLevel(uv, 0.0).r;
+    if (!(maxDist > 0.0))
+        return; // ray misses the atmosphere (bake wrote -1), or the range texel is NaN
+
+    // The bake uses quadratic slices (p*p*maxDist) only while the camera is inside the atmosphere, linear slices from
+    // space, and measures distance from the atmosphere ENTRY point when starting outside it.
+    const bool insideAtmo = length(camPos) < topRadius;
+    float d = dist;
+    if (!insideAtmo)
+        d = max(dist - max(raySphereIntersect(camPos, dir, topRadius).x, 0.0), 0.0);
+
+    float t = saturate(d / maxDist);
+    if (insideAtmo)
+        t = sqrt(t);
+
+    uint lutW, lutH, lutD;
+    inAerialPerspColorRGBTransR.GetDimensions(lutW, lutH, lutD);
+    const float sliceCount = float(max(lutD, 1u));
+
+    // Slice i holds the accumulation out to ((i+1)/N)^2 * maxDist but texel i is CENTRED at (i+0.5)/N, so sample at
+    // t - 0.5/N; closer than slice 0's far edge, fade in from nothing (optical depth is linear over a short run).
+    float nearFade = saturate(t * sliceCount);
+    if (insideAtmo)
+        nearFade *= nearFade;
+    const float w = clamp(t - 0.5 / sliceCount, 0.5 / sliceCount, 1.0 - 0.5 / sliceCount);
+
+    const float4 ct = inAerialPerspColorRGBTransR.SampleLevel(float3(uv, w), 0.0);
+    const float2 tgb = inAerialPerspTransGB.SampleLevel(float3(uv, w), 0.0).rg;
+
+    const float3 scatter = ct.rgb * nearFade;
+    const float3 transmit = saturate(lerp(float3(1.0), float3(ct.a, tgb.x, tgb.y), nearFade));
+
+    // The very first bake (AtmoLUTs ctor) runs with a zeroed frame UBO and writes NaN; never let that reach the cloud RT.
+    if (any(isnan(scatter)) || any(isinf(scatter)) || any(isnan(transmit)))
+        return;
+
+    outScatter = scatter;
+    outTransmit = transmit;
 }
 
 float4 cloudColorCompute(
@@ -488,9 +557,6 @@ float4 cloudColorCompute(
 
     if (!bEarlyOutCloud)
     {
-        float phase = cloudPhase(VoL);
-        ParticipatingMediaPhase participatingMediaPhase = getParticipatingMediaPhase(phase, 0.5);
-
         float3 rayHitPos = float3(0.0);
         float rayHitPosWeight = 0.0;
 
@@ -533,8 +599,6 @@ float4 cloudColorCompute(
             float3 atmosphereTransmittance = lerp(atmosphereTransmittance0, atmosphereTransmittance1, saturate(sampleT / marchingDistance));
 
             float stepCloudDensity = cloudMap(samplePos, normalizeHeight);
-            rayHitPos += samplePos * transmittance;
-            rayHitPosWeight += transmittance;
 
             if (stepCloudDensity > 0.0)
             {
@@ -542,8 +606,17 @@ float4 cloudColorCompute(
                 float opticalDepth = stepCloudDensity * stepT;
                 float stepTransmittance = max(exp(-opticalDepth), exp(-opticalDepth * 0.25) * 0.7);
 
-                ParticipatingMedia participatingMedia = volumetricShadow(samplePos, sunDirection, atmosphere, (int)cloud.lightStepCount, 0.5 /* was 1.0 */);
-                ParticipatingMedia participatingMediaAmbient = volumetricShadow(samplePos, float3(0.0, 1.0, 0.0), atmosphere, (int)cloud.lightStepCount, kSkyMsExition); // sky light comes from ABOVE, so shadow it toward up (as in flower), not toward the sun
+                // Cloud "hit" position (feeds cloudZ for reprojection and the aerial-perspective distance): weight each
+                // step by the opacity it contributes. It used to be accumulated before the density test, so empty steps
+                // voted too and the hit landed mid-way along the whole empty ray instead of at the cloud.
+                const float hitWeight = transmittance * (1.0 - stepTransmittance);
+                rayHitPos += samplePos * hitWeight;
+                rayHitPosWeight += hitWeight;
+
+                const int lightSteps = (int)cloud.lightStepCount;
+                const float3 sampleUp = samplePos / sampleHeight;
+                const float odSun = cloudLightOpticalDepth(samplePos, sunDirection, lightSteps);
+                const float odSky = cloudLightOpticalDepth(samplePos, sampleUp, lightSteps); // sky light comes from ABOVE: radial up at the sample, not world +Y (they diverge ~2.5 deg at 280 km)
 
                 float powderEffect;
                 {
@@ -557,6 +630,10 @@ float4 cloudColorCompute(
 
                 float3 sunlightTerm = atmosphereTransmittance * sunColor;
 
+                // Multiple-scattering octave sums (Wrenninge/Oz): sun = sum b^n * dualHG(g c^n) * beers(od a^n), powder on octave 0.
+                const float sunMs = cloudMultiScatterSun(odSun, VoL, powderEffect);
+                const float skyMs = cloudMultiScatterSky(odSky);
+
                 float3 groundLit = lerp(skyBackgroundColor, groundToCloudTransfertIsoScatter * kCloudSunIlluminance, saturate(cloud.cloudBaseNoiseScale - normalizeHeight))
                     * saturate(1.0 - kGroundOcc + normalizeHeight) * 1.0;
 
@@ -569,7 +646,7 @@ float4 cloudColorCompute(
                 {
                     dbgSet = true;
 #if CLOUD_LIGHT_DEBUG == 1
-                    dbgVal = participatingMedia.transmittanceToLight[0].xxx;
+                    dbgVal = exp(-odSun).xxx;
 #elif CLOUD_LIGHT_DEBUG == 2
                     dbgVal = ambientLit;
 #elif CLOUD_LIGHT_DEBUG == 3
@@ -577,18 +654,22 @@ float4 cloudColorCompute(
 #elif CLOUD_LIGHT_DEBUG == 4
                     dbgVal = skyBackgroundColor;
 #elif CLOUD_LIGHT_DEBUG == 5
-                    dbgVal = sunlightTerm * participatingMediaPhase.phase[0] * powderEffect;
+                    dbgVal = sunlightTerm * cloudPhase(VoL) * powderEffect;
 #elif CLOUD_LIGHT_DEBUG == 6
                     dbgVal = (stepCloudDensity * stepT / 5.0).xxx;
 #elif CLOUD_LIGHT_DEBUG == 7
                     dbgVal = upScaleColor;
 #elif CLOUD_LIGHT_DEBUG == 8
                     dbgVal = sunDirection * 0.5 + 0.5;
+#elif CLOUD_LIGHT_DEBUG == 10
+                    dbgVal = sunlightTerm * sunMs;
+#elif CLOUD_LIGHT_DEBUG == 11
+                    dbgVal = (skyMs * 0.25).xxx;
 #elif CLOUD_LIGHT_DEBUG == 9
                     {
                         // QUADRANTS (shown as 1-exp(-4x) so tiny values are visible):
                         // TL ambientLit | TR groundLit | BL sun term (unshadowed) | BR skyBackgroundColor
-                        float3 sunTerm = sunlightTerm * participatingMediaPhase.phase[0] * powderEffect;
+                        float3 sunTerm = sunlightTerm * cloudPhase(VoL) * powderEffect;
                         bool qr = uv.x >= 0.5;
                         bool qb = uv.y >= 0.5;
                         float3 pick = skyBackgroundColor;
@@ -600,53 +681,17 @@ float4 cloudColorCompute(
 #endif
                 }
 #endif
-                float sigmaS = stepCloudDensity;
-                float sigmaE = max(sigmaS, 1e-8);
+                // Beer-Lambert visibility x dual-lobe HG x Wrenninge MS octaves. Energy-conserving integration over the step:
+                // S is the in-scattered radiance at the sample, (S - S*T_step)/sigmaE integrates it across the step's extinction.
+                const float3 albedo = float3(1.0);
+                const float sigmaS = stepCloudDensity;
+                const float sigmaE = max(sigmaS, 1e-8);
 
-                float3 scatteringCoefficients[2];
-                float extinctionCoefficients[2];
+                const float3 luminance = sunlightTerm * sunMs + ambientLit * skyMs + groundLit;
+                const float3 S = sigmaS * albedo * luminance;
 
-                float3 albedo = float3(1.0);
-
-                scatteringCoefficients[0] = sigmaS * albedo;
-                extinctionCoefficients[0] = sigmaE;
-
-                float MsExtinctionFactor = 0.5;
-                float MsScatterFactor = 0.5;
-                int ms;
-                for (ms = 1; ms < 2; ms++)
-                {
-                    extinctionCoefficients[ms] = extinctionCoefficients[ms - 1] * MsExtinctionFactor;
-                    scatteringCoefficients[ms] = scatteringCoefficients[ms - 1] * MsScatterFactor;
-                    MsExtinctionFactor *= MsExtinctionFactor;
-                    MsScatterFactor *= MsScatterFactor;
-                }
-
-                for (ms = 1; ms >= 0; ms--)
-                {
-                    float sunVisibilityTerm = participatingMedia.transmittanceToLight[ms];
-                    float3 sunSkyLuminance = sunVisibilityTerm * sunlightTerm * participatingMediaPhase.phase[ms] * powderEffect;
-
-                    {
-                        float skyVisibilityTerm = participatingMediaAmbient.transmittanceToLight[ms];
-                        sunSkyLuminance += skyVisibilityTerm * ambientLit;
-                    }
-
-                    if (ms == 0)
-                    {
-                        sunSkyLuminance += groundLit;
-                    }
-
-                    float3 sactterLitStep = sunSkyLuminance * scatteringCoefficients[ms];
-
-                    float3 stepScatter = transmittance * (sactterLitStep - sactterLitStep * stepTransmittance) / max(1e-8, extinctionCoefficients[ms]);
-                    scatteredLight += stepScatter;
-
-                    if (ms == 0)
-                    {
-                        transmittance *= stepTransmittance;
-                    }
-                }
+                scatteredLight += transmittance * (S - S * stepTransmittance) / sigmaE;
+                transmittance *= stepTransmittance;
             }
 
             if (transmittance <= 0.001)
@@ -665,18 +710,18 @@ float4 cloudColorCompute(
             float4 rayInH = mul(kCam.viewProjection, float4(kCam.cameraPosition.xyz + rayHitCameraRelative, 1.0)); // viewProjection takes ABSOLUTE world pos; rayHitCameraRelative is a delta
             cloudZ = rayInH.z / rayInH.w;
 
-            float rayHitHeight = length(rayHitCameraRelative);
+            const float rayHitDistance = length(rayHitCameraRelative);
 
+            // Aerial perspective: haze between the camera and the cloud, from the same froxel volume the geometry uses.
+            // True result = AP_inscatter(0->D) + T_air(0->D) * (cloud_scatter + T_cloud * behind). The sky this gets blended
+            // over already holds AP + T_air * behind, so what must be ADDED (premultiplied, over T_cloud * sky) is
+            //     T_air * cloud_scatter + AP * (1 - T_cloud).
+            // AP is divided by kCloudExposure so that after Composite.shader's 1-exp(-x*kCloudExposure) it sits on the same
+            // exposure-1 curve as the sky; otherwise distant clouds come out darker than the sky behind them.
             {
-                float slice = rayHitHeight * (1.0 / 256.0);
-                float weight = 1.0;
-                if (slice < 0.5)
-                {
-                    weight = saturate(slice * 2.0);
-                    slice = 0.5;
-                }
-                float4 airPerspective = weight * inAerialPersp.SampleLevel(linearClampEdgeSampler, float2(uv), 0);
-                scatteredLight = scatteredLight * (1.0 - airPerspective.a) + airPerspective.rgb * (1.0 - transmittance);
+                float3 apScatter, apTransmit;
+                sampleCloudAerialPerspective(uv, rayHitDistance, worldPos, worldDir, atmosphere.topRadius, apScatter, apTransmit);
+                scatteredLight = scatteredLight * apTransmit + apScatter * ((1.0 - transmittance) / kCloudExposure);
             }
         }
     }

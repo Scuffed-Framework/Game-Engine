@@ -71,7 +71,7 @@ namespace SF::Engine
 
         [[nodiscard]] Mat4 ToMatrix() const { return glm::mat4_cast(q); }
 
-        [[nodiscard]] Rotation Inverse() const { return Rotation(glm::inverse(q)); }
+        [[nodiscard]] Rotation Inverse() const { return Rotation(inverse(q)); }
 
         friend Rotation operator*(const Rotation &a, const Rotation &b) { return Rotation(a.q * b.q); }
         Vec3 operator*(const Vec3 &v) const { return q * v; }

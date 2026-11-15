@@ -96,23 +96,15 @@ namespace SF::Engine
         {
             CommandBuffer cmd(true);
 
-            auto transitionToReadOnly = [&](Image2d *img)
-            {
-                Image::InsertImageMemoryBarrier(cmd, img->GetImage(), 0, VK_ACCESS_SHADER_READ_BIT,
-                                                VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                                                VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-                                                VK_IMAGE_ASPECT_COLOR_BIT, 1, 0, 1, 0);
-            };
-
-            transitionToReadOnly(cloudRenderRT_.get());
-            transitionToReadOnly(cloudDepthRT_.get());
-            transitionToReadOnly(cloudFogRT_.get());
+            TransitionToReadOnly(cmd, cloudRenderRT_.get());
+            TransitionToReadOnly(cmd, cloudDepthRT_.get());
+            TransitionToReadOnly(cmd, cloudFogRT_.get());
 
             for (uint32_t i = 0; i < kFramesInFlight; ++i)
             {
-                transitionToReadOnly(reconColor_[i].get());
-                transitionToReadOnly(reconDepth_[i].get());
-                transitionToReadOnly(reconFog_[i].get());
+                TransitionToReadOnly(cmd, reconColor_[i].get());
+                TransitionToReadOnly(cmd, reconDepth_[i].get());
+                TransitionToReadOnly(cmd, reconFog_[i].get());
             }
 
             cmd.SubmitIdle();
@@ -164,6 +156,7 @@ namespace SF::Engine
     void CloudSFERenderpass::BindDescriptors() const
     {
         // --- Raymarch set ---
+        const auto *apLut = AtmoLUTs::Get().GetAerialPerspectiveLUT();
 
         DescriptorSetWriteBuilder(*raymarchSet_, *raymarchPipeline_)
                 .Image(2, cloudRenderRT_->GetView(), VK_IMAGE_LAYOUT_GENERAL, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE)
@@ -179,6 +172,18 @@ namespace SF::Engine
                                       SharedSamplers::GetLinearClampSampler(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
                 .CombinedImageSampler(27, AtmoLUTs::Get().GetMultiScatterLUT()->GetTexture()->GetView(),
                                       SharedSamplers::GetLinearClampSampler(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+                // Aerial perspective froxel volume + range: the same three resources Atmosphere.shader samples for
+                // geometry. Baked in AtmosphereSFERenderpass::PreRender (order 1) before this pass (order 100), and left
+                // in SHADER_READ_ONLY_OPTIMAL by AerialPerspectiveLUT::Bake. Own samplers, as the atmosphere pass does.
+                .CombinedImageSampler(30, apLut->GetAerialPerspectiveColorRGBTransR()->GetView(),
+                                      apLut->GetAerialPerspectiveColorRGBTransR()->GetSampler(),
+                                      VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+                .CombinedImageSampler(32, apLut->GetAerialPerspectiveTransGB()->GetView(),
+                                      apLut->GetAerialPerspectiveTransGB()->GetSampler(),
+                                      VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+                .CombinedImageSampler(33, apLut->GetAerialPerspectiveRange()->GetView(),
+                                      apLut->GetAerialPerspectiveRange()->GetSampler(),
+                                      VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
                 .Image(14, cloudDepthRT_->GetView(), VK_IMAGE_LAYOUT_GENERAL, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE)
                 .Image(22, cloudFogRT_->GetView(), VK_IMAGE_LAYOUT_GENERAL, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE)
                 .Buffer(21, CloudData_->GetBuffer())
@@ -536,6 +541,11 @@ namespace SF::Engine
         ubo.Speed  = Speed;
         ubo.unused = unused;
 
+        ubo.msAttenuation      = msAttenuation;
+        ubo.msContribution     = msContribution;
+        ubo.msPhaseAttenuation = msPhaseAttenuation;
+        ubo.msOctaves          = static_cast<float>(msOctaves);
+
         frameCounter_  = (frameCounter_ + 1) % 256;
         ubo.frameIndex = static_cast<int>(frameCounter_);
 
@@ -559,6 +569,12 @@ namespace SF::Engine
         ImGui::SliderFloat("Detail Scale", &cloudDetailScale, 0.1f, 10.0f);
         ImGui::SliderFloat("Curl Noise Scale", &cloudCurlNoiseScale, 0.0f, 5.0f);
         ImGui::SliderFloat("Weather UV Scale", &cloudWeatherUVScale, 0.1f, 10.0f);
+        ImGui::Separator();
+        ImGui::TextUnformatted("Multiple scattering (Oz octaves)");
+        ImGui::SliderInt("MS Octaves", &msOctaves, 1, 8);
+        ImGui::SliderFloat("MS Attenuation (a)", &msAttenuation, 0.01f, 1.0f);
+        ImGui::SliderFloat("MS Contribution (b)", &msContribution, 0.0f, 1.0f);
+        ImGui::SliderFloat("MS Phase Atten (c)", &msPhaseAttenuation, 0.0f, 1.0f);
         ImGui::End();
     }
 

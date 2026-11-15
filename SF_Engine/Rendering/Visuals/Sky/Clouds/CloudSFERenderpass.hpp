@@ -47,9 +47,15 @@ namespace SF::Engine
         Vec2 Wind;
         float Speed;
         float unused;
+
+        // Wrenninge "Oz" multiple-scattering octaves (see CloudCommon.si)
+        float msAttenuation;      // a
+        float msContribution;     // b
+        float msPhaseAttenuation; // c
+        float msOctaves;
     };
 
-    static_assert(sizeof(CloudData) == 80, "CloudData size mismatch - check cpu/gpu side");
+    static_assert(sizeof(CloudData) == 96, "CloudData size mismatch - check cpu/gpu side");
     static_assert(sizeof(CloudData) % 16 == 0, "CloudData must satisfy std140 alignment");
 
     class CloudSFERenderpass : public EngineRenderpass
@@ -88,6 +94,13 @@ namespace SF::Engine
         Vec2 Wind    = Vec2{0, 0};
         float Speed  = 0.0f;
         float unused = 0.0f;
+
+        // Wrenninge "Oz" multiple scattering. Defaults are the reference snippet's values.
+        // Energy conservation wants b <= a; b > a over-brightens thin regions (tune with the sliders).
+        float msAttenuation      = 0.2f; // a: extinction falloff per octave
+        float msContribution     = 0.4f; // b: energy per octave
+        float msPhaseAttenuation = 0.1f; // c: eccentricity falloff per octave
+        int msOctaves            = 4;
 
         static bool isWindowOpen;
 
