@@ -81,7 +81,7 @@ namespace SF::Engine
 
         float densityScale        = 1.0f;
         float coverage            = 0.5;
-        float cloudDetailScale    = 0.00025f;
+        float cloudDetailScale    = 3.0f; // 1/km (posKm * scale): 333 m detail tile; see DetailNoise.shader for why it isn't finer
         float cloudBaseNoiseScale = 1.0f;
         float cloudCurlNoiseScale = 1.0f;
 

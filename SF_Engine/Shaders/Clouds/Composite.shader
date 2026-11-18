@@ -40,7 +40,16 @@ void main(uint3 dispatchThreadID : SV_DispatchThreadID)
 
     float4 outColor = float4(0.0, 0.0, 0.0, 0.0);
 
-    if (sceneZ <= 0.0f) // reverse z: sky only
+    // Sky: always. Geometry: only where the cloud's opacity-weighted hit is NEARER than the surface (reverse-z: larger = nearer).
+    // Before this, clouds were skipped on every non-sky pixel, so a plane seen through a cloud layer was never obscured.
+    bool drawCloud = (sceneZ <= 0.0f);
+    if (!drawCloud)
+    {
+        const float cloudZ = inCloudDepthReconstructionTexture.SampleLevel(pointClampEdgeSampler, uv, 0).x;
+        drawCloud = cloudZ > sceneZ;
+    }
+
+    if (drawCloud)
     {
         float3 rgb = cloudColor.rgb;
         float trans = cloudColor.a;

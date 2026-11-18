@@ -2,6 +2,7 @@
 #define VOLUMETRIC_CLOUD_COMMON_GLSL
 
 #define kAmbientScale 0.2
+#define kAmbientSaturation 0.4 // 0 = grey ambient, 1 = raw sky colour. Clouds scatter near-white; raw sky ambient is what tinted the rims cyan
 
 #define kSkyMsExition 0.5
 #define kLightStepMul 1.6 // light-ray step growth (flower: cloudLightStepMul). First step ~35m, 8 steps reach ~2.4km
@@ -12,9 +13,23 @@
 #define kPhaseBackwardG -0.25
 #define kPhaseForwardMix 0.6 // weight of the forward lobe
 #define kMaxMsOctaves 8
+// Variable-step view march (HZD-style): step length grows with distance (constant screen-space footprint) and the march
+// SEARCHES with kCoarseStepMul x steps (shape-only density) until it finds cloud, then switches to fine steps, reverting to
+// coarse after kFineToCoarseEmpty consecutive empty fine samples.
+#define kStepGrowth 0.05
+#define kCoarseStepMul 2.0
+#define kFineToCoarseEmpty 6u
+// HZD light march: cone-jittered samples (soft shadows) + one long-range sample (large-scale shadows between bulges)
+#define kLightConeSpread 0.25
+#define kFarShadowWeight 0.5
+// HZD detail erosion: remap(base, detail * kDetailErosion * exp(-coverage * 0.75), 1, 0, 1)
+#define kDetailErosion 0.35
 // cloudMap returns a 0..1 shape value; scene units are metres, so scale to a physical per-metre
 // extinction (~0.01-0.05 for cumulus). Without this a single step is already fully opaque.
-#define kExtinctionPerMetre 0.006
+#define kExtinctionPerMetre 0.02 // was 0.006: with plain Beer on the view ray that left cumulus translucent (1 km of average cloud was only od ~2-4)
+// Pushes the soft density ramp toward 1 so the body of a cloud is solid and only the rim stays soft. Monotonic, so the coarse
+// (no-erosion) search sample is still an upper bound.
+#define kDensityContrast 1.6
 #define kCloudSunIlluminance 40.0 // = atmosphereParams.sunIntensity. Scales BOTH the direct sun term and the multi-scatter LUT terms (the LUT is per unit illuminance)
 // Lighting debug (shows the term at the first cloud hit, alpha 0 so it overlays opaquely; values are HDR):
 // 0 off | 1 sun visibility | 2 ambientLit | 3 groundLit | 4 skyBackgroundColor | 5 sun term (unshadowed, *phase) | 6 optical depth/5 | 7 upScaleColor | 8 sunDirection (rgb = xyz*0.5+0.5)
@@ -234,9 +249,12 @@ bool raySphereIntersectOutSide(float3 origin, float3 direction, float3 center, f
 
 float3 cloudTypeGradient(float type, float normalizeHeight)
 {
-    float stratus = remap(normalizeHeight, 0.00, 0.10, 0.0, 1.0) * remap(normalizeHeight, 0.15, 0.30, 1.0, 0.0);
-    float stratocumulus = remap(normalizeHeight, 0.00, 0.10, 0.0, 1.0) * remap(normalizeHeight, 0.20, 0.55, 1.0, 0.0);
-    float cumulus = remap(normalizeHeight, 0.00, 0.10, 0.0, 1.0) * remap(normalizeHeight, 0.10, 0.80, 1.0, 0.2);
+    // No bottom ramp in the profiles: a ramp BEFORE the coverage threshold makes the base's height depend on the noise (ragged,
+    // soft underside). The base is cut by a steep ramp AFTER the threshold (densityShape) instead, giving a flat base, while the
+    // falling top of each profile is thresholded against the noise, giving domed, billowy tops.
+    float stratus = remap(normalizeHeight, 0.15, 0.30, 1.0, 0.0);
+    float stratocumulus = remap(normalizeHeight, 0.20, 0.55, 1.0, 0.0);
+    float cumulus = remap(normalizeHeight, 0.10, 0.80, 1.0, 0.2);
 
     float a = saturate(type * 2.0);
     float b = saturate(type * 2.0 - 1.0);
@@ -284,7 +302,7 @@ float getPowderEffect(float depth, float height, float VoL)
 
 // posMeter: world position in METERS (absolute from planet center)
 // normalizeHeight: 0=cloud bottom, 1=cloud top
-float cloudMap(float3 posMeter, float normalizeHeight)
+float cloudMapEx(float3 posMeter, float normalizeHeight, bool coarse)
 {
     const float kCoverage = kCloud.cloudCoverage;
     const float kDensity = kCloud.cloudDensityScale;
@@ -306,30 +324,53 @@ float cloudMap(float3 posMeter, float normalizeHeight)
     // weather.x is now a contrast-stretched 0..1 (mean ~0.5); kCoverage*2 makes the slider's default 0.5 mean "average".
     float coverage = saturate(kCoverage * 2.0 * (localCoverage + weatherValue.x));
     
-    float3 g = cloudTypeGradient(weatherValue.b, normalizeHeight); 
-    float gradienShape = weatherValue.b < 0.5 ? g.x : g.y;
+    // weather.g = how tall this cloud is: stretch the type profile over [0, cloudTop] so towers and shallow cumulus coexist
+    const float cloudTop = lerp(0.35, 1.0, weatherValue.g);
+    const float hh = saturate(normalizeHeight / cloudTop);
+    float3 g = cloudTypeGradient(weatherValue.b, hh); 
+    float gradienShape = (weatherValue.b < 0.5 ? g.x : g.y) * remap(hh, 0.85, 1.0, 1.0, 0.0);
 
     float basicNoise = inBasicNoise.SampleLevel(linearRepeatSampler, (posKm + windOffset) * float3(kCloud.cloudBaseNoiseScale), 0).x;
     float basicCloudNoise = gradienShape * basicNoise;
 
     float basicCloudWithCoverage = coverage * remap(basicCloudNoise, 1.0 - coverage, 1, 0, 1);
 
-    float3 sampleDetailNoise = posKm - windOffset * 0.15;
-    float detailNoiseComposite = inDetailNoise.SampleLevel(linearRepeatSampler, sampleDetailNoise * kCloud.cloudDetailScale, 0).x;
-    float detailNoiseMixByHeight = 0.2 * lerp(detailNoiseComposite, 1 - detailNoiseComposite, saturate(normalizeHeight * 10.0));
+    // Erosion only removes density, so skipping it for the coarse (search) sample gives a conservative upper bound.
+    float detailNoiseMixByHeight = 0.0;
+    if (!coarse)
+    {
+        float3 sampleDetailNoise = posKm - windOffset * 0.15;
+        float detailNoiseComposite = inDetailNoise.SampleLevel(linearRepeatSampler, sampleDetailNoise * kCloud.cloudDetailScale, 0).x;
+        detailNoiseMixByHeight = kDetailErosion * exp(-kCoverage * 0.75) * lerp(detailNoiseComposite, 1 - detailNoiseComposite, saturate(normalizeHeight * 10.0));
+    }
 
-    float densityShape = saturate(0.01 + normalizeHeight * 1.15) * kDensity *
-        remap(normalizeHeight, 0.0, 0.1, 0.0, 1.0) *
+    // Base: dense and sharply cut (was 0.01 + h*1.15 with a 10% ramp, which left a thin, translucent, soft underside).
+    float densityShape = saturate(0.4 + normalizeHeight * 0.75) * kDensity *
+        remap(normalizeHeight, 0.0, 0.04, 0.0, 1.0) *
         remap(normalizeHeight, 0.8, 1.0, 1.0, 0.0);
 
-    float cloudDensity = remap(basicCloudWithCoverage, detailNoiseMixByHeight, 1.0, 0.0, 1.0);
+    float cloudDensity = saturate(remap(basicCloudWithCoverage, detailNoiseMixByHeight, 1.0, 0.0, 1.0) * kDensityContrast);
     return cloudDensity * densityShape * kExtinctionPerMetre;
 }
+
+float cloudMap(float3 posMeter, float normalizeHeight) { return cloudMapEx(posMeter, normalizeHeight, false); }
+float cloudMapCoarse(float3 posMeter, float normalizeHeight) { return cloudMapEx(posMeter, normalizeHeight, true); }
+
+// HZD light-sample cone kernel: 6 roughly uniform unit vectors. Each light sample is pushed off the ray by kernel * distance *
+// kLightConeSpread, so the shadow is a cone instead of a line: soft shadows that the temporal reconstruction averages out.
+const static float3 kLightConeKernel[6] = {
+    float3( 0.38051305,  0.92453449, -0.02111345),
+    float3(-0.50625799, -0.03590792, -0.86163418),
+    float3(-0.32509218, -0.94557439,  0.01428793),
+    float3( 0.09026238, -0.27376545,  0.95755165),
+    float3( 0.28128598,  0.42443639, -0.86065785),
+    float3(-0.16852403,  0.14748697,  0.97460106)
+};
 
 // Optical depth (dimensionless: extinction in 1/m integrated over metres) from `pos` along `dir` through the cloud layer.
 // ONE march feeds every multiple-scattering octave: octave n simply sees od * a^n (Wrenninge), so the octave
 // count costs no extra cloudMap taps. pos: world position in METERS (absolute from planet center).
-float cloudLightOpticalDepth(float3 pos, float3 dir, int lightSteps)
+float cloudLightOpticalDepth(float3 pos, float3 dir, int lightSteps, bool longRange)
 {
     const float layerThickness = kCloud.cloudTopRadius - kCloud.cloudBottomRadius;
     float stepL = layerThickness / float(lightSteps) / 16.0; // FIRST step; grows by kLightStepMul
@@ -338,20 +379,41 @@ float cloudLightOpticalDepth(float3 pos, float3 dir, int lightSteps)
 
     for (int j = 0; j < lightSteps; j++)
     {
-        float3 samplePos = pos + dir * (travelled + 0.5 * stepL);
+        const float d = travelled + 0.5 * stepL;
+        float3 samplePos = pos + dir * d + kLightConeKernel[j % 6] * (d * kLightConeSpread);
         float normalizeHeight = (length(samplePos) - kCloud.cloudBottomRadius) / layerThickness;
         od += cloudMap(samplePos, normalizeHeight) * stepL;
         travelled += stepL;
         stepL *= kLightStepMul;
     }
+
+    if (longRange)
+    {
+        // HZD: one extra sample well past the march (shadows cast by neighbouring bulges / other cumulus), standing in for the
+        // span [travelled, 3*travelled]. Weighted down: a single tap over that length would otherwise be all-or-nothing.
+        const float d = 2.0 * travelled;
+        float3 samplePos = pos + dir * d + kLightConeKernel[lightSteps % 6] * (d * kLightConeSpread);
+        float normalizeHeight = (length(samplePos) - kCloud.cloudBottomRadius) / layerThickness;
+        od += cloudMap(samplePos, normalizeHeight) * (2.0 * travelled) * kFarShadowWeight;
+    }
     return od;
+}
+
+// Beer-Powder (Schneider, HZD): E = 2 * exp(-d) * (1 - exp(-2d)) with d = optical depth along the LIGHT ray. exp(-d) is applied by
+// the octave sum; this is the (1 - exp(-2d)) powder factor. It darkens the thin, sun-facing skin where little light has had a
+// chance to scatter in, and only reads when looking AWAY from the sun, so it fades out toward the sun (silver lining wins there).
+float cloudPowder(float odSun, float VoL)
+{
+    float r = saturate(VoL * 0.5 + 0.5);
+    r = r * r;
+    return lerp(2.0 * (1.0 - exp(-2.0 * odSun)), 1.0, r);
 }
 
 // Wrenninge et al. multiple-scattering octaves (Sony Imageworks, Oz the Great and Powerful):
 //   L = sum_n  b^n * phase(g * (1-c)^n) * exp(-od * a^n)
 // a = attenuation (light penetrates deeper each octave), b = contribution (energy per octave), c = phase attenuation.
-// `powder` multiplies octave 0 ONLY: dark powder edges are a single-scatter effect, and applying them to the MS octaves
-// would black out thin edges that multiple scattering exists to fill back in.
+// `powder` fully multiplies octave 0 and fades in progressively less on higher octaves (1/(1+n)): scattered-in light from deeper
+// octaves should still fill thin rims, just not as brightly as an unpowdered sum would.
 // Returns the phase-weighted sun visibility; multiply by the sun colour.
 float cloudMultiScatterSun(float od, float VoL, float powder)
 {
@@ -365,7 +427,7 @@ float cloudMultiScatterSun(float od, float VoL, float powder)
     {
         const float phase = cloudPhaseOctave(VoL, ecc);
         const float beers = exp(-od * a);
-        L += b * phase * beers * (n == 0 ? powder : 1.0);
+        L += b * phase * beers * lerp(1.0, powder, 1.0 / float(1 + n));
 
         a *= kCloud.msAttenuation;
         b *= kCloud.msContribution;
@@ -527,12 +589,15 @@ float4 cloudColorCompute(
     const float marchingDistance = min(cloudMaxTracingDist, tMax - tMin);
     tMax = tMin + marchingDistance;
 
-    const float StepCount = cloud.stepCount;
+    const float StepCount = max(cloud.stepCount, 1.0);
     const uint stepCountUnit = (uint)StepCount;
-    const float stepT = (tMax - tMin) / StepCount;
 
-    float sampleT = tMin + 0.001 * stepT;
-    sampleT += stepT * blueNoise;
+    // Variable step length: grows with distance, clamped so the full step budget always reaches tMax even if every step is fine.
+    const float minStep = max(30.0, (radiusCloudEnd - radiusCloudStart) / StepCount * 0.6);
+    const float maxStep = max(minStep, 2.0 * marchingDistance / StepCount);
+
+    float sampleT = tMin + 0.001 * minStep;
+    sampleT += clamp(tMin * kStepGrowth, minStep, maxStep) * blueNoise;
 
     float3 sunColor = float3(kCloudSunIlluminance); // phase has a 1/(4*pi) factor, so the sun needs ~4*pi to compete with the sky LUT
     float3 sunDirection = normalize(kAtmo.sunDir.xyz);
@@ -590,21 +655,55 @@ float4 cloudColorCompute(
                                               atmosphere.bottomRadius, atmosphere.topRadius);
         }
 
+        float lastCoarseDt = 0.0;
+        bool coarseMode = true; // HZD: search with big, cheap steps until cloud is found, then go fine
+        uint emptyRun = 0u;
+
         for (uint i = 0; i < stepCountUnit; i++)
         {
+            if (sampleT >= tMax)
+                break;
+
+            const float dtFine = clamp(sampleT * kStepGrowth, minStep, maxStep);
+
             float3 samplePos = sampleT * worldDir + worldPos;
             float sampleHeight = length(samplePos);
             float normalizeHeight = (sampleHeight - cloud.cloudBottomRadius) / (cloud.cloudTopRadius - cloud.cloudBottomRadius);
 
-            float3 atmosphereTransmittance = lerp(atmosphereTransmittance0, atmosphereTransmittance1, saturate(sampleT / marchingDistance));
+            if (coarseMode)
+            {
+                if (cloudMapCoarse(samplePos, normalizeHeight) > 0.0)
+                {
+                    // Found something: back up over the span the last coarse step skipped and march fine from there.
+                    coarseMode = false;
+                    emptyRun = 0u;
+                    sampleT = max(tMin, sampleT - lastCoarseDt);
+                    lastCoarseDt = 0.0;
+                }
+                else
+                {
+                    lastCoarseDt = dtFine * kCoarseStepMul;
+                    sampleT += lastCoarseDt;
+                }
+                continue;
+            }
+
+            const float stepT = dtFine;
+
+            float3 atmosphereTransmittance = lerp(atmosphereTransmittance0, atmosphereTransmittance1, saturate((sampleT - tMin) / marchingDistance));
 
             float stepCloudDensity = cloudMap(samplePos, normalizeHeight);
 
             if (stepCloudDensity > 0.0)
             {
+                emptyRun = 0u;
+
                 // stepT is in meters, density is per meter, so opticalDepth is dimensionless
                 float opticalDepth = stepCloudDensity * stepT;
-                float stepTransmittance = max(exp(-opticalDepth), exp(-opticalDepth * 0.25) * 0.7);
+                // Plain Beer-Lambert for the VIEW ray. The old max(exp(-od), exp(-od*0.25)*0.7) is a light-energy hack (it is the
+                // two-term multi-scatter fudge, which the Oz octaves now do properly); on the view ray it made dense cloud
+                // see-through, so interiors smeared together and silhouettes went soft.
+                float stepTransmittance = exp(-opticalDepth);
 
                 // Cloud "hit" position (feeds cloudZ for reprojection and the aerial-perspective distance): weight each
                 // step by the opacity it contributes. It used to be accumulated before the density test, so empty steps
@@ -615,31 +714,37 @@ float4 cloudColorCompute(
 
                 const int lightSteps = (int)cloud.lightStepCount;
                 const float3 sampleUp = samplePos / sampleHeight;
-                const float odSun = cloudLightOpticalDepth(samplePos, sunDirection, lightSteps);
-                const float odSky = cloudLightOpticalDepth(samplePos, sampleUp, lightSteps); // sky light comes from ABOVE: radial up at the sample, not world +Y (they diverge ~2.5 deg at 280 km)
+                const float odSun = cloudLightOpticalDepth(samplePos, sunDirection, lightSteps, true);
+                const float odSky = cloudLightOpticalDepth(samplePos, sampleUp, lightSteps, false); // sky light comes from ABOVE: radial up at the sample, not world +Y (they diverge ~2.5 deg at 280 km)
 
-                float powderEffect;
+                // In-scatter probability: how "inside" the cloud this sample is (thin rims ~0). Scales the ambient terms so wispy
+                // edges don't glow brighter than the body.
+                float inScatterProb;
                 {
                     float densityN = stepCloudDensity / kExtinctionPerMetre;
                     float depthProbability = pow(clamp(densityN * 8.0, 0.0, 1.0), remap(normalizeHeight, 0.3, 0.85, 0.5, 2.0));
-                    depthProbability += 0.05;
-
-                    float verticalProbability = pow(remap(normalizeHeight, 0.07, 0.22, 0.1, 1.0), 0.8);
-                    powderEffect = getPowderEffect(depthProbability, verticalProbability, VoL);
+                    inScatterProb = saturate(depthProbability + 0.05);
                 }
+
+                // HZD Beer-Powder on the light ray (see cloudPowder).
+                const float powder = cloudPowder(odSun, VoL);
 
                 float3 sunlightTerm = atmosphereTransmittance * sunColor;
 
-                // Multiple-scattering octave sums (Wrenninge/Oz): sun = sum b^n * dualHG(g c^n) * beers(od a^n), powder on octave 0.
-                const float sunMs = cloudMultiScatterSun(odSun, VoL, powderEffect);
+                // Multiple-scattering octave sums (Wrenninge/Oz): sun = sum b^n * dualHG(g c^n) * beers(od a^n), Beer-Powder on the light ray.
+                const float sunMs = cloudMultiScatterSun(odSun, VoL, powder);
                 const float skyMs = cloudMultiScatterSky(odSky);
 
-                float3 groundLit = lerp(skyBackgroundColor, groundToCloudTransfertIsoScatter * kCloudSunIlluminance, saturate(cloud.cloudBaseNoiseScale - normalizeHeight))
+                float3 groundLit = lerp(skyBackgroundColor, groundToCloudTransfertIsoScatter * kCloudSunIlluminance, saturate(1.0 - normalizeHeight))
                     * saturate(1.0 - kGroundOcc + normalizeHeight) * 1.0;
 
                 float3 ambientLit = upScaleColor * kCloudSunIlluminance * kAmbientScale
-                    * lerp(0.5, 1.0, normalizeHeight)
+                    * lerp(0.3, 1.0, saturate(normalizeHeight * 1.5))
                     * (0.5 + 0.5 * (1.0 - sunDirection.y));
+
+                // Desaturate the sky-coloured fill terms toward their luma (see kAmbientSaturation).
+                ambientLit = lerp(dot(ambientLit, float3(0.2126, 0.7152, 0.0722)).xxx, ambientLit, kAmbientSaturation);
+                groundLit  = lerp(dot(groundLit, float3(0.2126, 0.7152, 0.0722)).xxx, groundLit, kAmbientSaturation);
 
                 #if CLOUD_LIGHT_DEBUG != 0
                 if (!dbgSet)
@@ -654,7 +759,7 @@ float4 cloudColorCompute(
 #elif CLOUD_LIGHT_DEBUG == 4
                     dbgVal = skyBackgroundColor;
 #elif CLOUD_LIGHT_DEBUG == 5
-                    dbgVal = sunlightTerm * cloudPhase(VoL) * powderEffect;
+                    dbgVal = sunlightTerm * cloudPhase(VoL) * powder;
 #elif CLOUD_LIGHT_DEBUG == 6
                     dbgVal = (stepCloudDensity * stepT / 5.0).xxx;
 #elif CLOUD_LIGHT_DEBUG == 7
@@ -669,7 +774,7 @@ float4 cloudColorCompute(
                     {
                         // QUADRANTS (shown as 1-exp(-4x) so tiny values are visible):
                         // TL ambientLit | TR groundLit | BL sun term (unshadowed) | BR skyBackgroundColor
-                        float3 sunTerm = sunlightTerm * cloudPhase(VoL) * powderEffect;
+                        float3 sunTerm = sunlightTerm * cloudPhase(VoL) * powder;
                         bool qr = uv.x >= 0.5;
                         bool qb = uv.y >= 0.5;
                         float3 pick = skyBackgroundColor;
@@ -687,11 +792,16 @@ float4 cloudColorCompute(
                 const float sigmaS = stepCloudDensity;
                 const float sigmaE = max(sigmaS, 1e-8);
 
-                const float3 luminance = sunlightTerm * sunMs + ambientLit * skyMs + groundLit;
+                const float3 luminance = sunlightTerm * sunMs + ambientLit * skyMs * lerp(0.35, 1.0, inScatterProb) + groundLit;
                 const float3 S = sigmaS * albedo * luminance;
 
                 scatteredLight += transmittance * (S - S * stepTransmittance) / sigmaE;
                 transmittance *= stepTransmittance;
+            }
+            else if (++emptyRun >= kFineToCoarseEmpty)
+            {
+                coarseMode = true;
+                lastCoarseDt = 0.0;
             }
 
             if (transmittance <= 0.001)

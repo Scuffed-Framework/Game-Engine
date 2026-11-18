@@ -125,10 +125,10 @@ namespace SF::Engine
         readBuffer.resize(frames);
 
         const int got = SDL_GetAudioStreamData(stream, readBuffer.data(), static_cast<int>(frames * sizeof(float)));
-        if (got <= 0)
+        if (got <= 0) // returns -1 if failed
             return;
 
-        pending.insert(pending.end(), readBuffer.begin(), readBuffer.begin() + got / sizeof(float));
+        pending.insert(pending.end(), readBuffer.begin(), readBuffer.begin() + size_t(got) / sizeof(float));
 
         // Process in fixed 10 ms blocks.
         size_t offset = 0;

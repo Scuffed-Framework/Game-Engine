@@ -244,6 +244,8 @@ namespace SF::Engine
             DescriptorSetWriteBuilder(*compositeSet_[i], *compositePipeline_)
                     .Image(0, cloudCompositeRT_->GetView(), VK_IMAGE_LAYOUT_GENERAL, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE)
                     .Image(13, reconColor_[i]->GetView(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+                    .Image(17, reconDepth_[i]->GetView(),
+                           VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL) // cloud hit depth, for occluding geometry
                     .Image(25, reconFog_[i]->GetView(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
                     .Build()
                     .Apply();
@@ -251,7 +253,7 @@ namespace SF::Engine
     }
 
     void CloudSFERenderpass::SetFrameData(const Mat4 &invProj, const Mat4 &invView, const Vec3 &cameraPos,
-                                          const Vec3 &planetPos, const Vec3 &sunDir, Vec2 screenSize)
+                                          const Vec3 &planetPos, const Vec3 &sunDir, const Vec2 screenSize)
     {
         const Vec3 sd = length(sunDir) > 1e-6f ? normalize(sunDir) : Vec3(0.577f, 0.577f, 0.577f);
         cachedSunDir_ = sd;
@@ -389,11 +391,15 @@ namespace SF::Engine
             Image2d *reconImages[3] = {reconColor_[cur].get(), reconDepth_[cur].get(), reconFog_[cur].get()};
             for (auto &reconImage: reconImages)
             {
+                /*
                 Image::InsertImageMemoryBarrier(
                         cmd, reconImage->GetImage(), VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT,
                         VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                         VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
                         VK_IMAGE_ASPECT_COLOR_BIT, 1, 0, 1, 0);
+                        */
+                
+                // TransitionToReadOnly(cmd, reconImage);
                 reconImage->SetLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
             }
         }

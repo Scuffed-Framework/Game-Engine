@@ -70,14 +70,12 @@ void main(uint3 dispatchThreadID : SV_DispatchThreadID)
         int2 workDeltaPos = workPos % 4;
         const bool bUpdateEvaluate = (workDeltaPos.x == bayerOffset.x) && (workDeltaPos.y == bayerOffset.y);
 
-        if(bUpdateEvaluate)
+        // The freshly evaluated pixel used to REPLACE its history with the raw (jittered) sample, so 1 pixel in 16 carried a full
+        // single-frame noise value for 16 frames: the dither-dot speckle. It is now blended like the rest, with a higher current
+        // weight, and takes the exact (nearest) sample instead of the bilinear one.
         {
-            depthZ = curDepthZ;
-            color = curColor;
-            fog = curFog;
-        }
-        else
-        {
+            const float4 curSample    = bUpdateEvaluate ? curColor : curBilinear;
+            const float4 curFogSample = bUpdateEvaluate ? curFog : curFogBilinear;
             float4 hist = inCloudReconstructionTextureHistory.SampleLevel(linearClampEdgeSampler, uvPrev, 0);
             float4 histFog = inCloudFogReconstructionTextureHistory.SampleLevel(linearClampEdgeSampler, uvPrev, 0);
             float histDepth = inCloudDepthReconstructionTextureHistory.SampleLevel(linearClampEdgeSampler, uvPrev, 0).r;
@@ -112,9 +110,11 @@ void main(uint3 dispatchThreadID : SV_DispatchThreadID)
             // Motion-adaptive blend: more current frame the faster the screen-space motion.
             float motionPx = length((uvPrev - uv) * float2(texSize));
             float curW = saturate(0.08 + motionPx * 0.15);
+            if (bUpdateEvaluate)
+                curW = max(curW, 0.35);
 
-            color = lerp(hist, curBilinear, curW);
-            fog = lerp(histFog, curFogBilinear, curW);
+            color = lerp(hist, curSample, curW);
+            fog = lerp(histFog, curFogSample, curW);
             depthZ = lerp(histDepth, curDepthZ, curW);
         }
     }

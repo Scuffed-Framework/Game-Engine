@@ -64,10 +64,10 @@ namespace SF::Engine
         const Vec3 position(m[3]);
 
         Vec3 axisX(m[0]), axisY(m[1]), axisZ(m[2]);
-        Vec3 scale{glm::length(axisX), glm::length(axisY), glm::length(axisZ)};
+        Vec3 scale{length(axisX), length(axisY), length(axisZ)};
 
         // Mirrored matrix: fold the reflection into one scale axis so the rotation stays proper
-        if (glm::determinant(glm::mat3(axisX, axisY, axisZ)) < 0.0f)
+        if (determinant(glm::mat3(axisX, axisY, axisZ)) < 0.0f)
             scale.x = -scale.x;
 
         // Degenerate axes (zero scale): fall back to identity axes instead of dividing by zero
