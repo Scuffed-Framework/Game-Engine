@@ -32,8 +32,8 @@
 // see the note at the bottom of this file) if you'd rather not maintain
 // a second serialization backend.
 
-#include <Math/Quaternion/Quaternion.hpp>
-#include <Math/Vectors/Vector.hpp>
+#include <Math/Quaternion.hpp>
+#include <Math/Vector.hpp>
 #include <UtilityClasses/StlExtensions.hpp>
 #include <cstdint>
 #include <memory>

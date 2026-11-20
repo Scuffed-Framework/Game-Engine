@@ -35,6 +35,7 @@ CreateConanPackage "openapv/all/" "1.1.3.0"
 CreateConanPackage "SDL/all/" "3.4.18"
 CreateConanPackage "tracy/all/" "0.15"
 CreateConanPackage "mimalloc/all/" "3.6.1"
+CreateConanPackage "angelscript/all" "2.39.0"
 
 echo "==> Running Conan root install..."
 conan install . -s build_type=$BUILD_TYPE --build=missing

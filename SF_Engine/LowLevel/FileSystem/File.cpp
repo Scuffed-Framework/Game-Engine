@@ -373,6 +373,21 @@ namespace SF::Engine
         return MoveTo(newPath.string());
     }
 
+    bool File::CreateSymLink(const std::filesystem::path &from, const std::filesystem::path &to)
+    {
+        std::error_code ec;
+
+        if (std::filesystem::is_directory(from, ec))
+        {
+            std::filesystem::create_directory_symlink(from, to, ec);
+        } else
+        {
+            std::filesystem::create_symlink(from, to, ec);
+        }
+
+        return !ec;
+    }
+
     std::string File::GetNameWithoutExtension() const { return m_path.stem().string(); }
 
     std::string File::GetDirectory() const { return m_path.parent_path().string(); }

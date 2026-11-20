@@ -53,9 +53,15 @@ namespace SF::Engine
         float msContribution;     // b
         float msPhaseAttenuation; // c
         float msOctaves;
+
+        // 2D <-> volumetric crossfade (metres above sea level), 2D column sample count
+        float transitionStartAltitude;
+        float transitionEndAltitude;
+        float twoDColumnSamples;
+        float reserved0;
     };
 
-    static_assert(sizeof(CloudData) == 96, "CloudData size mismatch - check cpu/gpu side");
+    static_assert(sizeof(CloudData) == 112, "CloudData size mismatch - check cpu/gpu side");
     static_assert(sizeof(CloudData) % 16 == 0, "CloudData must satisfy std140 alignment");
 
     class CloudSFERenderpass : public EngineRenderpass
@@ -99,8 +105,15 @@ namespace SF::Engine
         // Energy conservation wants b <= a; b > a over-brightens thin regions (tune with the sliders).
         float msAttenuation      = 0.2f; // a: extinction falloff per octave
         float msContribution     = 0.4f; // b: energy per octave
-        float msPhaseAttenuation = 0.1f; // c: eccentricity falloff per octave
+        float msPhaseAttenuation = 0.5f; // c: eccentricity falloff per octave. 0.5 (was 0.1, tuned for HG g=0.3): the octave-0 phase is now
+                                         // approximate-Mie with a very narrow forward peak, which must relax toward isotropic quickly
         int msOctaves            = 4;
+
+        // Altitude crossfade between the volumetric march and the 2D (column-integrated) layer: volumetric only below
+        // start, 2D only above end. The 2D layer is only drawn with the camera above maxAlt, so keep start >= maxAlt.
+        float transitionStartAltitude = 7000.0f;
+        float transitionEndAltitude   = 30000.0f;
+        int twoDColumnSamples         = 6;
 
         static bool isWindowOpen;
 

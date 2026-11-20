@@ -40,7 +40,9 @@ void main(uint3 dispatchThreadID : SV_DispatchThreadID)
     inCloudRenderTexture.GetDimensions(renderTexSize.x, renderTexSize.y);
     const int2 readPos = min(workPos / 4, renderTexSize - 1);
 
-    float traceCloudDepth = inCloudDepthTexture.Load(int3(readPos, 0)).r;
+    // Bilinear, not Load(): a nearest per-4x4-block depth gives every block its own reprojection parallax, so when the camera
+    // moves near/inside cloud (small, fast-varying depth) the history is fetched with block-shaped offsets: the stair-step blocks.
+    float traceCloudDepth = inCloudDepthTexture.SampleLevel(linearClampEdgeSampler, uv, 0).r;
 
     // Reproject to get prev uv (same convention both ways: no flip).
     float3 worldPosCur = getWorldPosFromUV(uv, traceCloudDepth);
@@ -74,8 +76,10 @@ void main(uint3 dispatchThreadID : SV_DispatchThreadID)
         // single-frame noise value for 16 frames: the dither-dot speckle. It is now blended like the rest, with a higher current
         // weight, and takes the exact (nearest) sample instead of the bilinear one.
         {
-            const float4 curSample    = bUpdateEvaluate ? curColor : curBilinear;
-            const float4 curFogSample = bUpdateEvaluate ? curFog : curFogBilinear;
+            // Bilinear for both: the nearest quarter-res texel (Load) made the freshly-evaluated pixel a 4x4 block of its own
+            // value, which is the stair-stepped edge. The update pixel still gets the higher weight below.
+            const float4 curSample    = curBilinear;
+            const float4 curFogSample = curFogBilinear;
             float4 hist = inCloudReconstructionTextureHistory.SampleLevel(linearClampEdgeSampler, uvPrev, 0);
             float4 histFog = inCloudFogReconstructionTextureHistory.SampleLevel(linearClampEdgeSampler, uvPrev, 0);
             float histDepth = inCloudDepthReconstructionTextureHistory.SampleLevel(linearClampEdgeSampler, uvPrev, 0).r;

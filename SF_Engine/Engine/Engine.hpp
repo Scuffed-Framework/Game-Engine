@@ -15,7 +15,7 @@
 #include "Module.hpp"
 
 #include <3rdPartyLibs/Rocket.hpp>
-#include <Math/Time/Time.hpp>
+#include <Math/Time.hpp>
 #include <Networking/URL.hpp>
 #include <Scene/Scene.hpp>
 #include <Scene/SceneLoading.hpp>

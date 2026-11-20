@@ -3,7 +3,7 @@
 #include <memory>
 #include <vector>
 
-#include <Math/Vectors/Vector.hpp>
+#include <Math/Vector.hpp>
 #include <Rendering/FrameGraph/EngineRenderpassManager.hpp>
 #include <Rendering/RHI/Descriptors/DescriptorSet.hpp>
 #include <Rendering/RHI/Images/Image.hpp>

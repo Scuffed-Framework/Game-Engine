@@ -3,7 +3,7 @@
 #include <EntityComponentSystem/Component.hpp>
 #include <LowLevel/XML/XMLModule.hpp>
 #include <Math/BasicMath.hpp>
-#include <Math/Vectors/Vector.hpp>
+#include <Math/Vector.hpp>
 #include <Rendering/Material/Color/Color.hpp>
 #include <Scene/SceneSerialization.hpp>
 #include <string>

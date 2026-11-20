@@ -1,6 +1,6 @@
 #pragma once
 #include <Math/BasicMath.hpp>
-#include <Math/Time/Time.hpp>
+#include <Math/Time.hpp>
 #include <string>
 
 #include <Rendering/RHI/Pipelines/Pipeline.hpp>

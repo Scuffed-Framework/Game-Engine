@@ -1,15 +1,12 @@
 #pragma once
-#include <Math/Time/Time.hpp>
+#include <Math/Time.hpp>
 #include <chrono>
 namespace SF::Engine
 {
     struct SkiesTime
     {
     public:
-        static double getJulianDay()
-        {
-            return 2451545.0;
-        }
+        static double getJulianDay() { return 2451545.0; }
 
         static double getGregorianYear()
         {
@@ -21,9 +18,6 @@ namespace SF::Engine
             return std::chrono::duration<double, std::chrono::months::period>(1).count();
         }
 
-        static double getGregorianDay()
-        {
-            return std::chrono::duration<double, std::chrono::days::period>(1).count();
-        }
+        static double getGregorianDay() { return std::chrono::duration<double, std::chrono::days::period>(1).count(); }
     };
 }

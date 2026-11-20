@@ -40,14 +40,19 @@ void main(uint3 dispatchThreadID : SV_DispatchThreadID)
 
     float4 outColor = float4(0.0, 0.0, 0.0, 0.0);
 
-    // Sky: always. Geometry: only where the cloud's opacity-weighted hit is NEARER than the surface (reverse-z: larger = nearer).
-    // Before this, clouds were skipped on every non-sky pixel, so a plane seen through a cloud layer was never obscured.
-    bool drawCloud = (sceneZ <= 0.0f);
-    if (!drawCloud)
+    // The raymarch already clips every ray at its own pixel's scene depth (cloud behind geometry is dropped, cloud in front of it
+    // is kept), so cloud is correct on geometry pixels as-is. The extra "cloud hit nearer than surface" test that used to live here
+    // read the reconstructed cloud depth, which is blocky (one value per 4x4 quarter-res texel) and 0 at every gap/edge texel, so it
+    // punched stair-stepped holes at cloud edges through which the geometry (and its haze) showed. Set to 1 to bring it back.
+#define CLOUD_COMPOSITE_DEPTH_TEST 0
+    bool drawCloud = true;
+#if CLOUD_COMPOSITE_DEPTH_TEST
+    if (sceneZ > 0.0f)
     {
         const float cloudZ = inCloudDepthReconstructionTexture.SampleLevel(pointClampEdgeSampler, uv, 0).x;
         drawCloud = cloudZ > sceneZ;
     }
+#endif
 
     if (drawCloud)
     {

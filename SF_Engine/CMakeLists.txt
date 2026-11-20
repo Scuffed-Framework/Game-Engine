@@ -63,7 +63,7 @@ find_package(OpenAPV REQUIRED)
 find_package(openh264 REQUIRED)
 find_package(TIFF REQUIRED)
 find_package(mimalloc REQUIRED)
-
+find_package(Angelscript REQUIRED)
 find_package(Tracy REQUIRED)
 
 #
@@ -268,6 +268,7 @@ target_link_libraries(SF_Engine PUBLIC
         openh264::openh264
         TIFF::TIFF
         mimalloc-static
+        Angelscript::angelscript
         Tracy::TracyClient
 )
 

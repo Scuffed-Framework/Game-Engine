@@ -12,6 +12,14 @@
 #define kPhaseForwardG 0.7
 #define kPhaseBackwardG -0.25
 #define kPhaseForwardMix 0.6 // weight of the forward lobe
+// Approximate-Mie phase (Jendersie & d'Eon 2023) for octave 0: effective droplet diameter in microns, valid 5..50. ~10-15 is cumulus.
+// Larger = narrower, brighter forward peak (stronger silver lining / corona around the sun).
+#define kCloudDropletDiameter 10.0
+// Noise filtering. The base/detail volumes are 128^3 and now carry a mip chain; the mip sampled follows the march step so features
+// finer than the step are averaged out instead of aliasing into per-pixel noise (the reference does the same with per-step mip levels).
+#define kCloudNoiseRes 128.0
+#define kNoiseLodBias 1.0       // 0 = exactly step-matched (softest), higher = sharper but noisier
+#define kDetailBandCells 2.0    // = kDetailFreq0 in DetailNoise.shader: cells per tile of the dominant detail band
 #define kMaxMsOctaves 8
 // Variable-step view march (HZD-style): step length grows with distance (constant screen-space footprint) and the march
 // SEARCHES with kCoarseStepMul x steps (shape-only density) until it finds cloud, then switches to fine steps, reverting to
@@ -20,7 +28,7 @@
 #define kCoarseStepMul 2.0
 #define kFineToCoarseEmpty 6u
 // HZD light march: cone-jittered samples (soft shadows) + one long-range sample (large-scale shadows between bulges)
-#define kLightConeSpread 0.25
+#define kLightConeSpread 0.15 // was 0.25: wider cones read as per-pixel shading noise until the temporal pass converges
 #define kFarShadowWeight 0.5
 // HZD detail erosion: remap(base, detail * kDetailErosion * exp(-coverage * 0.75), 1, 0, 1)
 #define kDetailErosion 0.35
@@ -35,6 +43,11 @@
 // 0 off | 1 sun visibility | 2 ambientLit | 3 groundLit | 4 skyBackgroundColor | 5 sun term (unshadowed, *phase) | 6 optical depth/5 | 7 upScaleColor | 8 sunDirection (rgb = xyz*0.5+0.5)
 // 10 full MS sun term (octave sum, powder on octave 0) | 11 sky MS visibility sum/4
 #define CLOUD_LIGHT_DEBUG 0
+// Aerial-perspective isolation: 0 = normal | 1 = ONLY the cloud's AP term (what the sky-coloured rim is made of) | 2 = cloud lighting only, no AP
+#define CLOUD_AP_DEBUG 0
+// Sun brightness gain for cloud lighting only. A sunlit cumulus top is ~E/pi radiance but the normalised phase (~1/4pi) + octave sum gives
+// ~0.13E, so clouds came out grey next to the sky haze (exposure-1 curve) and thin rims were mostly AP = cyan outlines.
+#define kCloudSunBoost 2.5
 #include "../Atmosphere/Atmosphere.si"
 #include "../Common/Camera.si"
 
@@ -182,6 +195,12 @@ struct CloudUBO
     float msContribution;     // b: energy weight per octave
     float msPhaseAttenuation; // c: eccentricity falloff per octave, g_n = g * (1 - c)^n
     float msOctaves;
+
+    // 2D <-> volumetric altitude crossfade (metres above sea level, see getVolumetricsFadeout) and 2D column sample count
+    float transitionStartAltitude;
+    float transitionEndAltitude;
+    float twoDColumnSamples;
+    float reserved0;
 };
 
 float saturate(float x) { return clamp(x, 0.0, 1.0); }
@@ -262,11 +281,37 @@ float3 cloudTypeGradient(float type, float normalizeHeight)
 }
 
 float getUniformPhase() { return 1.0 / (4.0 * 3.14159265); }
+
+// Draine phase: HG with an extra cos^2 term (better back-scatter for larger spherical droplets).
+float drainePhase(float nu, float g, float alpha)
+{
+    const float g2 = g * g;
+    const float numerator = (1.0 - g2) * (1.0 + alpha * nu * nu);
+    const float bottomTerm = 1.0 + g2 - 2.0 * g * nu;
+    const float denominator = pow(max(bottomTerm, 1e-6), 1.5) * (1.0 + alpha * (1.0 + 2.0 * g2) / 3.0) * 4.0 * 3.14159265;
+    return numerator / denominator;
+}
+
+// Jendersie & d'Eon (2023), "An Approximate Mie Scattering Function for Fog and Cloud Rendering" (SIGGRAPH 2023):
+// a weighted blend of an HG forward peak and a Draine lobe, fitted to Mie for water droplets of diameter d (microns, 5..50).
+// nu = cos(scattering angle); +1 = forward (looking into the sun).
+float jendersieDEonPhase(float nu, float dropletDiameter)
+{
+    const float d = clamp(dropletDiameter, 5.0, 50.0);
+
+    const float gHG = exp(-0.0990567 / (d - 1.67154));
+    const float gD = exp(-2.20679 / (d + 3.91029)) - 0.428934;
+    const float alpha = exp(3.62489 - 8.29288 / (d + 5.52825));
+    const float wD = exp(-0.599085 / (d - 0.641583)) - 0.665888;
+
+    return (1.0 - wD) * hgPhase(gHG, nu) + wD * drainePhase(nu, gD, alpha);
+}
 // VoL = dot(viewDir, sunDir): +1 means looking INTO the sun (forward scatter / silver lining)
-// Dual-lobe HG for MS octave n. eccScale = (1 - c)^n (1.0 = the real single-scatter phase).
+// Phase for MS octave n. eccScale = (1 - c)^n (1.0 = the real single-scatter phase). Octave 0 is the approximate-Mie phase; higher
+// octaves relax toward isotropic by eccScale, which is Wrenninge's g*c^n generalised to a phase that is not a single HG.
 float cloudPhaseOctave(float VoL, float eccScale)
 {
-    return lerp(hgPhase(kPhaseBackwardG * eccScale, VoL), hgPhase(kPhaseForwardG * eccScale, VoL), kPhaseForwardMix);
+    return lerp(getUniformPhase(), jendersieDEonPhase(VoL, kCloudDropletDiameter), eccScale);
 }
 
 float cloudPhase(float VoL)
@@ -300,9 +345,17 @@ float getPowderEffect(float depth, float height, float VoL)
     return depth * height;
 }
 
+// Mip level whose texel is about one march step wide. tilesPerKm = noise tiles per km (cloudBaseNoiseScale / cloudDetailScale).
+float cloudNoiseLod(float footprintMetres, float tilesPerKm)
+{
+    const float texelMetres = 1000.0 / (max(tilesPerKm, 1e-4) * kCloudNoiseRes);
+    return clamp(log2(max(footprintMetres, 1e-3) / texelMetres) - kNoiseLodBias, 0.0, 6.0);
+}
+
 // posMeter: world position in METERS (absolute from planet center)
 // normalizeHeight: 0=cloud bottom, 1=cloud top
-float cloudMapEx(float3 posMeter, float normalizeHeight, bool coarse)
+// footprint: march step length in metres at this sample; picks the noise mip and fades the detail erosion that the step can't resolve
+float cloudMapEx(float3 posMeter, float normalizeHeight, bool coarse, float footprint)
 {
     const float kCoverage = kCloud.cloudCoverage;
     const float kDensity = kCloud.cloudDensityScale;
@@ -330,7 +383,7 @@ float cloudMapEx(float3 posMeter, float normalizeHeight, bool coarse)
     float3 g = cloudTypeGradient(weatherValue.b, hh); 
     float gradienShape = (weatherValue.b < 0.5 ? g.x : g.y) * remap(hh, 0.85, 1.0, 1.0, 0.0);
 
-    float basicNoise = inBasicNoise.SampleLevel(linearRepeatSampler, (posKm + windOffset) * float3(kCloud.cloudBaseNoiseScale), 0).x;
+    float basicNoise = inBasicNoise.SampleLevel(linearRepeatMipFilterSampler, (posKm + windOffset) * float3(kCloud.cloudBaseNoiseScale), cloudNoiseLod(footprint, kCloud.cloudBaseNoiseScale)).x;
     float basicCloudNoise = gradienShape * basicNoise;
 
     float basicCloudWithCoverage = coverage * remap(basicCloudNoise, 1.0 - coverage, 1, 0, 1);
@@ -340,7 +393,13 @@ float cloudMapEx(float3 posMeter, float normalizeHeight, bool coarse)
     if (!coarse)
     {
         float3 sampleDetailNoise = posKm - windOffset * 0.15;
-        float detailNoiseComposite = inDetailNoise.SampleLevel(linearRepeatSampler, sampleDetailNoise * kCloud.cloudDetailScale, 0).x;
+        // Detail finer than the step is undersampled and only turns into per-pixel noise: fade it out between 0.5 and 1.5 detail
+        // wavelengths per step, regressing to its mean so the average density doesn't shift.
+        const float detailWavelength = 1000.0 / (max(kCloud.cloudDetailScale, 1e-4) * kDetailBandCells);
+        const float detailFade = 1.0 - saturate(footprint / detailWavelength - 0.5);
+        float detailNoiseComposite = lerp(0.45,
+            inDetailNoise.SampleLevel(linearRepeatMipFilterSampler, sampleDetailNoise * kCloud.cloudDetailScale, cloudNoiseLod(footprint, kCloud.cloudDetailScale)).x,
+            detailFade);
         detailNoiseMixByHeight = kDetailErosion * exp(-kCoverage * 0.75) * lerp(detailNoiseComposite, 1 - detailNoiseComposite, saturate(normalizeHeight * 10.0));
     }
 
@@ -353,8 +412,11 @@ float cloudMapEx(float3 posMeter, float normalizeHeight, bool coarse)
     return cloudDensity * densityShape * kExtinctionPerMetre;
 }
 
-float cloudMap(float3 posMeter, float normalizeHeight) { return cloudMapEx(posMeter, normalizeHeight, false); }
-float cloudMapCoarse(float3 posMeter, float normalizeHeight) { return cloudMapEx(posMeter, normalizeHeight, true); }
+float cloudMap(float3 posMeter, float normalizeHeight) { return cloudMapEx(posMeter, normalizeHeight, false, 0.0); }
+float cloudMapCoarse(float3 posMeter, float normalizeHeight) { return cloudMapEx(posMeter, normalizeHeight, true, 0.0); }
+// Step-aware variants (noise mip + detail fade follow the step length)
+float cloudMapFP(float3 posMeter, float normalizeHeight, float footprint) { return cloudMapEx(posMeter, normalizeHeight, false, footprint); }
+float cloudMapCoarseFP(float3 posMeter, float normalizeHeight, float footprint) { return cloudMapEx(posMeter, normalizeHeight, true, footprint); }
 
 // HZD light-sample cone kernel: 6 roughly uniform unit vectors. Each light sample is pushed off the ray by kernel * distance *
 // kLightConeSpread, so the shadow is a cone instead of a line: soft shadows that the temporal reconstruction averages out.
@@ -382,7 +444,7 @@ float cloudLightOpticalDepth(float3 pos, float3 dir, int lightSteps, bool longRa
         const float d = travelled + 0.5 * stepL;
         float3 samplePos = pos + dir * d + kLightConeKernel[j % 6] * (d * kLightConeSpread);
         float normalizeHeight = (length(samplePos) - kCloud.cloudBottomRadius) / layerThickness;
-        od += cloudMap(samplePos, normalizeHeight) * stepL;
+        od += cloudMapFP(samplePos, normalizeHeight, stepL) * stepL;
         travelled += stepL;
         stepL *= kLightStepMul;
     }
@@ -394,7 +456,7 @@ float cloudLightOpticalDepth(float3 pos, float3 dir, int lightSteps, bool longRa
         const float d = 2.0 * travelled;
         float3 samplePos = pos + dir * d + kLightConeKernel[lightSteps % 6] * (d * kLightConeSpread);
         float normalizeHeight = (length(samplePos) - kCloud.cloudBottomRadius) / layerThickness;
-        od += cloudMap(samplePos, normalizeHeight) * (2.0 * travelled) * kFarShadowWeight;
+        od += cloudMapFP(samplePos, normalizeHeight, 2.0 * travelled) * (2.0 * travelled) * kFarShadowWeight;
     }
     return od;
 }
@@ -501,6 +563,51 @@ void sampleCloudAerialPerspective(float2 uv, float dist, float3 camPos, float3 d
     outTransmit = transmit;
 }
 
+// Altitude crossfade between the volumetric march and the 2D layer. Ported from the reference's GetVolumetricsFadeout:
+// below transitionStart: volumetric only. The 2D layer is fully in by 25% of the way to transitionEnd, the volumetric layer
+// holds until 25% and is gone at transitionEnd. Above transitionEnd: 2D only (and the raymarch is skipped entirely).
+void getVolumetricsFadeout(float camAltitude, float startAltitude, float endAltitude,
+                           out float volumetricLayerFade, out float twoDimensionalLayerFade)
+{
+    const float transitionProgress = 1.0 - (camAltitude - startAltitude) / max(endAltitude - startAltitude, 1.0);
+    twoDimensionalLayerFade = clamp(4.0 * (1.0 - transitionProgress), 0.0, 1.0);
+    volumetricLayerFade = clamp(1.33 * transitionProgress, 0.0, 1.0);
+}
+
+// Optical depth of the cloud column through `up` (a direction from the planet centre): evenly spaced cloudMap samples between
+// cloud base and top. This is the whole "2D layer": the SAME density field the volumetric march uses, integrated along local
+// vertical instead of along the view ray, so the two layers show the same clouds and the crossfade is seamless.
+float cloudColumnOpticalDepth(float3 up, int samples)
+{
+    const float thickness = kCloud.cloudTopRadius - kCloud.cloudBottomRadius;
+    samples = clamp(samples, 2, 16);
+    float od = 0.0;
+    for (int k = 0; k < samples; k++)
+    {
+        const float h = (float(k) + 0.5) / float(samples);
+        od += cloudMapEx(up * (kCloud.cloudBottomRadius + h * thickness), h, false, thickness / float(samples)) * (thickness / float(samples));
+    }
+    return od;
+}
+
+// Iterations needed to march [t0, t1] with step = max(minStep, g * t): a linear phase at minStep until g*t overtakes it, then
+// geometric growth by (1 + g) per step.
+float cloudMarchStepsNeeded(float t0, float t1, float minStep, float g)
+{
+    const float tCross = minStep / g;
+    float t = t0;
+    float steps = 0.0;
+    if (t < tCross)
+    {
+        const float tLin = min(t1, tCross);
+        steps += (tLin - t) / minStep;
+        t = tLin;
+    }
+    if (t < t1)
+        steps += log(t1 / max(t, 1e-3)) / log(1.0 + g);
+    return steps;
+}
+
 float4 cloudColorCompute(
     CloudUBO cloud,
     AtmoUBO atmosphere,
@@ -522,6 +629,23 @@ float4 cloudColorCompute(
     float radiusCloudEnd = cloud.cloudTopRadius;
 
     float viewHeight = length(worldPos);
+
+    // 2D <-> volumetric crossfade by camera altitude above sea level.
+    float volumetricFade, twoDimensionalFade;
+    getVolumetricsFadeout(viewHeight - earthRadius, cloud.transitionStartAltitude, cloud.transitionEndAltitude,
+                          volumetricFade, twoDimensionalFade);
+
+    // Distance (metres) to the scene surface along this ray. The march is clipped here so geometry inside or in front of the
+    // layer is correctly covered by (and covers) cloud, instead of being skipped or seen straight through it.
+    float sceneDist = 1.0e30;
+    {
+        const float sceneZ = inDepth.SampleLevel(pointClampEdgeSampler, uv, 0).x;
+        if (sceneZ > 0.0)
+        {
+            const float4 vp = mul(atmosphere.invProj, float4(uv * 2.0 - 1.0, sceneZ, 1.0));
+            sceneDist = length(vp.xyz / vp.w) * (atmosphere.bottomRadius / atmosphere.renderUnitRadius);
+        }
+    }
 
     float tMin;
     float tMax;
@@ -580,6 +704,13 @@ float4 cloudColorCompute(
     tMin = max(tMin, 0.0);
     tMax = max(tMax, 0.0);
 
+    if (sceneDist <= tMin)
+        bEarlyOutCloud = true; // geometry is in front of the whole layer along this ray
+    tMax = min(tMax, sceneDist);
+
+    if (volumetricFade <= 0.0)
+        bEarlyOutCloud = true; // above the transition only the 2D layer is drawn: skip the march
+
     float cloudMaxTracingDist = 300000.0; // 300km max trace
     if (tMax <= tMin || tMin > cloudMaxTracingDist)
     {
@@ -592,14 +723,36 @@ float4 cloudColorCompute(
     const float StepCount = max(cloud.stepCount, 1.0);
     const uint stepCountUnit = (uint)StepCount;
 
-    // Variable step length: grows with distance, clamped so the full step budget always reaches tMax even if every step is fine.
+    // Variable step length: step = marchGrowth * t, never below minStep. marchGrowth is the smallest rate (>= kStepGrowth) whose
+    // geometric series still reaches tMax inside ~60% of the iteration budget (the rest is for coarse-search back-ups).
+    // The fixed 5% rate used to run out of iterations after ~8 km when tMin ~ 0 (camera inside the layer), leaving everything
+    // beyond transparent: a hard, blocky "edge of the volumetric" that overwrote the clouds behind it.
     const float minStep = max(30.0, (radiusCloudEnd - radiusCloudStart) / StepCount * 0.6);
-    const float maxStep = max(minStep, 2.0 * marchingDistance / StepCount);
+    const float maxStep = max(minStep, 0.5 * marchingDistance);
+
+    float marchGrowth = kStepGrowth;
+    {
+        const float budget = 0.6 * StepCount;
+        if (cloudMarchStepsNeeded(tMin, tMax, minStep, kStepGrowth) > budget)
+        {
+            float gLo = kStepGrowth;
+            float gHi = 8.0;
+            for (int it = 0; it < 12; it++)
+            {
+                const float gMid = 0.5 * (gLo + gHi);
+                if (cloudMarchStepsNeeded(tMin, tMax, minStep, gMid) > budget)
+                    gLo = gMid;
+                else
+                    gHi = gMid;
+            }
+            marchGrowth = gHi;
+        }
+    }
 
     float sampleT = tMin + 0.001 * minStep;
-    sampleT += clamp(tMin * kStepGrowth, minStep, maxStep) * blueNoise;
+    sampleT += clamp(tMin * marchGrowth, minStep, maxStep) * blueNoise;
 
-    float3 sunColor = float3(kCloudSunIlluminance); // phase has a 1/(4*pi) factor, so the sun needs ~4*pi to compete with the sky LUT
+    float3 sunColor = float3(kCloudSunIlluminance * kCloudSunBoost); // phase has a 1/(4*pi) factor, so the sun needs a gain to compete with the sky LUT
     float3 sunDirection = normalize(kAtmo.sunDir.xyz);
 
     float VoL = dot(worldDir, sunDirection);
@@ -664,7 +817,7 @@ float4 cloudColorCompute(
             if (sampleT >= tMax)
                 break;
 
-            const float dtFine = clamp(sampleT * kStepGrowth, minStep, maxStep);
+            const float dtFine = clamp(sampleT * marchGrowth, minStep, maxStep);
 
             float3 samplePos = sampleT * worldDir + worldPos;
             float sampleHeight = length(samplePos);
@@ -672,7 +825,7 @@ float4 cloudColorCompute(
 
             if (coarseMode)
             {
-                if (cloudMapCoarse(samplePos, normalizeHeight) > 0.0)
+                if (cloudMapCoarseFP(samplePos, normalizeHeight, dtFine * kCoarseStepMul) > 0.0)
                 {
                     // Found something: back up over the span the last coarse step skipped and march fine from there.
                     coarseMode = false;
@@ -692,7 +845,7 @@ float4 cloudColorCompute(
 
             float3 atmosphereTransmittance = lerp(atmosphereTransmittance0, atmosphereTransmittance1, saturate((sampleT - tMin) / marchingDistance));
 
-            float stepCloudDensity = cloudMap(samplePos, normalizeHeight);
+            float stepCloudDensity = cloudMapFP(samplePos, normalizeHeight, stepT);
 
             if (stepCloudDensity > 0.0)
             {
@@ -831,12 +984,87 @@ float4 cloudColorCompute(
             {
                 float3 apScatter, apTransmit;
                 sampleCloudAerialPerspective(uv, rayHitDistance, worldPos, worldDir, atmosphere.topRadius, apScatter, apTransmit);
+#if CLOUD_AP_DEBUG == 1
+                scatteredLight = apScatter * ((1.0 - transmittance) / kCloudExposure);
+#elif CLOUD_AP_DEBUG == 2
+                // cloud lighting only
+#else
                 scatteredLight = scatteredLight * apTransmit + apScatter * ((1.0 - transmittance) / kCloudExposure);
+#endif
+            }
+        }
+
+        // Fade the volumetric layer out toward the transition end (the 2D layer takes over).
+        scatteredLight *= volumetricFade;
+        transmittance = lerp(1.0, transmittance, volumetricFade);
+    }
+
+    // ---- 2D layer: column-integrated slab at the cloud top, in FRONT of the volumetric layer (camera above the layer only) ----
+    if (twoDimensionalFade > 0.0 && viewHeight > radiusCloudEnd)
+    {
+        const float tTop = raySphereIntersectNearest(worldPos, worldDir, float3(0.0), radiusCloudEnd);
+        const float tPlanet = raySphereIntersectNearest(worldPos, worldDir, float3(0.0), earthRadius);
+
+        if (tTop > 0.0 && tTop < sceneDist && !(tPlanet > 0.0 && tPlanet < tTop))
+        {
+            const float3 shellPos = worldPos + worldDir * tTop;
+            const float shellHeight = length(shellPos);
+            const float3 shellUp = shellPos / shellHeight;
+
+            const float columnOd = cloudColumnOpticalDepth(shellUp, (int)cloud.twoDColumnSamples);
+
+            if (columnOd > 0.0)
+            {
+                const float cosSun = dot(shellUp, sunDirection);
+
+                // Sun enters from above and the average scatterer sits mid-column, so light sees half the column along the
+                // (slanted) sun path and the sky sees half along vertical. Same octave/powder lighting as the volumetric layer.
+                const float odSun = columnOd * 0.5 / max(cosSun, 0.15);
+                const float odSky = columnOd * 0.5;
+
+                const float powder = cloudPowder(odSun, VoL);
+                const float sunMs = cloudMultiScatterSun(odSun, VoL, powder);
+                const float skyMs = cloudMultiScatterSky(odSky);
+
+                const float3 sunTrans = inTransmittanceLut.SampleLevel(linearClampEdgeSampler,
+                    atmosUV(shellHeight, cosSun, atmosphere.bottomRadius, atmosphere.topRadius), 0).rgb;
+                const float3 fill = sampleMultiScatter(inMultiScatterLUT, shellHeight, cosSun,
+                                                       atmosphere.bottomRadius, atmosphere.topRadius);
+
+                float3 ambient = fill * kCloudSunIlluminance * kAmbientScale * (0.5 + 0.5 * (1.0 - sunDirection.y));
+                ambient = lerp(dot(ambient, float3(0.2126, 0.7152, 0.0722)).xxx, ambient, kAmbientSaturation);
+
+                const float3 luminance = sunTrans * sunColor * sunMs + ambient * skyMs;
+
+                // A homogeneous slab lit with constant luminance integrates to luminance * (1 - T), which is what the
+                // volumetric energy-conserving step integration converges to.
+                const float layerT = exp(-columnOd);
+                float3 layerRgb = luminance * (1.0 - layerT);
+
+                float3 apScatter, apTransmit;
+                sampleCloudAerialPerspective(uv, tTop, worldPos, worldDir, atmosphere.topRadius, apScatter, apTransmit);
+                layerRgb = layerRgb * apTransmit + apScatter * ((1.0 - layerT) / kCloudExposure);
+
+                layerRgb *= twoDimensionalFade;
+                const float layerTrans = lerp(1.0, layerT, twoDimensionalFade);
+
+                // Front layer over back layer (premultiplied)
+                scatteredLight = layerRgb + layerTrans * scatteredLight;
+                transmittance *= layerTrans;
+
+                // Depth for reprojection/occlusion: the shell where it dominates or nothing volumetric was hit
+                if (cloudZ <= 0.0 || layerT < 0.5)
+                {
+                    const float4 rayInH = mul(kCam.viewProjection, float4(kCam.cameraPosition.xyz + (shellPos - worldPos), 1.0));
+                    cloudZ = rayInH.z / rayInH.w;
+                }
             }
         }
     }
 
-    if (bFog)
+    // The fog march steps from the camera up to the cloud top, so with the camera ABOVE the top its step length goes negative:
+    // transmittance grows past 1 and the composite then multiplies cloud alpha by it. Only run it from below the layer.
+    if (bFog && viewHeight < radiusCloudEnd)
     {
         const uint kGodRaySteps = 36;
 

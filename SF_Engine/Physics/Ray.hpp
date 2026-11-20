@@ -1,7 +1,7 @@
 #pragma once
 
-#include <Math/Matrix/Matrix.hpp>
-#include <Math/Vectors/Vector.hpp>
+#include <Math/Matrix.hpp>
+#include <Math/Vector.hpp>
 
 namespace SF::Engine
 {
@@ -16,7 +16,7 @@ namespace SF::Engine
          * @param useMouse If the ray will use the mouse coords or to start from screenStart.
          * @param screenStart If useMouse is false then this will be used as the rays start.
          */
-        Ray(bool useMouse, const Vec2& screenStart);
+        Ray(bool useMouse, const Vec2 &screenStart);
 
         /**
          * Updates the ray to a new position.
@@ -25,8 +25,8 @@ namespace SF::Engine
          * @param viewMatrix The cameras view matrix.
          * @param projectionMatrix The projection view matrix.
          */
-        void Update(const Vec3& currentPosition, const Vec2& mousePosition,
-                    const Mat4& viewMatrix, const Mat4& projectionMatrix);
+        void Update(const Vec3 &currentPosition, const Vec2 &mousePosition, const Mat4 &viewMatrix,
+                    const Mat4 &projectionMatrix);
 
         /**
          * Gets a point on the ray.
@@ -41,34 +41,16 @@ namespace SF::Engine
          * @return The destination vector X and Y being screen space coords and Z being the distance
          * to the camera.
          */
-        Vec3 ConvertToScreenSpace(const Vec3& position) const;
+        Vec3 ConvertToScreenSpace(const Vec3 &position) const;
 
-        bool IsUseMouse() const
-        {
-            return useMouse;
-        }
-        void SetUseMouse(bool useMouse)
-        {
-            this->useMouse = useMouse;
-        }
+        bool IsUseMouse() const { return useMouse; }
+        void SetUseMouse(bool useMouse) { this->useMouse = useMouse; }
 
-        const Vec2& GetScreenStart() const
-        {
-            return screenStart;
-        }
-        void SetScreenStart(const Vec2& screenStart)
-        {
-            this->screenStart = screenStart;
-        }
+        const Vec2 &GetScreenStart() const { return screenStart; }
+        void SetScreenStart(const Vec2 &screenStart) { this->screenStart = screenStart; }
 
-        const Vec3& GetOrigin() const
-        {
-            return origin;
-        }
-        const Vec3& GetCurrentRay() const
-        {
-            return currentRay;
-        }
+        const Vec3 &GetOrigin() const { return origin; }
+        const Vec3 &GetCurrentRay() const { return currentRay; }
 
     private:
         void UpdateNormalizedDeviceCoordinates(float mouseX, float mouseY);

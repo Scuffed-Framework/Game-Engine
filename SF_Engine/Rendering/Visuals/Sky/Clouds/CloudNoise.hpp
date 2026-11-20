@@ -1,4 +1,5 @@
 #pragma once
+#include <algorithm>
 #include <Rendering/RHI/Descriptors/DescriptorSet.hpp>
 #include <Rendering/RHI/Images/Image.hpp>
 #include <Rendering/RHI/Pipelines/ComputePipeline.hpp>
@@ -22,13 +23,17 @@ namespace SF::Engine
     public:
         explicit CloudNoiseLUTs(uint32_t width = 32, uint32_t height = 32, uint32_t depth = 1)
         {
+            // Base/detail volumes carry a mip chain (generated in Bake) so the cloud march can sample the mip that matches its step
+            // size instead of aliasing sub-step noise into per-pixel speckle.
             BaseNoiseTexture_ =
                     std::make_unique<Image3d>(UVec3{width, height, depth}, VK_FORMAT_R8_UNORM, VK_IMAGE_LAYOUT_GENERAL,
-                                              VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
+                                              VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_FILTER_LINEAR,
+                                              VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLE_COUNT_1_BIT, false, true);
 
             DetailNoiseTexture_ =
                     std::make_unique<Image3d>(UVec3{width, height, depth}, VK_FORMAT_R8_UNORM, VK_IMAGE_LAYOUT_GENERAL,
-                                              VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
+                                              VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_FILTER_LINEAR,
+                                              VK_SAMPLER_ADDRESS_MODE_REPEAT, VK_SAMPLE_COUNT_1_BIT, false, true);
 
             CurlNoiseTexture_ =
                     std::make_unique<Image2d>(UVec2{width, height}, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_LAYOUT_GENERAL,
@@ -139,17 +144,8 @@ namespace SF::Engine
             descSetD_->BindDescriptor(cmd);
             vkCmdDispatch(cmd, (ext3.x + 7) / 8, (ext3.y + 7) / 8, 1);
 
-            Image::InsertImageMemoryBarrier(cmd, BaseNoiseTexture_->GetImage(), VK_ACCESS_SHADER_WRITE_BIT,
-                                            VK_ACCESS_SHADER_READ_BIT, VK_IMAGE_LAYOUT_GENERAL,
-                                            VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                                            VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-                                            VK_IMAGE_ASPECT_COLOR_BIT, 1, 0, 1, 0);
-
-            Image::InsertImageMemoryBarrier(cmd, DetailNoiseTexture_->GetImage(), VK_ACCESS_SHADER_WRITE_BIT,
-                                            VK_ACCESS_SHADER_READ_BIT, VK_IMAGE_LAYOUT_GENERAL,
-                                            VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                                            VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-                                            VK_IMAGE_ASPECT_COLOR_BIT, 1, 0, 1, 0);
+            GenerateMipsAndFinish(cmd, BaseNoiseTexture_.get());
+            GenerateMipsAndFinish(cmd, DetailNoiseTexture_.get());
 
             Image::InsertImageMemoryBarrier(cmd, CurlNoiseTexture_->GetImage(), VK_ACCESS_SHADER_WRITE_BIT,
                                             VK_ACCESS_SHADER_READ_BIT, VK_IMAGE_LAYOUT_GENERAL,
@@ -171,6 +167,80 @@ namespace SF::Engine
         }
 
     private:
+        // Blit-chain mip generation for a 3D volume whose mip 0 was just written by a compute shader (GENERAL), recorded into the
+        // frame's command buffer. Leaves EVERY level in SHADER_READ_ONLY_OPTIMAL, visible to fragment AND compute readers (the cloud
+        // raymarch is a compute pass; the old barrier only made the bake visible to fragment shaders).
+        static void GenerateMipsAndFinish(const CommandBuffer &cmd, Image3d *img)
+        {
+            const UVec3 ext = img->GetExtent();
+            uint32_t levels = 1;
+            for (uint32_t m = std::max({ext.x, ext.y, ext.z}); m > 1; m >>= 1)
+                ++levels;
+
+            constexpr VkPipelineStageFlags kConsumers =
+                    VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
+
+            if (levels <= 1)
+            {
+                Image::InsertImageMemoryBarrier(cmd, img->GetImage(), VK_ACCESS_SHADER_WRITE_BIT,
+                                                VK_ACCESS_SHADER_READ_BIT, VK_IMAGE_LAYOUT_GENERAL,
+                                                VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, kConsumers,
+                                                VK_IMAGE_ASPECT_COLOR_BIT, 1, 0, 1, 0);
+                return;
+            }
+
+            // mip 0: compute write -> transfer read
+            Image::InsertImageMemoryBarrier(cmd, img->GetImage(), VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_TRANSFER_READ_BIT,
+                                            VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                                            VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT,
+                                            VK_IMAGE_ASPECT_COLOR_BIT, 1, 0, 1, 0);
+
+            int32_t sx = static_cast<int32_t>(ext.x);
+            int32_t sy = static_cast<int32_t>(ext.y);
+            int32_t sz = static_cast<int32_t>(ext.z);
+
+            for (uint32_t i = 1; i < levels; ++i)
+            {
+                const int32_t dx = std::max(sx >> 1, 1);
+                const int32_t dy = std::max(sy >> 1, 1);
+                const int32_t dz = std::max(sz >> 1, 1);
+
+                // Contents are regenerated, so UNDEFINED is fine whatever layout this level was in (GENERAL at creation,
+                // READ_ONLY after an earlier bake).
+                Image::InsertImageMemoryBarrier(cmd, img->GetImage(), 0, VK_ACCESS_TRANSFER_WRITE_BIT,
+                                                VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                                                VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT,
+                                                VK_IMAGE_ASPECT_COLOR_BIT, 1, i, 1, 0);
+
+                VkImageBlit blit{};
+                blit.srcSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, i - 1, 0, 1};
+                blit.srcOffsets[0]  = {0, 0, 0};
+                blit.srcOffsets[1]  = {sx, sy, sz};
+                blit.dstSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, i, 0, 1};
+                blit.dstOffsets[0]  = {0, 0, 0};
+                blit.dstOffsets[1]  = {dx, dy, dz};
+                vkCmdBlitImage(cmd, img->GetImage(), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, img->GetImage(),
+                               VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &blit, VK_FILTER_LINEAR);
+
+                // This level is the source of the next blit, and every level must be TRANSFER_SRC for the final transition.
+                Image::InsertImageMemoryBarrier(cmd, img->GetImage(), VK_ACCESS_TRANSFER_WRITE_BIT,
+                                                VK_ACCESS_TRANSFER_READ_BIT, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                                                VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_PIPELINE_STAGE_TRANSFER_BIT,
+                                                VK_PIPELINE_STAGE_TRANSFER_BIT, VK_IMAGE_ASPECT_COLOR_BIT, 1, i, 1, 0);
+
+                sx = dx;
+                sy = dy;
+                sz = dz;
+            }
+
+            // Whole chain -> shader read, for fragment and compute consumers
+            Image::InsertImageMemoryBarrier(cmd, img->GetImage(), VK_ACCESS_TRANSFER_READ_BIT, VK_ACCESS_SHADER_READ_BIT,
+                                            VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                            VK_PIPELINE_STAGE_TRANSFER_BIT, kConsumers, VK_IMAGE_ASPECT_COLOR_BIT,
+                                            levels, 0, 1, 0);
+        }
+
         std::unique_ptr<Image3d> BaseNoiseTexture_;
         std::unique_ptr<Image3d> DetailNoiseTexture_;
         std::unique_ptr<Image2d> CurlNoiseTexture_;

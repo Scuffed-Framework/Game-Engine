@@ -8,7 +8,7 @@
 #include <Rendering/RHI/Descriptors/DescriptorSet.hpp>
 
 #include <Math/BasicMath.hpp>
-#include <Math/Time/Time.hpp>
+#include <Math/Time.hpp>
 #include <Scene/SceneManager.hpp>
 
 

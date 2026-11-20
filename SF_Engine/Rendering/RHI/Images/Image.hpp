@@ -3,7 +3,7 @@
 #include <vector>
 
 #include <LowLevel/XML/XMLModule.hpp>
-#include <Math/Vectors/Vector.hpp>
+#include <Math/Vector.hpp>
 #include <Rendering/RHI/Commands/CommandBuffer.hpp>
 #include <Rendering/RHI/Descriptors/BasicDescriptor.hpp>
 #include <filesystem>

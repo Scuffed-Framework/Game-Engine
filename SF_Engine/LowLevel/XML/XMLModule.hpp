@@ -22,12 +22,6 @@ namespace SF::Engine
     class XMLNode;
     class Serializable;
 
-    struct XMLAttribute
-    {
-        std::string name;
-        std::string value;
-    };
-
     template<typename T>
     concept ComponentIndexable = requires(const T &v) {
         { T::length() } -> std::convertible_to<int>;

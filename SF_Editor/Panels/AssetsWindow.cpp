@@ -229,7 +229,7 @@ namespace SF::Engine
                     return "Material";
                 case AssetType::Library:
                     return "Library";
-                case AssetType::AnimationStateMachine:
+                case AssetTypeStateMachine:
                     return "Animation State Machine";
                 default:
                     return "Unknown";
@@ -1770,7 +1770,7 @@ namespace SF::Engine
         const bool overPanel   = IsOverAnyImGuiWindow();
         const bool overBrowser = overPanel && m_windowRectValid && mouse.x >= m_windowMin.x &&
                                  mouse.x <= m_windowMax.x && mouse.y >= m_windowMin.y && mouse.y <= m_windowMax.y;
-        const bool overScene = !overPanel;
+        const bool overScene   = !overPanel;
 
         if (!overBrowser && !overScene)
         {

@@ -30,6 +30,9 @@ class SfEngineConan(ConanFile):
     def requirements(self):
         android = self.settings.os == "Android"
 
+        # Scripting
+        self.requires("angelscript/2.39.0")
+
         # Memory
         self.requires("mimalloc/3.6.1")
 

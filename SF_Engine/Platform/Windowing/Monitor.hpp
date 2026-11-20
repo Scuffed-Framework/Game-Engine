@@ -1,6 +1,6 @@
 #pragma once
 
-#include <Math/Vectors/Vector.hpp>
+#include <Math/Vector.hpp>
 #include <SDL3/SDL_video.h>
 #include <cstdint>
 #include <string>

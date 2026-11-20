@@ -1,58 +1,62 @@
 #pragma once
 #include <LowLevel/Reflection/RTTISingle.hpp>
-#include <Math/BasicMath.hpp>
-#include <Math/Matrix/Matrix.hpp>
-#include <Math/Quaternion/Quaternion.hpp>
+#include <Math/Matrix.hpp>
+#include <UtilityClasses/StlExtensions.hpp>
 
-
-namespace SF::Engine::Animation
+namespace SF::Engine
 {
-
     class Joint
     {
         SF_RTTI_BASE(Joint)
     public:
         // give no data cuz
-        explicit Joint(std::uint32_t index = 0, std::string name = "", const Mat4 &bindLocalTransform = Mat4(0)) :
-            index(index), name(std::move(name)), localBindTransform(bindLocalTransform)
+        explicit Joint(std::uint32_t index = 0, std::string name = {}, std::uint32_t parent = InvalidIndex,
+                       const Transform &bindLocalTransform = {}, const Transform &invBindLocal = {}) :
+            index(index), parent(parent), name(std::move(name)), localBindTransform(bindLocalTransform),
+            inverseBindTransform(invBindLocal)
         {
+            CalculateInverseBindTransform(Transform{});
         }
 
         virtual ~Joint() = default;
 
-        void CalculateInverseBindTransform(const Mat4 &parentBindTransform)
+        void CalculateInverseBindTransform(const Transform &parentBindTransform = {})
         {
-            auto bindTransform   = parentBindTransform * localBindTransform;
-            inverseBindTransform = inverse(bindTransform);
+            const auto bindTransform = parentBindTransform * localBindTransform;
+
+            inverseBindTransform = Transform::FromMatrix(inverse(bindTransform.ToMatrix()));
 
             for (auto &child: children)
                 child.CalculateInverseBindTransform(bindTransform);
         }
 
         [[nodiscard]] std::uint32_t GetIndex() const { return index; }
-        void SetIndex(std::uint32_t index) { this->index = index; }
-
+        [[nodiscard]] std::uint32_t GetParent() const { return parent; }
         [[nodiscard]] const std::string &GetName() const { return name; }
-        void SetName(const std::string &name) { this->name = name; }
-
         [[nodiscard]] const std::vector<Joint> &GetChildren() const { return children; }
+        [[nodiscard]] const Transform &GetLocalBindTransform() const { return localBindTransform; }
+        [[nodiscard]] const Transform &GetInverseBindTransform() const { return inverseBindTransform; }
 
+        void SetIndex(std::uint32_t newIndex) { this->index = newIndex; }
+        void SetParent(const std::uint32_t newParent) { this->parent = newParent; }
+        void SetName(const std::string &newName) { this->name = newName; }
         void AddChild(const Joint &child) { children.emplace_back(child); }
-
-        [[nodiscard]] const Mat4 &GetLocalBindTransform() const { return localBindTransform; }
-        void SetLocalBindTransform(const Mat4 &localBindTransform) { this->localBindTransform = localBindTransform; }
-        [[nodiscard]] const Mat4 &GetInverseBindTransform() const { return inverseBindTransform; }
-        void SetInverseBindTransform(const Mat4 &inverseBindTransform)
+        void SetLocalBindTransform(const Transform &newLocalBindTransform)
         {
-            this->inverseBindTransform = inverseBindTransform;
+            this->localBindTransform = newLocalBindTransform;
+        }
+        void SetInverseBindTransform(const Transform &newInverseBindTransform)
+        {
+            this->inverseBindTransform = newInverseBindTransform;
         }
 
     private:
-        std::uint32_t index = 0;
-        std::string name;
-        std::vector<Joint> children;
+        std::uint32_t index  = 0;
+        std::uint32_t parent = InvalidIndex;
+        std::string name{};
+        std::vector<Joint> children{};
 
-        Mat4 localBindTransform;
-        Mat4 inverseBindTransform{};
+        Transform localBindTransform{};
+        Transform inverseBindTransform{};
     };
-} // namespace SF::Engine::Animation
+} // namespace SF::Engine

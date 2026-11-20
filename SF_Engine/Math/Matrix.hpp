@@ -1,7 +1,7 @@
 #pragma once
 
 #include <glm/glm.hpp>
-#include "../Vectors/Vector.hpp"
+#include "..//Vector.hpp"
 
 namespace SF::Engine
 {

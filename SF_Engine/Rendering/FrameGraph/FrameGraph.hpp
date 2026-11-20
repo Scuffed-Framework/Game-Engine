@@ -7,7 +7,7 @@
 #include <unordered_map>
 #include <vector>
 
-#include <Math/Vectors/Vector.hpp>
+#include <Math/Vector.hpp>
 #include <volk.h>
 
 #include <UtilityClasses/NoCopy.hpp>
@@ -62,8 +62,8 @@ namespace SF::Engine
             case ResourceUsage::DepthStencilAttachment:
                 return {.current_layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
                         .last_stage     = VK_PIPELINE_STAGE_2_EARLY_FRAGMENT_TESTS_BIT |
-                                      VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT,
-                        .last_access = VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT};
+                                          VK_PIPELINE_STAGE_2_LATE_FRAGMENT_TESTS_BIT,
+                        .last_access    = VK_ACCESS_2_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT};
             case ResourceUsage::SampledTexture:
                 return {.current_layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                         .last_stage  = VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,

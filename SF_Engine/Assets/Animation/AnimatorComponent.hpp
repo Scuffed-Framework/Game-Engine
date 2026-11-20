@@ -4,7 +4,7 @@
 #include "Animation.hpp"
 #include "Joint/AnimJoint.hpp"
 
-namespace SF::Engine::Animation
+namespace SF::Engine
 {
     struct Keyframe;
 
@@ -14,6 +14,7 @@ namespace SF::Engine::Animation
         std::unique_ptr<Animation> animation = nullptr;
 
     public:
+        void Start() override { animation->SetActiveObject(*GetOwner()); };
         void Reset() override;
 
         void Update() override
@@ -28,4 +29,4 @@ namespace SF::Engine::Animation
 
         // void PlayAnimation(const Joint &Root, vector<Mat4> &Matrices) {}
     };
-} // namespace SF::Engine::Animation
+} // namespace SF::Engine

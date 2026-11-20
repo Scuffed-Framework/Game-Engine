@@ -183,16 +183,6 @@ namespace SF::Engine
             if (waitResult == VK_TIMEOUT)
                 return VK_TIMEOUT; // GPU/present stalled, not a stale swapchain; caller decides
             RenderSystem::CheckVkResult(waitResult);
-
-            static double acc = 0;
-            static int n      = 0;
-            acc += std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count();
-            if (++n == 120)
-            {
-                Log::Info("fence wait avg {:.2f} ms", acc / n);
-                acc = 0;
-                n   = 0;
-            }
         }
 
         const auto acquireResult = vkAcquireNextImageKHR(logicalDevice, swapchain, std::numeric_limits<uint64_t>::max(),

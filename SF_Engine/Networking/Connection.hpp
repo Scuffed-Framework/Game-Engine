@@ -21,4 +21,18 @@ namespace SF::Engine
         std::variant<IpV4Address, IpV6Address> Address;
         uint16_t Port{};
     };
+
+    enum ConnectionState
+    {
+        Disconnected,
+        Established,
+        Listen,
+        SyncSent
+    };
+
+    struct ConnectionInfo
+    {
+        SocketAddress Address{};
+        ConnectionState State{};
+    };
 } // namespace SF::Engine

@@ -311,6 +311,11 @@ namespace SF::Engine
                             .Build()
                             .Apply();
                 }
+                // The raymarch clips against scene depth too (geometry inside/in front of the layer).
+                DescriptorSetWriteBuilder(*raymarchSet_, *raymarchPipeline_)
+                        .Image(4, depthImg->GetView(), VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL)
+                        .Build()
+                        .Apply();
                 lastAttachmentGeneration_ = generation;
                 lastDepthImg_             = depthImg;
             }
@@ -398,7 +403,7 @@ namespace SF::Engine
                         VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
                         VK_IMAGE_ASPECT_COLOR_BIT, 1, 0, 1, 0);
                         */
-                
+
                 // TransitionToReadOnly(cmd, reconImage);
                 reconImage->SetLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
             }
@@ -461,6 +466,10 @@ namespace SF::Engine
         ubo.msPhaseAttenuation = msPhaseAttenuation;
         ubo.msOctaves          = static_cast<float>(msOctaves);
 
+        ubo.transitionStartAltitude = transitionStartAltitude;
+        ubo.transitionEndAltitude   = transitionEndAltitude;
+        ubo.twoDColumnSamples       = static_cast<float>(twoDColumnSamples);
+
         frameCounter_  = (frameCounter_ + 1) % 256;
         ubo.frameIndex = static_cast<int>(frameCounter_);
 
@@ -490,6 +499,11 @@ namespace SF::Engine
         ImGui::SliderFloat("MS Attenuation (a)", &msAttenuation, 0.01f, 1.0f);
         ImGui::SliderFloat("MS Contribution (b)", &msContribution, 0.0f, 1.0f);
         ImGui::SliderFloat("MS Phase Atten (c)", &msPhaseAttenuation, 0.0f, 1.0f);
+        ImGui::Separator();
+        ImGui::TextUnformatted("2D <-> volumetric transition (altitude, m)");
+        ImGui::SliderFloat("Transition Start", &transitionStartAltitude, 1000.0f, 100000.0f);
+        ImGui::SliderFloat("Transition End", &transitionEndAltitude, 2000.0f, 200000.0f);
+        ImGui::SliderInt("2D Column Samples", &twoDColumnSamples, 2, 16);
         ImGui::End();
     }
 

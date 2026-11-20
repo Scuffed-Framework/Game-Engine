@@ -12,6 +12,7 @@
 
 namespace SF::Engine
 {
+    static constexpr std::uint32_t InvalidIndex = UINT32_MAX;
 
     struct DragAndDropObjectTag
     {
@@ -251,4 +252,12 @@ namespace SF::Engine
     }
 
     inline std::string SafeStr(const char *s) { return s ? std::string(s) : std::string(); }
+
+    template<typename T>
+    std::vector<T> ParseNumericArrayFromStr(const std::string &data)
+    {
+        std::istringstream stream(data);
+
+        return {std::istream_iterator<T>(stream), std::istream_iterator<T>()};
+    }
 } // namespace SF::Engine

@@ -9,7 +9,7 @@
 #include <Rendering/RHI/Pipelines/ComputePipeline.hpp>
 
 #include <Math/BasicMath.hpp>
-#include <Math/Vectors/Vector.hpp>
+#include <Math/Vector.hpp>
 
 #include <array>
 #include <cstdint>

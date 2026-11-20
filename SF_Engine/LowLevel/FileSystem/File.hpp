@@ -57,6 +57,7 @@ namespace SF::Engine
         File() = default;
         explicit File(const std::string &path);
         File(fs::path path);
+
         File(const File &other);
         File(File &&other) noexcept;
         ~File();
@@ -112,6 +113,8 @@ namespace SF::Engine
 
         static bool Rename(const std::string &oldPath, const std::string &newPath);
         bool Rename(const std::string &newName);
+
+        static bool CreateSymLink(const std::filesystem::path &from, const std::filesystem::path &to);
 
         // File information
         std::string GetName() const;

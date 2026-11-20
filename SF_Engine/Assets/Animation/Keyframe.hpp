@@ -1,12 +1,12 @@
 #pragma once
-#include <Math/Time/Time.hpp>
+#include <Math/Time.hpp>
 #include <Math/Transform.hpp>
 #include <map>
 #include <string>
 #include <utility>
 #include "Joint/AnimJoint.hpp"
 
-namespace SF::Engine::Animation
+namespace SF::Engine
 {
 
     struct Keyframe
@@ -32,4 +32,4 @@ namespace SF::Engine::Animation
         TimePoint TimeStamp;
         std::map<std::string, Transform> Pose;
     };
-} // namespace SF::Engine::Animation
+} // namespace SF::Engine

@@ -321,9 +321,5 @@ namespace SF::Engine
 template<>
 struct std::hash<SF::Engine::UUID>
 {
-    size_t operator()(const SF::Engine::UUID &uuid) const noexcept
-    {
-        // Use the built-in Hash struct from UUID
-        return SF::Engine::UUID::Hash{}(uuid);
-    }
+    size_t operator()(const SF::Engine::UUID &uuid) const noexcept { return SF::Engine::UUID::Hash{}(uuid); }
 }; // namespace std

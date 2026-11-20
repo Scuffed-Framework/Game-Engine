@@ -2,8 +2,8 @@
 
 #include <EntityComponentSystem/Component.hpp>
 #include <LowLevel/XML/XMLModule.hpp>
-#include <Math/Matrix/Matrix.hpp>
-#include <Math/Vectors/Vector.hpp>
+#include <Math/Matrix.hpp>
+#include <Math/Vector.hpp>
 #include <Scene/SceneSerialization.hpp>
 #include <glm/gtx/euler_angles.hpp>
 

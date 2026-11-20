@@ -3,7 +3,7 @@
 #include <vector>
 #include "Keyframe.hpp"
 
-namespace SF::Engine::Animation
+namespace SF::Engine
 {
 
     class AnimationCurve
@@ -25,4 +25,4 @@ namespace SF::Engine::Animation
                 keyframes.erase(it);
         }
     };
-} // namespace SF::Engine::Animation
+} // namespace SF::Engine

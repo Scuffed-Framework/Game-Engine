@@ -1,6 +1,6 @@
 #pragma once
 
-#include <Math/Vectors/Vector.hpp>
+#include <Math/Vector.hpp>
 #include <Rendering/FrameGraph/Stage.hpp>
 #include <Rendering/RHI/Shaders/Parser/Parser.hpp>
 #include <Rendering/RHI/Shaders/Shader.hpp>

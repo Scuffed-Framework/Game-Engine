@@ -2,9 +2,9 @@
 
 #include <glm/gtx/compatibility.hpp>
 
+#include "/Vector.hpp"
 #include "Matrix/Matrix.hpp"
-#include "Quaternion/Quaternion.hpp"
-#include "Vectors/Vector.hpp"
+#include "Quaternion.hpp"
 
 namespace SF::Engine
 {

@@ -6,7 +6,7 @@
 #include <string_view>
 #include <utility>
 
-#include <Math/Time/Time.hpp>
+#include <Math/Time.hpp>
 
 #include <spdlog/fmt/fmt.h>
 #include <spdlog/sinks/basic_file_sink.h>

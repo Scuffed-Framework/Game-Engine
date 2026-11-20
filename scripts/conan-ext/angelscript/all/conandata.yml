@@ -1,0 +1,4 @@
+sources:
+  "2.39.0":
+    url: "https://github.com/anjo76/angelscript/archive/refs/tags/v2.39.0.tar.gz"
+    sha256: "6573e2c75c4238dd9151824029c7715b4a2d9f2caf76ed7f62c92526128f20ce"

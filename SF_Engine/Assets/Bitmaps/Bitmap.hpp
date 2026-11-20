@@ -11,7 +11,7 @@
 #include <unordered_map>
 #include <utility>
 
-#include <Math/Vectors/Vector.hpp>
+#include <Math/Vector.hpp>
 
 namespace SF::Engine
 {

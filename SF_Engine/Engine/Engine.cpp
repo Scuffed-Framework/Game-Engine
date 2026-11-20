@@ -1,7 +1,7 @@
 #include "Engine.hpp"
 #include <Configuration/Default/DefaultScene.hpp>
 #include <Engine/Project/Project.hpp>
-#include <GameScript/LuaEngine.hpp>
+#include <GameScript/ScriptEngine.hpp>
 #include <Scene/SceneManager.hpp>
 #include <ranges>
 #include <string_view>
