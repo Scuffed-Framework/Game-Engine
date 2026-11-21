@@ -103,15 +103,15 @@ namespace ImVectorEditor
 
     struct Style
     {
-        uint32_t backgroundColor      = IM_COL32(31, 34, 42, 255);
-        uint32_t gridColor            = IM_COL32(255, 255, 255, 22);
-        uint32_t pathColor            = IM_COL32(245, 245, 245, 255);
-        uint32_t previewColor         = IM_COL32(245, 245, 245, 120);
-        uint32_t anchorColor          = IM_COL32(255, 255, 255, 255);
-        uint32_t anchorSelectedColor  = IM_COL32(255, 190, 84, 255);
-        uint32_t handleColor          = IM_COL32(112, 174, 255, 255);
-        uint32_t handleLineColor      = IM_COL32(112, 174, 255, 130);
-        uint32_t closeTargetColor     = IM_COL32(120, 240, 160, 255);
+        uint32_t backgroundColor      = PackCol32(31, 34, 42, 255);
+        uint32_t gridColor            = PackCol32(255, 255, 255, 22);
+        uint32_t pathColor            = PackCol32(245, 245, 245, 255);
+        uint32_t previewColor         = PackCol32(245, 245, 245, 120);
+        uint32_t anchorColor          = PackCol32(255, 255, 255, 255);
+        uint32_t anchorSelectedColor  = PackCol32(255, 190, 84, 255);
+        uint32_t handleColor          = PackCol32(112, 174, 255, 255);
+        uint32_t handleLineColor      = PackCol32(112, 174, 255, 130);
+        uint32_t closeTargetColor     = PackCol32(120, 240, 160, 255);
         float pathThickness           = 2.0f;
         float handleLineThickness     = 1.0f;
         float anchorRadius            = 5.0f;

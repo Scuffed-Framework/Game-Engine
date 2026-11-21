@@ -51,26 +51,26 @@ namespace GraphEditor
     // Display options and colors
     struct Options
     {
-        ImRect mMinimap{{0.75f, 0.8f, 0.99f, 0.99f}};                   // rectangle coordinates of minimap
-        uint32_t mBackgroundColor{IM_COL32(40, 40, 40, 255)};           // full background color
-        uint32_t mGridColor{IM_COL32(0, 0, 0, 60)};                     // grid lines color
-        uint32_t mGridColor2{IM_COL32(0, 0, 0, 160)};                   // grid lines color every 10th
-        uint32_t mSelectedNodeBorderColor{IM_COL32(255, 130, 30, 255)}; // node border color when it's selected
-        uint32_t mNodeBorderColor{IM_COL32(100, 100, 100, 0)};          // node border color when it's not selected
-        uint32_t mQuadSelection{IM_COL32(255, 32, 32, 64)};             // quad selection inside color
-        uint32_t mQuadSelectionBorder{IM_COL32(255, 32, 32, 255)};      // quad selection border color
+        ImRect mMinimap{{0.75f, 0.8f, 0.99f, 0.99f}};                    // rectangle coordinates of minimap
+        uint32_t mBackgroundColor{PackCol32(40, 40, 40, 255)};           // full background color
+        uint32_t mGridColor{PackCol32(0, 0, 0, 60)};                     // grid lines color
+        uint32_t mGridColor2{PackCol32(0, 0, 0, 160)};                   // grid lines color every 10th
+        uint32_t mSelectedNodeBorderColor{PackCol32(255, 130, 30, 255)}; // node border color when it's selected
+        uint32_t mNodeBorderColor{PackCol32(100, 100, 100, 0)};          // node border color when it's not selected
+        uint32_t mQuadSelection{PackCol32(255, 32, 32, 64)};             // quad selection inside color
+        uint32_t mQuadSelectionBorder{PackCol32(255, 32, 32, 255)};      // quad selection border color
         uint32_t mDefaultSlotColor{
-                IM_COL32(128, 128, 128, 255)};             // when no color is provided in node template, use this value
-        uint32_t mFrameFocus{IM_COL32(64, 128, 255, 255)}; // rectangle border when graph editor has focus
-        float mLineThickness{5};                           // links width in pixels when zoom value is 1
-        float mGridSize{64.f};                             // background grid size in pixels when zoom value is 1
-        float mRounding{3.f};                              // rounding at node corners
-        float mZoomRatio{0.1f};                            // factor per mouse wheel delta
-        float mZoomLerpFactor{0.25f};                      // the smaller, the smoother
-        float mBorderSelectionThickness{6.f};              // thickness of selection border around nodes
-        float mBorderThickness{6.f};                       // thickness of selection border around nodes
-        float mNodeSlotRadius{8.f};                        // circle radius for inputs and outputs
-        float mNodeSlotHoverFactor{1.2f};                  // increase size when hovering
+                PackCol32(128, 128, 128, 255)}; // when no color is provided in node template, use this value
+        uint32_t mFrameFocus{PackCol32(64, 128, 255, 255)}; // rectangle border when graph editor has focus
+        float mLineThickness{5};                            // links width in pixels when zoom value is 1
+        float mGridSize{64.f};                              // background grid size in pixels when zoom value is 1
+        float mRounding{3.f};                               // rounding at node corners
+        float mZoomRatio{0.1f};                             // factor per mouse wheel delta
+        float mZoomLerpFactor{0.25f};                       // the smaller, the smoother
+        float mBorderSelectionThickness{6.f};               // thickness of selection border around nodes
+        float mBorderThickness{6.f};                        // thickness of selection border around nodes
+        float mNodeSlotRadius{8.f};                         // circle radius for inputs and outputs
+        float mNodeSlotHoverFactor{1.2f};                   // increase size when hovering
         float mMinZoom{0.2f}, mMaxZoom{1.1f};
         float mSnap{5.f};
         bool mDisplayLinksAsCurves{true}; // false is straight and 45deg lines

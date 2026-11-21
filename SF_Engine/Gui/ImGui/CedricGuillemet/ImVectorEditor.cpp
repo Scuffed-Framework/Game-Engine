@@ -330,12 +330,12 @@ namespace ImVectorEditor
         DrawControls(drawList, path, config, canvasOrigin, hoveredHit);
         if (boxSelecting_)
         {
-            drawList->AddRectFilled(boxSelectStartScreen_, boxSelectCurrentScreen_, IM_COL32(112, 174, 255, 35));
-            drawList->AddRect(boxSelectStartScreen_, boxSelectCurrentScreen_, IM_COL32(112, 174, 255, 170));
+            drawList->AddRectFilled(boxSelectStartScreen_, boxSelectCurrentScreen_, PackCol32(112, 174, 255, 35));
+            drawList->AddRect(boxSelectStartScreen_, boxSelectCurrentScreen_, PackCol32(112, 174, 255, 170));
         }
         drawList->PopClipRect();
 
-        drawList->AddRect(canvasOrigin, canvasEnd, IM_COL32(255, 255, 255, hovered_ ? 85 : 35), 3.0f);
+        drawList->AddRect(canvasOrigin, canvasEnd, PackCol32(255, 255, 255, hovered_ ? 85 : 35), 3.0f);
 
         wantsMouseCapture_          = hovered_ || dragging_ || boxSelecting_ || viewPanning || penActive_;
         wantsKeyboardCapture_       = penActive_ || selectedAnchor_ >= 0 || !selectedAnchors_.empty();
@@ -627,7 +627,7 @@ namespace ImVectorEditor
             }
 
             drawControlPoint(drawList, anchorScreen, config.style.anchorRadius + 1.5f, config.style.anchorShape,
-                             IM_COL32(0, 0, 0, 180));
+                             PackCol32(0, 0, 0, 180));
             drawControlPoint(drawList, anchorScreen, config.style.anchorRadius, config.style.anchorShape, anchorColor);
         }
     }

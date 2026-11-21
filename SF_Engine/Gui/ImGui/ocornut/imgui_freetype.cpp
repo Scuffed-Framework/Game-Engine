@@ -234,7 +234,7 @@ static void ImGui_ImplFreeType_BlitGlyph(const FT_Bitmap *ft_bitmap, uint32_t *d
         {
             for (uint32_t y = 0; y < h; y++, src += src_pitch, dst += dst_pitch)
                 for (uint32_t x = 0; x < w; x++)
-                    dst[x] = IM_COL32(255, 255, 255, src[x]);
+                    dst[x] = PackCol32(255, 255, 255, src[x]);
             break;
         }
         case FT_PIXEL_MODE_MONO: // Monochrome image, 1 bit per pixel. The bits in each byte are ordered from MSB to
@@ -248,7 +248,7 @@ static void ImGui_ImplFreeType_BlitGlyph(const FT_Bitmap *ft_bitmap, uint32_t *d
                 {
                     if ((x & 7) == 0)
                         bits = *bits_ptr++;
-                    dst[x] = IM_COL32(255, 255, 255, (bits & 0x80) ? 255 : 0);
+                    dst[x] = PackCol32(255, 255, 255, (bits & 0x80) ? 255 : 0);
                 }
             }
             break;
@@ -262,7 +262,7 @@ static void ImGui_ImplFreeType_BlitGlyph(const FT_Bitmap *ft_bitmap, uint32_t *d
                 for (uint32_t x = 0; x < w; x++)
                 {
                     uint8_t r = src[x * 4 + 2], g = src[x * 4 + 1], b = src[x * 4], a = src[x * 4 + 3];
-                    dst[x] = IM_COL32(DE_MULTIPLY(r, a), DE_MULTIPLY(g, a), DE_MULTIPLY(b, a), a);
+                    dst[x] = PackCol32(DE_MULTIPLY(r, a), DE_MULTIPLY(g, a), DE_MULTIPLY(b, a), a);
                 }
     #undef DE_MULTIPLY
             break;
@@ -421,9 +421,9 @@ static bool ImGui_ImplFreeType_FontBakedInit(ImFontAtlas *atlas, ImFontConfig *s
         FT_Size_Metrics metrics = bd_baked_data->FtSize->metrics;
         const float scale       = 1.0f / (rasterizer_density * src->ExtraSizeScale);
         baked->Ascent           = (float) FT_CEIL(metrics.ascender) *
-                        scale; // The pixel extents above the baseline in pixels (typically positive).
-        baked->Descent = (float) FT_CEIL(metrics.descender) *
-                         scale; // The extents below the baseline in pixels (typically negative).
+                                  scale; // The pixel extents above the baseline in pixels (typically positive).
+        baked->Descent          = (float) FT_CEIL(metrics.descender) *
+                                  scale; // The extents below the baseline in pixels (typically negative).
         // LineSpacing     = (float)FT_CEIL(metrics.height) * scale;         // The baseline-to-baseline distance. Note
         // that it usually is larger than the sum of the ascender and descender taken as absolute values. There is also
         // no guarantee that no glyphs extend above or below subsequent baselines when using this distance. Think of it
@@ -551,17 +551,17 @@ static bool ImGui_ImplFreetype_FontSrcContainsGlyph(ImFontAtlas *atlas, ImFontCo
 
 const ImFontLoader *ImGuiFreeType::GetFontLoader()
 {
-    ImFontLoader *loader = &GImGuiFreeTypeLoader;
-    loader->Name         = GImGuiFreeTypeLoaderName; // Initially "FreeType" then updated during the call to
-                                                     // ImGui_ImplFreeType_LoaderInit()
-    loader->LoaderInit                 = ImGui_ImplFreeType_LoaderInit;
-    loader->LoaderShutdown             = ImGui_ImplFreeType_LoaderShutdown;
-    loader->FontSrcInit                = ImGui_ImplFreeType_FontSrcInit;
-    loader->FontSrcDestroy             = ImGui_ImplFreeType_FontSrcDestroy;
-    loader->FontSrcContainsGlyph       = ImGui_ImplFreetype_FontSrcContainsGlyph;
-    loader->FontBakedInit              = ImGui_ImplFreeType_FontBakedInit;
-    loader->FontBakedDestroy           = ImGui_ImplFreeType_FontBakedDestroy;
-    loader->FontBakedLoadGlyph         = ImGui_ImplFreeType_FontBakedLoadGlyph;
+    ImFontLoader *loader         = &GImGuiFreeTypeLoader;
+    loader->Name                 = GImGuiFreeTypeLoaderName; // Initially "FreeType" then updated during the call to
+                                                             // ImGui_ImplFreeType_LoaderInit()
+    loader->LoaderInit           = ImGui_ImplFreeType_LoaderInit;
+    loader->LoaderShutdown       = ImGui_ImplFreeType_LoaderShutdown;
+    loader->FontSrcInit          = ImGui_ImplFreeType_FontSrcInit;
+    loader->FontSrcDestroy       = ImGui_ImplFreeType_FontSrcDestroy;
+    loader->FontSrcContainsGlyph = ImGui_ImplFreetype_FontSrcContainsGlyph;
+    loader->FontBakedInit        = ImGui_ImplFreeType_FontBakedInit;
+    loader->FontBakedDestroy     = ImGui_ImplFreeType_FontBakedDestroy;
+    loader->FontBakedLoadGlyph   = ImGui_ImplFreeType_FontBakedLoadGlyph;
     loader->FontBakedSrcLoaderDataSize = sizeof(ImGui_ImplFreeType_FontSrcBakedData);
     return loader;
 }

@@ -379,7 +379,7 @@ namespace GraphEditor
                                                    : GetInputSlotPos(delegate, node, slotIndex, factor));
                 float distance       = Distance(p, io.MousePos);
                 bool overCon         = (nodeOperation == NO_None || nodeOperation == NO_EditingLink) &&
-                               (distance < options.mNodeSlotRadius * 2.f) && (distance < closestDistance);
+                                       (distance < options.mNodeSlotRadius * 2.f) && (distance < closestDistance);
 
 
                 ::SF::Engine::Vec2 textSize;
@@ -410,13 +410,13 @@ namespace GraphEditor
                 {
                     const uint32_t *slotColorSource = i ? nodeTemplate.mOutputColors : nodeTemplate.mInputColors;
                     const uint32_t slotColor = slotColorSource ? slotColorSource[slotIndex] : options.mDefaultSlotColor;
-                    drawList->AddCircleFilled(p, options.mNodeSlotRadius, IM_COL32(0, 0, 0, 200));
+                    drawList->AddCircleFilled(p, options.mNodeSlotRadius, PackCol32(0, 0, 0, 200));
                     drawList->AddCircleFilled(p, options.mNodeSlotRadius * 0.75f, slotColor);
                     if (!options.mDrawIONameOnHover)
                     {
                         drawList->AddText(io.FontDefault, 14, textPos + ::SF::Engine::Vec2(2, 2),
-                                          IM_COL32(0, 0, 0, 255), conText);
-                        drawList->AddText(io.FontDefault, 14, textPos, IM_COL32(150, 150, 150, 255), conText);
+                                          PackCol32(0, 0, 0, 255), conText);
+                        drawList->AddText(io.FontDefault, 14, textPos, PackCol32(150, 150, 150, 255), conText);
                     }
                 }
             }
@@ -429,12 +429,12 @@ namespace GraphEditor
                 const uint32_t slotColor = slotColorSource ? slotColorSource[closestConn] : options.mDefaultSlotColor;
                 hoverSlot                = true;
                 drawList->AddCircleFilled(closestPos, options.mNodeSlotRadius * options.mNodeSlotHoverFactor * 0.75f,
-                                          IM_COL32(0, 0, 0, 200));
+                                          PackCol32(0, 0, 0, 200));
                 drawList->AddCircleFilled(closestPos, options.mNodeSlotRadius * options.mNodeSlotHoverFactor,
                                           slotColor);
-                drawList->AddText(io.FontDefault, 16, closestTextPos + ::SF::Engine::Vec2(1, 1), IM_COL32(0, 0, 0, 255),
-                                  conText);
-                drawList->AddText(io.FontDefault, 16, closestTextPos, IM_COL32(250, 250, 250, 255), conText);
+                drawList->AddText(io.FontDefault, 16, closestTextPos + ::SF::Engine::Vec2(1, 1),
+                                  PackCol32(0, 0, 0, 255), conText);
+                drawList->AddText(io.FontDefault, 16, closestTextPos, PackCol32(250, 250, 250, 255), conText);
                 bool inputToOutput = (!editingInput && !i) || (editingInput && i);
                 if (nodeOperation == NO_EditingLink && !io.MouseDown[0] && !bDrawOnly)
                 {
@@ -616,7 +616,7 @@ namespace GraphEditor
                                 nodeTemplate.mHeaderColor, options.mRounding);
 
         drawList->PushClipRect(nodeRectangleMin, ::SF::Engine::Vec2(nodeRectangleMax.x, nodeRectangleMin.y + 20), true);
-        drawList->AddText(nodeRectangleMin + ::SF::Engine::Vec2(2, 2), IM_COL32(0, 0, 0, 255), node.mName);
+        drawList->AddText(nodeRectangleMin + ::SF::Engine::Vec2(2, 2), PackCol32(0, 0, 0, 255), node.mName);
         drawList->PopClipRect();
 
         ImRect customDrawRect(nodeRectangleMin + ::SF::Engine::Vec2(options.mRounding, 20 + options.mRounding),
@@ -672,7 +672,7 @@ namespace GraphEditor
         const float ratioX                    = viewSize.x / nodesSize.x;
         const float factor                    = ImMin(ImMin(ratioY, ratioX), 1.f);
 
-        drawList->AddRectFilled(minScreen, maxScreen, IM_COL32(30, 30, 30, 200), 3, ImDrawFlags_RoundCornersAll);
+        drawList->AddRectFilled(minScreen, maxScreen, PackCol32(30, 30, 30, 200), 3, ImDrawFlags_RoundCornersAll);
 
         for (NodeIndex nodeIndex = 0; nodeIndex < nodeCount; nodeIndex++)
         {
@@ -698,9 +698,9 @@ namespace GraphEditor
         // add view
         ::SF::Engine::Vec2 viewMinScreen = (viewMin - middleWorld) * factor + middleScreen;
         ::SF::Engine::Vec2 viewMaxScreen = (viewMax - middleWorld) * factor + middleScreen;
-        drawList->AddRectFilled(viewMinScreen, viewMaxScreen, IM_COL32(255, 255, 255, 32), 1,
+        drawList->AddRectFilled(viewMinScreen, viewMaxScreen, PackCol32(255, 255, 255, 32), 1,
                                 ImDrawFlags_RoundCornersAll);
-        drawList->AddRect(viewMinScreen, viewMaxScreen, IM_COL32(255, 255, 255, 128), 1, ImDrawFlags_RoundCornersAll);
+        drawList->AddRect(viewMinScreen, viewMaxScreen, PackCol32(255, 255, 255, 128), 1, ImDrawFlags_RoundCornersAll);
 
         ImGuiIO &io               = ImGui::GetIO();
         const bool mouseInMinimap = ImRect(minScreen, maxScreen).Contains(io.MousePos);
@@ -763,7 +763,7 @@ namespace GraphEditor
         // Create our child canvas
         ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ::SF::Engine::Vec2(1, 1));
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ::SF::Engine::Vec2(0, 0));
-        ImGui::PushStyleColor(ImGuiCol_ChildBg, IM_COL32(30, 30, 30, 255));
+        ImGui::PushStyleColor(ImGuiCol_ChildBg, PackCol32(30, 30, 30, 255));
 
         ImDrawList *drawList = ImGui::GetWindowDrawList();
         ImGui::PushClipRect(regionRect.Min, regionRect.Max, true);
@@ -812,7 +812,7 @@ namespace GraphEditor
             {
                 ::SF::Engine::Vec2 p1 = editingNodeSource;
                 ::SF::Engine::Vec2 p2 = io.MousePos;
-                drawList->AddLine(p1, p2, IM_COL32(200, 200, 200, 255), 3.0f);
+                drawList->AddLine(p1, p2, PackCol32(200, 200, 200, 255), 3.0f);
             }
 
             // Display nodes

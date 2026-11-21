@@ -9,7 +9,7 @@
 
 #include <Math/Math.hpp>
 
-#include "Math//Vector.hpp"
+#include "Math/Vector.hpp"
 
 namespace SF::Engine
 {

@@ -4400,7 +4400,7 @@ bool IGFD::KeyExplorerFeature::m_FlashableSelectable(const char *label, bool sel
         bb.Max.x += (spacing_x - spacing_L);
         bb.Max.y += (spacing_y - spacing_U);
     }
-    // if (g.IO.KeyCtrl) { GetForegroundDrawList()->AddRect(bb.Min, bb.Max, IM_COL32(0, 255, 0, 255)); }
+    // if (g.IO.KeyCtrl) { GetForegroundDrawList()->AddRect(bb.Min, bb.Max, PackCol32(0, 255, 0, 255)); }
 
     // Modify ClipRect for the ItemAdd(), faster than doing a PushColumnsBackground/PushTableBackgroundChannel for every
     // Selectable..
@@ -4906,7 +4906,7 @@ void IGFD::FileDialog::m_DisplayPathPopup(::SF::Engine::Vec2 vSize)
         static ImGuiTableFlags flags = ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_RowBg |
                                        ImGuiTableFlags_Hideable | ImGuiTableFlags_ScrollY |
                                        ImGuiTableFlags_NoHostExtendY;
-        auto listViewID = ImGui::GetID("##FileDialog_pathTable");
+        auto listViewID              = ImGui::GetID("##FileDialog_pathTable");
         if (ImGui::BeginTableEx("##FileDialog_pathTable", listViewID, 1, flags, size, 0.0f)) //-V112
         {
             ImGui::TableSetupScrollFreeze(0, 1); // Make header always visible

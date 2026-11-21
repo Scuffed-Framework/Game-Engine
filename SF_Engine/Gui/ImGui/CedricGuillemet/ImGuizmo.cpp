@@ -616,10 +616,10 @@ namespace IMGUIZMO_NAMESPACE
             tmp[11] = src[1] * src[4];
 
             // calculate second 8 elements (cofactors)
-            m16[8] = (tmp[0] * src[13] + tmp[3] * src[14] + tmp[4] * src[15]) -
-                     (tmp[1] * src[13] + tmp[2] * src[14] + tmp[5] * src[15]);
-            m16[9] = (tmp[1] * src[12] + tmp[6] * src[14] + tmp[9] * src[15]) -
-                     (tmp[0] * src[12] + tmp[7] * src[14] + tmp[8] * src[15]);
+            m16[8]  = (tmp[0] * src[13] + tmp[3] * src[14] + tmp[4] * src[15]) -
+                      (tmp[1] * src[13] + tmp[2] * src[14] + tmp[5] * src[15]);
+            m16[9]  = (tmp[1] * src[12] + tmp[6] * src[14] + tmp[9] * src[15]) -
+                      (tmp[0] * src[12] + tmp[7] * src[14] + tmp[8] * src[15]);
             m16[10] = (tmp[2] * src[12] + tmp[7] * src[13] + tmp[10] * src[15]) -
                       (tmp[3] * src[12] + tmp[6] * src[13] + tmp[11] * src[15]);
             m16[11] = (tmp[5] * src[12] + tmp[8] * src[13] + tmp[11] * src[14]) -
@@ -1515,12 +1515,12 @@ namespace IMGUIZMO_NAMESPACE
 
             for (int i = 0; i < circleMul * halfCircleSegmentCount + 1; i++)
             {
-                float ng = angleStart +
-                           (float) circleMul * ZPI * ((float) i / (float) (circleMul * halfCircleSegmentCount));
+                float ng      = angleStart +
+                                (float) circleMul * ZPI * ((float) i / (float) (circleMul * halfCircleSegmentCount));
                 vec_t axisPos = makeVect(cosf(ng), sinf(ng), 0.f);
                 vec_t pos     = makeVect(axisPos[axis], axisPos[(axis + 1) % 3], axisPos[(axis + 2) % 3]) *
-                            gContext.mScreenFactor * rotationDisplayFactor;
-                circlePos[i] = worldToPos(pos, gContext.mMVP);
+                                gContext.mScreenFactor * rotationDisplayFactor;
+                circlePos[i]  = worldToPos(pos, gContext.mMVP);
             }
             if (!gContext.mbUsing || usingAxis)
             {
@@ -1748,8 +1748,8 @@ namespace IMGUIZMO_NAMESPACE
 #if 0
                if (gContext.mbUsing && (gContext.GetCurrentID() == gContext.mEditingID))
                {
-                  drawList->AddLine(baseSSpace, worldDirSSpaceNoScale, IM_COL32(0x40, 0x40, 0x40, 0xFF), 3.f);
-                  drawList->AddCircleFilled(worldDirSSpaceNoScale, 6.f, IM_COL32(0x40, 0x40, 0x40, 0xFF));
+                  drawList->AddLine(baseSSpace, worldDirSSpaceNoScale, PackCol32(0x40, 0x40, 0x40, 0xFF), 3.f);
+                  drawList->AddCircleFilled(worldDirSSpaceNoScale, 6.f, PackCol32(0x40, 0x40, 0x40, 0xFF));
                }
                /*
                if (!hasTranslateOnAxis || gContext.mbUsing)
@@ -2001,7 +2001,7 @@ namespace IMGUIZMO_NAMESPACE
             }
 
             // draw bounds
-            unsigned int anchorAlpha = gContext.mbEnable ? IM_COL32_BLACK : IM_COL32(0, 0, 0, 0x80);
+            unsigned int anchorAlpha = gContext.mbEnable ? IM_COL32_BLACK : PackCol32(0, 0, 0, 0x80);
 
             matrix_t boundsMVP = gContext.mModelSource * gContext.mViewProjection;
             for (int i = 0; i < 4; i++)
@@ -2054,8 +2054,8 @@ namespace IMGUIZMO_NAMESPACE
                     float t2                         = (float) j * stepLength + stepLength * 0.5f;
                     ::SF::Engine::Vec2 worldBoundSS1 = ImLerp(worldBound1, worldBound2, ::SF::Engine::Vec2(t1, t1));
                     ::SF::Engine::Vec2 worldBoundSS2 = ImLerp(worldBound1, worldBound2, ::SF::Engine::Vec2(t2, t2));
-                    // drawList->AddLine(worldBoundSS1, worldBoundSS2, IM_COL32(0, 0, 0, 0) + anchorAlpha, 3.f);
-                    drawList->AddLine(worldBoundSS1, worldBoundSS2, IM_COL32(0xAA, 0xAA, 0xAA, 0) + anchorAlpha, 2.f);
+                    // drawList->AddLine(worldBoundSS1, worldBoundSS2, PackCol32(0, 0, 0, 0) + anchorAlpha, 3.f);
+                    drawList->AddLine(worldBoundSS1, worldBoundSS2, PackCol32(0xAA, 0xAA, 0xAA, 0) + anchorAlpha, 2.f);
                 }
                 vec_t midPoint = (aabb[i] + aabb[(i + 1) % 4]) * 0.5f;
                 // Per-anchor visibility: big anchor depends only on corner i;
@@ -2071,8 +2071,8 @@ namespace IMGUIZMO_NAMESPACE
 
                 static const float AnchorBigRadius   = 8.f;
                 static const float AnchorSmallRadius = 6.f;
-                bool overBigAnchor                   = bigAnchorVisible &&
-                                     ImLengthSqr(worldBoundOrig - io.MousePos) <= (AnchorBigRadius * AnchorBigRadius);
+                bool overBigAnchor   = bigAnchorVisible &&
+                                       ImLengthSqr(worldBoundOrig - io.MousePos) <= (AnchorBigRadius * AnchorBigRadius);
                 bool overSmallAnchor = smallAnchorVisible &&
                                        ImLengthSqr(midBound - io.MousePos) <= (AnchorBigRadius * AnchorBigRadius);
 
@@ -2101,9 +2101,9 @@ namespace IMGUIZMO_NAMESPACE
                 uint32_t selectionColor = GetColorU32(SELECTION);
 
                 unsigned int bigAnchorColor =
-                        overBigAnchor ? selectionColor : (IM_COL32(0xAA, 0xAA, 0xAA, 0) + anchorAlpha);
+                        overBigAnchor ? selectionColor : (PackCol32(0xAA, 0xAA, 0xAA, 0) + anchorAlpha);
                 unsigned int smallAnchorColor =
-                        overSmallAnchor ? selectionColor : (IM_COL32(0xAA, 0xAA, 0xAA, 0) + anchorAlpha);
+                        overSmallAnchor ? selectionColor : (PackCol32(0xAA, 0xAA, 0xAA, 0) + anchorAlpha);
 
                 if (bigAnchorVisible)
                 {
@@ -3124,9 +3124,9 @@ namespace IMGUIZMO_NAMESPACE
             };
 
             Axis axes[3] = {
-                    {vec_t(1.f, 0.f, 0.f), IM_COL32(255, 0, 0, 255)}, // X - red
-                    {vec_t(0.f, 1.f, 0.f), IM_COL32(0, 255, 0, 255)}, // Y - green
-                    {vec_t(0.f, 0.f, 1.f), IM_COL32(0, 0, 255, 255)}  // Z - blue
+                    {vec_t(1.f, 0.f, 0.f), PackCol32(255, 0, 0, 255)}, // X - red
+                    {vec_t(0.f, 1.f, 0.f), PackCol32(0, 255, 0, 255)}, // Y - green
+                    {vec_t(0.f, 0.f, 1.f), PackCol32(0, 0, 255, 255)}  // Z - blue
             };
 
             for (int a = 0; a < 3; a++)
@@ -3281,7 +3281,7 @@ namespace IMGUIZMO_NAMESPACE
                 }
 
                 uint32_t directionColor = GetColorU32(DIRECTION_X + normalIndex);
-                cubeFace.color          = directionColor | IM_COL32(0x80, 0x80, 0x80, 0);
+                cubeFace.color          = directionColor | PackCol32(0x80, 0x80, 0x80, 0);
 
                 cubeFace.z = centerPositionVP.z / centerPositionVP.w;
                 cubeFaceCount++;
@@ -3350,9 +3350,9 @@ namespace IMGUIZMO_NAMESPACE
                 }
                 if (visible)
                 {
-                    uint32_t col = IM_COL32(0x80, 0x80, 0x80, 0xFF);
-                    col          = (fmodf(fabsf(f), 10.f) < FLT_EPSILON) ? IM_COL32(0x90, 0x90, 0x90, 0xFF) : col;
-                    col          = (fabsf(f) < FLT_EPSILON) ? IM_COL32(0x40, 0x40, 0x40, 0xFF) : col;
+                    uint32_t col = PackCol32(0x80, 0x80, 0x80, 0xFF);
+                    col          = (fmodf(fabsf(f), 10.f) < FLT_EPSILON) ? PackCol32(0x90, 0x90, 0x90, 0xFF) : col;
+                    col          = (fabsf(f) < FLT_EPSILON) ? PackCol32(0x40, 0x40, 0x40, 0xFF) : col;
 
                     float thickness = 1.f;
                     thickness       = (fmodf(fabsf(f), 10.f) < FLT_EPSILON) ? 1.5f : thickness;
@@ -3367,9 +3367,9 @@ namespace IMGUIZMO_NAMESPACE
     void DrawGridCustom(const float *view, const float *projection, const float *matrix, const float gridSize,
                         const float majorStep, const unsigned int subdivision)
     {
-        const uint32_t majorCol  = IM_COL32(0x80, 0x80, 0x80, 0xFF);
-        const uint32_t minorCol  = IM_COL32(0x90, 0x90, 0x90, 0xFF);
-        const uint32_t centerCol = IM_COL32(0x40, 0x40, 0x40, 0xFF);
+        const uint32_t majorCol  = PackCol32(0x80, 0x80, 0x80, 0xFF);
+        const uint32_t minorCol  = PackCol32(0x90, 0x90, 0x90, 0xFF);
+        const uint32_t centerCol = PackCol32(0x40, 0x40, 0x40, 0xFF);
         DrawGridCustomColor(view, projection, matrix, gridSize, majorStep, subdivision, majorCol, minorCol, centerCol);
     }
 
@@ -3583,7 +3583,7 @@ namespace IMGUIZMO_NAMESPACE
                                                                 panelPosition[iPanel] + panelSize[iPanel]};
                     bool insidePanel = localx > panelCorners[0].x && localx < panelCorners[1].x &&
                                        localy > panelCorners[0].y && localy < panelCorners[1].y;
-                    int boxCoordInt = int(boxCoord.x * 9.f + boxCoord.y * 3.f + boxCoord.z);
+                    int boxCoordInt  = int(boxCoord.x * 9.f + boxCoord.y * 3.f + boxCoord.z);
                     IM_ASSERT(boxCoordInt < 27);
                     boxes[boxCoordInt] |= insidePanel && (!isDraging) && gContext.mbMouseOver;
 
@@ -3593,8 +3593,8 @@ namespace IMGUIZMO_NAMESPACE
                         uint32_t directionColor = GetColorU32(DIRECTION_X + normalIndex);
                         gContext.mDrawList->AddConvexPolyFilled(
                                 faceCoordsScreen, 4,
-                                (directionColor | IM_COL32(0x80, 0x80, 0x80, 0x80)) |
-                                        (viewManipulateHovered ? IM_COL32(0x08, 0x08, 0x08, 0) : 0));
+                                (directionColor | PackCol32(0x80, 0x80, 0x80, 0x80)) |
+                                        (viewManipulateHovered ? PackCol32(0x08, 0x08, 0x08, 0) : 0));
                         if (boxes[boxCoordInt])
                         {
                             uint32_t selectionColor = GetColorU32(SELECTION);

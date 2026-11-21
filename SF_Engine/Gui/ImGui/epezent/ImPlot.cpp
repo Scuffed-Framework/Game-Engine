@@ -575,7 +575,7 @@ namespace ImPlot
     void SetCurrentContext(ImPlotContext *ctx) { GImPlot = ctx; }
 
 #define IMPLOT_APPEND_CMAP(name, qual) ctx->ColormapData.Append(#name, name, sizeof(name) / sizeof(uint32_t), qual)
-#define IM_RGB(r, g, b) IM_COL32(r, g, b, 255)
+#define IM_RGB(r, g, b) PackCol32(r, g, b, 255)
 
     void Initialize(ImPlotContext *ctx)
     {
@@ -2543,8 +2543,8 @@ namespace ImPlot
                 } else
                 {
                     // TODO: Handle only min or max locked cases
-                    const bool full_width = ImHasFlag(IO.KeyMods, gp.InputMap.SelectHorzMod) ||
-                                            AllAxesInputLocked(&plot.Axes[ImAxis_X1], IMPLOT_NUM_X_AXES);
+                    const bool full_width  = ImHasFlag(IO.KeyMods, gp.InputMap.SelectHorzMod) ||
+                                             AllAxesInputLocked(&plot.Axes[ImAxis_X1], IMPLOT_NUM_X_AXES);
                     const bool full_height = ImHasFlag(IO.KeyMods, gp.InputMap.SelectVertMod) ||
                                              AllAxesInputLocked(&plot.Axes[ImAxis_Y1], IMPLOT_NUM_Y_AXES);
                     plot.SelectRect.Min.x = full_width ? plot.PlotRect.Min.x : ImMin(plot.SelectStart.x, IO.MousePos.x);
@@ -3281,9 +3281,9 @@ namespace ImPlot
                 for (int j = 0; j < tkr.TickCount(); ++j)
                 {
                     const ImPlotTick &tk = tkr.Ticks[j];
-                    const float datum    = ax.Datum1 + (opp ? (-gp.Style.LabelPadding.y - txt_height -
+                    const float datum = ax.Datum1 + (opp ? (-gp.Style.LabelPadding.y - txt_height -
                                                             tk.Level * (txt_height + gp.Style.LabelPadding.y))
-                                                            : gp.Style.LabelPadding.y +
+                                                         : gp.Style.LabelPadding.y +
                                                                      tk.Level * (txt_height + gp.Style.LabelPadding.y));
                     if (tk.ShowLabel && tk.PixelPos >= plot.PlotRect.Min.x - 1 &&
                         tk.PixelPos <= plot.PlotRect.Max.x + 1)
@@ -6313,40 +6313,40 @@ namespace ImPlot
         {
             ImPlotPlot *plot = gp.Plots.GetByIndex(p);
             if (show_frame_rects)
-                fg.AddRect(plot->FrameRect.Min, plot->FrameRect.Max, IM_COL32(255, 0, 255, 255));
+                fg.AddRect(plot->FrameRect.Min, plot->FrameRect.Max, PackCol32(255, 0, 255, 255));
             if (show_canvas_rects)
-                fg.AddRect(plot->CanvasRect.Min, plot->CanvasRect.Max, IM_COL32(0, 255, 255, 255));
+                fg.AddRect(plot->CanvasRect.Min, plot->CanvasRect.Max, PackCol32(0, 255, 255, 255));
             if (show_plot_rects)
-                fg.AddRect(plot->PlotRect.Min, plot->PlotRect.Max, IM_COL32(255, 255, 0, 255));
+                fg.AddRect(plot->PlotRect.Min, plot->PlotRect.Max, PackCol32(255, 255, 0, 255));
             if (show_axes_rects)
-                fg.AddRect(plot->AxesRect.Min, plot->AxesRect.Max, IM_COL32(0, 255, 128, 255));
+                fg.AddRect(plot->AxesRect.Min, plot->AxesRect.Max, PackCol32(0, 255, 128, 255));
             if (show_axis_rects)
             {
                 for (int i = 0; i < ImAxis_COUNT; ++i)
                 {
                     if (plot->Axes[i].Enabled)
-                        fg.AddRect(plot->Axes[i].HoverRect.Min, plot->Axes[i].HoverRect.Max, IM_COL32(0, 255, 0, 255));
+                        fg.AddRect(plot->Axes[i].HoverRect.Min, plot->Axes[i].HoverRect.Max, PackCol32(0, 255, 0, 255));
                 }
             }
             if (show_legend_rects && plot->Items.GetLegendCount() > 0)
             {
-                fg.AddRect(plot->Items.Legend.Rect.Min, plot->Items.Legend.Rect.Max, IM_COL32(255, 192, 0, 255));
+                fg.AddRect(plot->Items.Legend.Rect.Min, plot->Items.Legend.Rect.Max, PackCol32(255, 192, 0, 255));
                 fg.AddRect(plot->Items.Legend.RectClamped.Min, plot->Items.Legend.RectClamped.Max,
-                           IM_COL32(255, 128, 0, 255));
+                           PackCol32(255, 128, 0, 255));
             }
         }
         for (int p = 0; p < n_subplots; ++p)
         {
             ImPlotSubplot *subplot = gp.Subplots.GetByIndex(p);
             if (show_subplot_frame_rects)
-                fg.AddRect(subplot->FrameRect.Min, subplot->FrameRect.Max, IM_COL32(255, 0, 0, 255));
+                fg.AddRect(subplot->FrameRect.Min, subplot->FrameRect.Max, PackCol32(255, 0, 0, 255));
             if (show_subplot_grid_rects)
-                fg.AddRect(subplot->GridRect.Min, subplot->GridRect.Max, IM_COL32(0, 0, 255, 255));
+                fg.AddRect(subplot->GridRect.Min, subplot->GridRect.Max, PackCol32(0, 0, 255, 255));
             if (show_legend_rects && subplot->Items.GetLegendCount() > 0)
             {
-                fg.AddRect(subplot->Items.Legend.Rect.Min, subplot->Items.Legend.Rect.Max, IM_COL32(255, 192, 0, 255));
+                fg.AddRect(subplot->Items.Legend.Rect.Min, subplot->Items.Legend.Rect.Max, PackCol32(255, 192, 0, 255));
                 fg.AddRect(subplot->Items.Legend.RectClamped.Min, subplot->Items.Legend.RectClamped.Max,
-                           IM_COL32(255, 128, 0, 255));
+                           PackCol32(255, 128, 0, 255));
             }
         }
         if (ImGui::TreeNode("Plots", "Plots (%d)", n_plots))

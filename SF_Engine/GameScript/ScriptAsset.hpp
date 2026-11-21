@@ -16,9 +16,17 @@ namespace SF::Engine
 
         void Save() override {}
 
-        void Serialize(XMLNode &node) const override { XMLNode script = node.AddChild("Script"); }
+        void Serialize(XMLNode &node) const override
+        {
+            XMLNode script = node.AddChild("Script");
+            script.SetAttribute("ModuleName", ModuleName);
+        }
 
-        void Deserialize(const XMLNode &node) override { XMLNode script = node.GetChild("Script"); }
+        void Deserialize(const XMLNode &node) override
+        {
+            XMLNode script = node.GetChild("Script");
+            script.GetAttribute("ModuleName", ModuleName);
+        }
 
         bool Load(std::span<const uint8_t>) override;
 

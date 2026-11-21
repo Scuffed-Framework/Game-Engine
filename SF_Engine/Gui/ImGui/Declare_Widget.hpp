@@ -102,7 +102,7 @@ namespace SF::Engine
             ImGui::GetWindowDrawList()->AddLine(
                     Vec2(ImGui::GetCursorScreenPos().x, y),
                     Vec2(ImGui::GetCursorScreenPos().x + ImGui::GetContentRegionAvail().x, y),
-                    IM_COL32(255, 255, 255, 30), 1.0f);
+                    PackCol32(255, 255, 255, 30), 1.0f);
             ImGui::Spacing();
         }
 
@@ -170,8 +170,8 @@ namespace SF::Engine
         {
             Vec2 sz{ImGui::GetContentRegionAvail().x, 8.0f};
             Vec2 cp      = ImGui::GetCursorScreenPos();
-            uint32_t col = IM_COL32(static_cast<int>(c.r * 255), static_cast<int>(c.g * 255),
-                                    static_cast<int>(c.b * 255), 255);
+            uint32_t col = PackCol32(static_cast<int>(c.r * 255), static_cast<int>(c.g * 255),
+                                     static_cast<int>(c.b * 255), 255);
             ImGui::GetWindowDrawList()->AddRectFilled(cp, Vec2(cp.x + sz.x, cp.y + sz.y), col);
             ImGui::Dummy(sz);
             ImGui::Spacing();
@@ -183,11 +183,11 @@ namespace SF::Engine
             Vec2 cp     = ImGui::GetCursorScreenPos();
             float barW  = ImGui::GetContentRegionAvail().x;
             float fillW = barW * glm::clamp(value / maxValue, 0.0f, 1.0f);
-            ImGui::GetWindowDrawList()->AddRectFilled(cp, Vec2(cp.x + barW, cp.y + 4), IM_COL32(30, 30, 30, 255), 2);
+            ImGui::GetWindowDrawList()->AddRectFilled(cp, Vec2(cp.x + barW, cp.y + 4), PackCol32(30, 30, 30, 255), 2);
             ImGui::GetWindowDrawList()->AddRectFilled(cp, Vec2(cp.x + fillW, cp.y + 4),
-                                                      IM_COL32(static_cast<int>(colour.r * 220),
-                                                               static_cast<int>(colour.g * 220),
-                                                               static_cast<int>(colour.b * 220), 200),
+                                                      PackCol32(static_cast<int>(colour.r * 220),
+                                                                static_cast<int>(colour.g * 220),
+                                                                static_cast<int>(colour.b * 220), 200),
                                                       2);
             ImGui::Dummy(Vec2(barW, 4));
             ImGui::Spacing();
@@ -202,7 +202,7 @@ namespace SF::Engine
 
             Vec2 p  = ImGui::GetCursorScreenPos();
             float h = ImGui::GetFrameHeight();
-            ImGui::GetWindowDrawList()->AddRectFilled(p, Vec2(p.x + 3.0f, p.y + h), IM_COL32(0, 138, 255, 200));
+            ImGui::GetWindowDrawList()->AddRectFilled(p, Vec2(p.x + 3.0f, p.y + h), PackCol32(0, 138, 255, 200));
             ImGui::SetCursorScreenPos(Vec2(p.x + 6.0f, p.y));
 
             ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, Vec2(4, 4));

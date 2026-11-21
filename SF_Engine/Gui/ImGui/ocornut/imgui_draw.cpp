@@ -227,8 +227,8 @@ using namespace IMGUI_STB_NAMESPACE;
 
 void ImGui::StyleColorsDark(ImGuiStyle *dst)
 {
-    ImGuiStyle *style = dst ? dst : &ImGui::GetStyle();
-    ::SF::Engine::Vec4 *colors      = style->Colors;
+    ImGuiStyle *style          = dst ? dst : &ImGui::GetStyle();
+    ::SF::Engine::Vec4 *colors = style->Colors;
 
     colors[ImGuiCol_Text]                 = ::SF::Engine::Vec4(1.00f, 1.00f, 1.00f, 1.00f);
     colors[ImGuiCol_TextDisabled]         = ::SF::Engine::Vec4(0.50f, 0.50f, 0.50f, 1.00f);
@@ -272,33 +272,33 @@ void ImGui::StyleColorsDark(ImGuiStyle *dst)
     colors[ImGuiCol_TabDimmed]           = ImLerp(colors[ImGuiCol_Tab], colors[ImGuiCol_TitleBg], 0.80f);
     colors[ImGuiCol_TabDimmedSelected]   = ImLerp(colors[ImGuiCol_TabSelected], colors[ImGuiCol_TitleBg], 0.40f);
     colors[ImGuiCol_TabDimmedSelectedOverline] = ::SF::Engine::Vec4(0.50f, 0.50f, 0.50f, 0.00f);
-    colors[ImGuiCol_DockingPreview]            = colors[ImGuiCol_HeaderActive] * ::SF::Engine::Vec4(1.0f, 1.0f, 1.0f, 0.7f);
-    colors[ImGuiCol_DockingEmptyBg]            = ::SF::Engine::Vec4(0.20f, 0.20f, 0.20f, 1.00f);
-    colors[ImGuiCol_PlotLines]                 = ::SF::Engine::Vec4(0.61f, 0.61f, 0.61f, 1.00f);
-    colors[ImGuiCol_PlotLinesHovered]          = ::SF::Engine::Vec4(1.00f, 0.43f, 0.35f, 1.00f);
-    colors[ImGuiCol_PlotHistogram]             = ::SF::Engine::Vec4(0.90f, 0.70f, 0.00f, 1.00f);
-    colors[ImGuiCol_PlotHistogramHovered]      = ::SF::Engine::Vec4(1.00f, 0.60f, 0.00f, 1.00f);
-    colors[ImGuiCol_TableHeaderBg]             = ::SF::Engine::Vec4(0.19f, 0.19f, 0.20f, 1.00f);
-    colors[ImGuiCol_TableBorderStrong]         = ::SF::Engine::Vec4(0.31f, 0.31f, 0.35f, 1.00f); // Prefer using Alpha=1.0 here
-    colors[ImGuiCol_TableBorderLight]          = ::SF::Engine::Vec4(0.23f, 0.23f, 0.25f, 1.00f); // Prefer using Alpha=1.0 here
-    colors[ImGuiCol_TableRowBg]                = ::SF::Engine::Vec4(0.00f, 0.00f, 0.00f, 0.00f);
-    colors[ImGuiCol_TableRowBgAlt]             = ::SF::Engine::Vec4(1.00f, 1.00f, 1.00f, 0.06f);
-    colors[ImGuiCol_TextLink]                  = colors[ImGuiCol_HeaderActive];
-    colors[ImGuiCol_TextSelectedBg]            = ::SF::Engine::Vec4(0.26f, 0.59f, 0.98f, 0.35f);
-    colors[ImGuiCol_TreeLines]                 = colors[ImGuiCol_Border];
-    colors[ImGuiCol_DragDropTarget]            = ::SF::Engine::Vec4(1.00f, 1.00f, 0.00f, 0.90f);
-    colors[ImGuiCol_DragDropTargetBg]          = ::SF::Engine::Vec4(0.00f, 0.00f, 0.00f, 0.00f);
-    colors[ImGuiCol_UnsavedMarker]             = ::SF::Engine::Vec4(1.00f, 1.00f, 1.00f, 1.00f);
-    colors[ImGuiCol_NavCursor]                 = ::SF::Engine::Vec4(0.26f, 0.59f, 0.98f, 1.00f);
-    colors[ImGuiCol_NavWindowingHighlight]     = ::SF::Engine::Vec4(1.00f, 1.00f, 1.00f, 0.70f);
-    colors[ImGuiCol_NavWindowingDimBg]         = ::SF::Engine::Vec4(0.80f, 0.80f, 0.80f, 0.20f);
-    colors[ImGuiCol_ModalWindowDimBg]          = ::SF::Engine::Vec4(0.80f, 0.80f, 0.80f, 0.35f);
+    colors[ImGuiCol_DockingPreview]       = colors[ImGuiCol_HeaderActive] * ::SF::Engine::Vec4(1.0f, 1.0f, 1.0f, 0.7f);
+    colors[ImGuiCol_DockingEmptyBg]       = ::SF::Engine::Vec4(0.20f, 0.20f, 0.20f, 1.00f);
+    colors[ImGuiCol_PlotLines]            = ::SF::Engine::Vec4(0.61f, 0.61f, 0.61f, 1.00f);
+    colors[ImGuiCol_PlotLinesHovered]     = ::SF::Engine::Vec4(1.00f, 0.43f, 0.35f, 1.00f);
+    colors[ImGuiCol_PlotHistogram]        = ::SF::Engine::Vec4(0.90f, 0.70f, 0.00f, 1.00f);
+    colors[ImGuiCol_PlotHistogramHovered] = ::SF::Engine::Vec4(1.00f, 0.60f, 0.00f, 1.00f);
+    colors[ImGuiCol_TableHeaderBg]        = ::SF::Engine::Vec4(0.19f, 0.19f, 0.20f, 1.00f);
+    colors[ImGuiCol_TableBorderStrong] = ::SF::Engine::Vec4(0.31f, 0.31f, 0.35f, 1.00f); // Prefer using Alpha=1.0 here
+    colors[ImGuiCol_TableBorderLight]  = ::SF::Engine::Vec4(0.23f, 0.23f, 0.25f, 1.00f); // Prefer using Alpha=1.0 here
+    colors[ImGuiCol_TableRowBg]        = ::SF::Engine::Vec4(0.00f, 0.00f, 0.00f, 0.00f);
+    colors[ImGuiCol_TableRowBgAlt]     = ::SF::Engine::Vec4(1.00f, 1.00f, 1.00f, 0.06f);
+    colors[ImGuiCol_TextLink]          = colors[ImGuiCol_HeaderActive];
+    colors[ImGuiCol_TextSelectedBg]    = ::SF::Engine::Vec4(0.26f, 0.59f, 0.98f, 0.35f);
+    colors[ImGuiCol_TreeLines]         = colors[ImGuiCol_Border];
+    colors[ImGuiCol_DragDropTarget]    = ::SF::Engine::Vec4(1.00f, 1.00f, 0.00f, 0.90f);
+    colors[ImGuiCol_DragDropTargetBg]  = ::SF::Engine::Vec4(0.00f, 0.00f, 0.00f, 0.00f);
+    colors[ImGuiCol_UnsavedMarker]     = ::SF::Engine::Vec4(1.00f, 1.00f, 1.00f, 1.00f);
+    colors[ImGuiCol_NavCursor]         = ::SF::Engine::Vec4(0.26f, 0.59f, 0.98f, 1.00f);
+    colors[ImGuiCol_NavWindowingHighlight] = ::SF::Engine::Vec4(1.00f, 1.00f, 1.00f, 0.70f);
+    colors[ImGuiCol_NavWindowingDimBg]     = ::SF::Engine::Vec4(0.80f, 0.80f, 0.80f, 0.20f);
+    colors[ImGuiCol_ModalWindowDimBg]      = ::SF::Engine::Vec4(0.80f, 0.80f, 0.80f, 0.35f);
 }
 
 void ImGui::StyleColorsClassic(ImGuiStyle *dst)
 {
-    ImGuiStyle *style = dst ? dst : &ImGui::GetStyle();
-    ::SF::Engine::Vec4 *colors      = style->Colors;
+    ImGuiStyle *style          = dst ? dst : &ImGui::GetStyle();
+    ::SF::Engine::Vec4 *colors = style->Colors;
 
     colors[ImGuiCol_Text]                 = ::SF::Engine::Vec4(0.90f, 0.90f, 0.90f, 1.00f);
     colors[ImGuiCol_TextDisabled]         = ::SF::Engine::Vec4(0.60f, 0.60f, 0.60f, 1.00f);
@@ -349,27 +349,27 @@ void ImGui::StyleColorsClassic(ImGuiStyle *dst)
     colors[ImGuiCol_PlotHistogram]             = ::SF::Engine::Vec4(0.90f, 0.70f, 0.00f, 1.00f);
     colors[ImGuiCol_PlotHistogramHovered]      = ::SF::Engine::Vec4(1.00f, 0.60f, 0.00f, 1.00f);
     colors[ImGuiCol_TableHeaderBg]             = ::SF::Engine::Vec4(0.27f, 0.27f, 0.38f, 1.00f);
-    colors[ImGuiCol_TableBorderStrong]         = ::SF::Engine::Vec4(0.31f, 0.31f, 0.45f, 1.00f); // Prefer using Alpha=1.0 here
-    colors[ImGuiCol_TableBorderLight]          = ::SF::Engine::Vec4(0.26f, 0.26f, 0.28f, 1.00f); // Prefer using Alpha=1.0 here
-    colors[ImGuiCol_TableRowBg]                = ::SF::Engine::Vec4(0.00f, 0.00f, 0.00f, 0.00f);
-    colors[ImGuiCol_TableRowBgAlt]             = ::SF::Engine::Vec4(1.00f, 1.00f, 1.00f, 0.07f);
-    colors[ImGuiCol_TextLink]                  = colors[ImGuiCol_HeaderActive];
-    colors[ImGuiCol_TextSelectedBg]            = ::SF::Engine::Vec4(0.00f, 0.00f, 1.00f, 0.35f);
-    colors[ImGuiCol_TreeLines]                 = colors[ImGuiCol_Border];
-    colors[ImGuiCol_DragDropTarget]            = ::SF::Engine::Vec4(1.00f, 1.00f, 0.00f, 0.90f);
-    colors[ImGuiCol_DragDropTargetBg]          = ::SF::Engine::Vec4(0.00f, 0.00f, 0.00f, 0.00f);
-    colors[ImGuiCol_UnsavedMarker]             = ::SF::Engine::Vec4(0.90f, 0.90f, 0.90f, 1.00f);
-    colors[ImGuiCol_NavCursor]                 = colors[ImGuiCol_HeaderHovered];
-    colors[ImGuiCol_NavWindowingHighlight]     = ::SF::Engine::Vec4(1.00f, 1.00f, 1.00f, 0.70f);
-    colors[ImGuiCol_NavWindowingDimBg]         = ::SF::Engine::Vec4(0.80f, 0.80f, 0.80f, 0.20f);
-    colors[ImGuiCol_ModalWindowDimBg]          = ::SF::Engine::Vec4(0.20f, 0.20f, 0.20f, 0.35f);
+    colors[ImGuiCol_TableBorderStrong] = ::SF::Engine::Vec4(0.31f, 0.31f, 0.45f, 1.00f); // Prefer using Alpha=1.0 here
+    colors[ImGuiCol_TableBorderLight]  = ::SF::Engine::Vec4(0.26f, 0.26f, 0.28f, 1.00f); // Prefer using Alpha=1.0 here
+    colors[ImGuiCol_TableRowBg]        = ::SF::Engine::Vec4(0.00f, 0.00f, 0.00f, 0.00f);
+    colors[ImGuiCol_TableRowBgAlt]     = ::SF::Engine::Vec4(1.00f, 1.00f, 1.00f, 0.07f);
+    colors[ImGuiCol_TextLink]          = colors[ImGuiCol_HeaderActive];
+    colors[ImGuiCol_TextSelectedBg]    = ::SF::Engine::Vec4(0.00f, 0.00f, 1.00f, 0.35f);
+    colors[ImGuiCol_TreeLines]         = colors[ImGuiCol_Border];
+    colors[ImGuiCol_DragDropTarget]    = ::SF::Engine::Vec4(1.00f, 1.00f, 0.00f, 0.90f);
+    colors[ImGuiCol_DragDropTargetBg]  = ::SF::Engine::Vec4(0.00f, 0.00f, 0.00f, 0.00f);
+    colors[ImGuiCol_UnsavedMarker]     = ::SF::Engine::Vec4(0.90f, 0.90f, 0.90f, 1.00f);
+    colors[ImGuiCol_NavCursor]         = colors[ImGuiCol_HeaderHovered];
+    colors[ImGuiCol_NavWindowingHighlight] = ::SF::Engine::Vec4(1.00f, 1.00f, 1.00f, 0.70f);
+    colors[ImGuiCol_NavWindowingDimBg]     = ::SF::Engine::Vec4(0.80f, 0.80f, 0.80f, 0.20f);
+    colors[ImGuiCol_ModalWindowDimBg]      = ::SF::Engine::Vec4(0.20f, 0.20f, 0.20f, 0.35f);
 }
 
 // Those light colors are better suited with a thicker font than the default one + FrameBorder
 void ImGui::StyleColorsLight(ImGuiStyle *dst)
 {
-    ImGuiStyle *style = dst ? dst : &ImGui::GetStyle();
-    ::SF::Engine::Vec4 *colors      = style->Colors;
+    ImGuiStyle *style          = dst ? dst : &ImGui::GetStyle();
+    ::SF::Engine::Vec4 *colors = style->Colors;
 
     colors[ImGuiCol_Text]                 = ::SF::Engine::Vec4(0.00f, 0.00f, 0.00f, 1.00f);
     colors[ImGuiCol_TextDisabled]         = ::SF::Engine::Vec4(0.60f, 0.60f, 0.60f, 1.00f);
@@ -420,20 +420,20 @@ void ImGui::StyleColorsLight(ImGuiStyle *dst)
     colors[ImGuiCol_PlotHistogram]             = ::SF::Engine::Vec4(0.90f, 0.70f, 0.00f, 1.00f);
     colors[ImGuiCol_PlotHistogramHovered]      = ::SF::Engine::Vec4(1.00f, 0.45f, 0.00f, 1.00f);
     colors[ImGuiCol_TableHeaderBg]             = ::SF::Engine::Vec4(0.78f, 0.87f, 0.98f, 1.00f);
-    colors[ImGuiCol_TableBorderStrong]         = ::SF::Engine::Vec4(0.57f, 0.57f, 0.64f, 1.00f); // Prefer using Alpha=1.0 here
-    colors[ImGuiCol_TableBorderLight]          = ::SF::Engine::Vec4(0.68f, 0.68f, 0.74f, 1.00f); // Prefer using Alpha=1.0 here
-    colors[ImGuiCol_TableRowBg]                = ::SF::Engine::Vec4(0.00f, 0.00f, 0.00f, 0.00f);
-    colors[ImGuiCol_TableRowBgAlt]             = ::SF::Engine::Vec4(0.30f, 0.30f, 0.30f, 0.09f);
-    colors[ImGuiCol_TextLink]                  = colors[ImGuiCol_HeaderActive];
-    colors[ImGuiCol_TextSelectedBg]            = ::SF::Engine::Vec4(0.26f, 0.59f, 0.98f, 0.35f);
-    colors[ImGuiCol_TreeLines]                 = colors[ImGuiCol_Border];
-    colors[ImGuiCol_DragDropTarget]            = ::SF::Engine::Vec4(0.26f, 0.59f, 0.98f, 0.95f);
-    colors[ImGuiCol_DragDropTargetBg]          = ::SF::Engine::Vec4(0.00f, 0.00f, 0.00f, 0.00f);
-    colors[ImGuiCol_UnsavedMarker]             = ::SF::Engine::Vec4(0.00f, 0.00f, 0.00f, 1.00f);
-    colors[ImGuiCol_NavCursor]                 = colors[ImGuiCol_HeaderHovered];
-    colors[ImGuiCol_NavWindowingHighlight]     = ::SF::Engine::Vec4(0.70f, 0.70f, 0.70f, 0.70f);
-    colors[ImGuiCol_NavWindowingDimBg]         = ::SF::Engine::Vec4(0.20f, 0.20f, 0.20f, 0.20f);
-    colors[ImGuiCol_ModalWindowDimBg]          = ::SF::Engine::Vec4(0.20f, 0.20f, 0.20f, 0.35f);
+    colors[ImGuiCol_TableBorderStrong] = ::SF::Engine::Vec4(0.57f, 0.57f, 0.64f, 1.00f); // Prefer using Alpha=1.0 here
+    colors[ImGuiCol_TableBorderLight]  = ::SF::Engine::Vec4(0.68f, 0.68f, 0.74f, 1.00f); // Prefer using Alpha=1.0 here
+    colors[ImGuiCol_TableRowBg]        = ::SF::Engine::Vec4(0.00f, 0.00f, 0.00f, 0.00f);
+    colors[ImGuiCol_TableRowBgAlt]     = ::SF::Engine::Vec4(0.30f, 0.30f, 0.30f, 0.09f);
+    colors[ImGuiCol_TextLink]          = colors[ImGuiCol_HeaderActive];
+    colors[ImGuiCol_TextSelectedBg]    = ::SF::Engine::Vec4(0.26f, 0.59f, 0.98f, 0.35f);
+    colors[ImGuiCol_TreeLines]         = colors[ImGuiCol_Border];
+    colors[ImGuiCol_DragDropTarget]    = ::SF::Engine::Vec4(0.26f, 0.59f, 0.98f, 0.95f);
+    colors[ImGuiCol_DragDropTargetBg]  = ::SF::Engine::Vec4(0.00f, 0.00f, 0.00f, 0.00f);
+    colors[ImGuiCol_UnsavedMarker]     = ::SF::Engine::Vec4(0.00f, 0.00f, 0.00f, 1.00f);
+    colors[ImGuiCol_NavCursor]         = colors[ImGuiCol_HeaderHovered];
+    colors[ImGuiCol_NavWindowingHighlight] = ::SF::Engine::Vec4(0.70f, 0.70f, 0.70f, 0.70f);
+    colors[ImGuiCol_NavWindowingDimBg]     = ::SF::Engine::Vec4(0.20f, 0.20f, 0.20f, 0.20f);
+    colors[ImGuiCol_ModalWindowDimBg]      = ::SF::Engine::Vec4(0.20f, 0.20f, 0.20f, 0.35f);
 }
 
 //-----------------------------------------------------------------------------
@@ -461,7 +461,7 @@ void ImDrawListSharedData::SetCircleTessellationMaxError(float max_error)
     CircleTessellationMaxError = max_error;
     for (int i = 0; i < IM_COUNTOF(CircleSegmentCounts); i++)
     {
-        const float radius = (float) i;
+        const auto radius = (float) i;
         CircleSegmentCounts[i] =
                 (uint8_t) ((i > 0) ? IM_DRAWLIST_CIRCLE_AUTO_SEGMENT_CALC(radius, CircleTessellationMaxError)
                                    : IM_DRAWLIST_ARCFAST_SAMPLE_MAX);
@@ -538,15 +538,15 @@ void ImDrawList::_ClearFreeMemory()
     _Splitter.ClearFreeMemory();
 }
 
-// Note: For multi-threaded rendering, consider using `imgui_threaded_rendering` from
+// Note: For multithreaded rendering, consider using `imgui_threaded_rendering` from
 // https://github.com/ocornut/imgui_club
 ImDrawList *ImDrawList::CloneOutput() const
 {
-    ImDrawList *dst = IM_NEW(ImDrawList(nullptr));
-    dst->CmdBuffer  = CmdBuffer;
-    dst->IdxBuffer  = IdxBuffer;
-    dst->VtxBuffer  = VtxBuffer;
-    dst->Flags      = Flags;
+    auto *dst      = IM_NEW(ImDrawList(nullptr));
+    dst->CmdBuffer = CmdBuffer;
+    dst->IdxBuffer = IdxBuffer;
+    dst->VtxBuffer = VtxBuffer;
+    dst->Flags     = Flags;
     return dst;
 }
 
@@ -633,7 +633,7 @@ void ImDrawList::_TryMergeDrawCmds()
     }
 }
 
-// Our scheme may appears a bit unusual, basically we want the most-common calls AddLine AddRect etc. to not have to
+// Our scheme may appear a bit unusual, basically we want the most-common calls AddLine AddRect etc. to not have to
 // perform any check so we always have a command ready in the stack. The cost of figuring out if a new command has to be
 // added or if we can merge is paid in those Update** functions only.
 void ImDrawList::_OnChangedClipRect()
@@ -641,7 +641,7 @@ void ImDrawList::_OnChangedClipRect()
     // If current command is used with different settings we need to add a new command
     IM_ASSERT_PARANOID(CmdBuffer.Size > 0);
     ImDrawCmd *curr_cmd = &CmdBuffer.Data[CmdBuffer.Size - 1];
-    if (curr_cmd->ElemCount != 0 && memcmp(&curr_cmd->ClipRect, &_CmdHeader.ClipRect, sizeof(::SF::Engine::Vec4)) != 0)
+    if (curr_cmd->ElemCount != 0 && curr_cmd->ClipRect != _CmdHeader.ClipRect)
     {
         AddDrawCmd();
         return;
@@ -832,7 +832,7 @@ void ImDrawList::PrimUnreserve(int idx_count, int vtx_count)
 void ImDrawList::PrimRect(const ::SF::Engine::Vec2 &a, const ::SF::Engine::Vec2 &c, uint32_t col)
 {
     ::SF::Engine::Vec2 b(c.x, a.y), d(a.x, c.y), uv(_Data->TexUvWhitePixel);
-    ImDrawIdx idx       = (ImDrawIdx) _VtxCurrentIdx;
+    auto idx            = (ImDrawIdx) _VtxCurrentIdx;
     _IdxWritePtr[0]     = idx;
     _IdxWritePtr[1]     = (ImDrawIdx) (idx + 1);
     _IdxWritePtr[2]     = (ImDrawIdx) (idx + 2);
@@ -860,7 +860,7 @@ void ImDrawList::PrimRectUV(const ::SF::Engine::Vec2 &a, const ::SF::Engine::Vec
                             const ::SF::Engine::Vec2 &uv_c, uint32_t col)
 {
     ::SF::Engine::Vec2 b(c.x, a.y), d(a.x, c.y), uv_b(uv_c.x, uv_a.y), uv_d(uv_a.x, uv_c.y);
-    ImDrawIdx idx       = (ImDrawIdx) _VtxCurrentIdx;
+    auto idx            = (ImDrawIdx) _VtxCurrentIdx;
     _IdxWritePtr[0]     = idx;
     _IdxWritePtr[1]     = (ImDrawIdx) (idx + 1);
     _IdxWritePtr[2]     = (ImDrawIdx) (idx + 2);
@@ -888,7 +888,7 @@ void ImDrawList::PrimQuadUV(const ::SF::Engine::Vec2 &a, const ::SF::Engine::Vec
                             const ::SF::Engine::Vec2 &d, const ::SF::Engine::Vec2 &uv_a, const ::SF::Engine::Vec2 &uv_b,
                             const ::SF::Engine::Vec2 &uv_c, const ::SF::Engine::Vec2 &uv_d, uint32_t col)
 {
-    ImDrawIdx idx       = (ImDrawIdx) _VtxCurrentIdx;
+    auto idx            = (ImDrawIdx) _VtxCurrentIdx;
     _IdxWritePtr[0]     = idx;
     _IdxWritePtr[1]     = (ImDrawIdx) (idx + 1);
     _IdxWritePtr[2]     = (ImDrawIdx) (idx + 2);
@@ -974,14 +974,14 @@ void ImDrawList::AddPolyline(const ::SF::Engine::Vec2 *points, const int points_
         // Thicknesses <1.0 should behave like thickness 1.0
         thickness                        = ImMax(thickness, 1.0f);
         const int integer_thickness      = (int) thickness;
-        const float fractional_thickness = thickness - integer_thickness;
+        const float fractional_thickness = thickness - (float) integer_thickness;
 
         // Do we want to draw this line using a texture?
         // - For now, only draw integer-width lines using textures to avoid issues with the way scaling occurs, could be
         // improved.
         // - If AA_SIZE is not 1.0f we cannot use the texture path.
         const bool use_texture = (Flags & ImDrawListFlags_AntiAliasedLinesUseTex) &&
-                                 (integer_thickness < IM_DRAWLIST_TEX_LINES_WIDTH_MAX) &&
+                                 (integer_thickness < (int) IM_DRAWLIST_TEX_LINES_WIDTH_MAX) &&
                                  (fractional_thickness <= 0.00001f) && (AA_SIZE == 1.0f);
 
         // We should never hit this, because NewFrame() doesn't set ImDrawListFlags_AntiAliasedLinesUseTex unless
@@ -1542,8 +1542,8 @@ void ImDrawList::PathArcTo(const ::SF::Engine::Vec2 &center, float radius, float
         const int a_mid_samples =
                 a_is_reverse ? ImMax(a_min_sample - a_max_sample, 0) : ImMax(a_max_sample - a_min_sample, 0);
 
-        const float a_min_segment_angle = a_min_sample * IM_PI * 2.0f / IM_DRAWLIST_ARCFAST_SAMPLE_MAX;
-        const float a_max_segment_angle = a_max_sample * IM_PI * 2.0f / IM_DRAWLIST_ARCFAST_SAMPLE_MAX;
+        const float a_min_segment_angle = (float) a_min_sample * IM_PI * 2.0f / IM_DRAWLIST_ARCFAST_SAMPLE_MAX;
+        const float a_max_segment_angle = (float) a_max_sample * IM_PI * 2.0f / IM_DRAWLIST_ARCFAST_SAMPLE_MAX;
         const bool a_emit_start         = ImAbs(a_min_segment_angle - a_min) >= 1e-5f;
         const bool a_emit_end           = ImAbs(a_max - a_max_segment_angle) >= 1e-5f;
 
@@ -1605,7 +1605,7 @@ void ImDrawList::PathEllipticalArcTo(const ::SF::Engine::Vec2 &center, const ::S
     float w1 = u * u;
     float w2 = 2 * u * t;
     float w3 = t * t;
-    return ::SF::Engine::Vec2(w1 * p1.x + w2 * p2.x + w3 * p3.x, w1 * p1.y + w2 * p2.y + w3 * p3.y);
+    return {w1 * p1.x + w2 * p2.x + w3 * p3.x, w1 * p1.y + w2 * p2.y + w3 * p3.y};
 }
 
 // Closely mimics ImBezierCubicClosestPointCasteljau() in imgui.cpp
@@ -1667,7 +1667,7 @@ void ImDrawList::PathBezierCubicCurveTo(const ::SF::Engine::Vec2 &p2, const ::SF
     {
         float t_step = 1.0f / (float) num_segments;
         for (int i_step = 1; i_step <= num_segments; i_step++)
-            _Path.push_back(ImBezierCubicCalc(p1, p2, p3, p4, t_step * i_step));
+            _Path.push_back(ImBezierCubicCalc(p1, p2, p3, p4, t_step * (float) i_step));
     }
 }
 
@@ -1686,7 +1686,7 @@ void ImDrawList::PathBezierQuadraticCurveTo(const ::SF::Engine::Vec2 &p2, const 
     {
         float t_step = 1.0f / (float) num_segments;
         for (int i_step = 1; i_step <= num_segments; i_step++)
-            _Path.push_back(ImBezierQuadraticCalc(p1, p2, p3, t_step * i_step));
+            _Path.push_back(ImBezierQuadraticCalc(p1, p2, p3, t_step * (float) i_step));
     }
 }
 
@@ -2010,7 +2010,8 @@ void ImDrawList::AddBezierQuadratic(const ::SF::Engine::Vec2 &p1, const ::SF::En
 }
 
 void ImDrawList::AddText(ImFont *font, float font_size, const ::SF::Engine::Vec2 &pos, uint32_t col,
-                         const char *text_begin, const char *text_end, float wrap_width, const ::SF::Engine::Vec4 *cpu_fine_clip_rect)
+                         const char *text_begin, const char *text_end, float wrap_width,
+                         const ::SF::Engine::Vec4 *cpu_fine_clip_rect)
 {
     if ((col & IM_COL32_A_MASK) == 0)
         return;
@@ -2138,7 +2139,7 @@ struct ImTriangulatorNode
     ImTriangulatorNode *Next;
     ImTriangulatorNode *Prev;
 
-    void Unlink()
+    void Unlink() const
     {
         Next->Prev = Prev;
         Prev->Next = Next;
@@ -2168,20 +2169,20 @@ struct ImTriangulator
     static int EstimateTriangleCount(int points_count) { return (points_count < 3) ? 0 : points_count - 2; }
     static int EstimateScratchBufferSize(int points_count)
     {
-        return sizeof(ImTriangulatorNode) * points_count + sizeof(ImTriangulatorNode *) * points_count * 2;
+        return (int) sizeof(ImTriangulatorNode) * points_count + sizeof(ImTriangulatorNode *) * points_count * 2;
     }
 
     void Init(const ::SF::Engine::Vec2 *points, int points_count, void *scratch_buffer);
     void GetNextTriangle(unsigned int out_triangle[3]); // Return relative indexes for next triangle
 
     // Internal functions
-    void BuildNodes(const ::SF::Engine::Vec2 *points, int points_count);
+    void BuildNodes(const ::SF::Engine::Vec2 *points, int points_count) const;
     void BuildReflexes();
     void BuildEars();
     void FlipNodeList();
-    bool IsEar(int i0, int i1, int i2, const ::SF::Engine::Vec2 &v0, const ::SF::Engine::Vec2 &v1,
-               const ::SF::Engine::Vec2 &v2) const;
-    void ReclassifyNode(ImTriangulatorNode *node);
+    [[nodiscard]] bool IsEar(int i0, int i1, int i2, const ::SF::Engine::Vec2 &v0, const ::SF::Engine::Vec2 &v1,
+                             const ::SF::Engine::Vec2 &v2) const;
+    void ReclassifyNode(ImTriangulatorNode *n1);
 
     // Internal members
     int _TrianglesLeft         = 0;
@@ -2205,7 +2206,7 @@ void ImTriangulator::Init(const ::SF::Engine::Vec2 *points, int points_count, vo
     BuildEars();
 }
 
-void ImTriangulator::BuildNodes(const ::SF::Engine::Vec2 *points, int points_count)
+void ImTriangulator::BuildNodes(const ::SF::Engine::Vec2 *points, int points_count) const
 {
     for (int i = 0; i < points_count; i++)
     {
@@ -2472,8 +2473,15 @@ void ImDrawListSplitter::ClearFreeMemory()
     for (int i = 0; i < _Channels.Size; i++)
     {
         if (i == _Current)
-            memset(&_Channels[i], 0,
-                   sizeof(_Channels[i])); // Current channel is a copy of CmdBuffer/IdxBuffer, don't destruct again
+        {
+            _Channels[i]._CmdBuffer.Data     = nullptr;
+            _Channels[i]._CmdBuffer.Size     = 0;
+            _Channels[i]._CmdBuffer.Capacity = 0;
+
+            _Channels[i]._IdxBuffer.Data     = nullptr;
+            _Channels[i]._IdxBuffer.Size     = 0;
+            _Channels[i]._IdxBuffer.Capacity = 0;
+        }
         _Channels[i]._CmdBuffer.clear();
         _Channels[i]._IdxBuffer.clear();
     }
@@ -2499,7 +2507,7 @@ void ImDrawListSplitter::Split(ImDrawList *draw_list, int channels_count)
     // The content of Channels[0] at this point doesn't matter. We clear it to make state tidy in a debugger but we
     // don't strictly need to. When we switch to the next channel, we'll copy draw_list->_CmdBuffer/_IdxBuffer into
     // Channels[0] and then Channels[1] into draw_list->CmdBuffer/_IdxBuffer
-    memset(&_Channels[0], 0, sizeof(ImDrawChannel));
+    _Channels[0] = ImDrawChannel{};
     for (int i = 1; i < channels_count; i++)
     {
         if (i >= old_channels_count)
@@ -2602,21 +2610,23 @@ void ImDrawListSplitter::SetCurrentChannel(ImDrawList *draw_list, int idx)
     if (_Current == idx)
         return;
 
-    // Overwrite ImVector (12/16 bytes), four times. This is merely a silly optimization instead of doing .swap()
-    memcpy(&_Channels.Data[_Current]._CmdBuffer, &draw_list->CmdBuffer, sizeof(draw_list->CmdBuffer));
-    memcpy(&_Channels.Data[_Current]._IdxBuffer, &draw_list->IdxBuffer, sizeof(draw_list->IdxBuffer));
+    _Channels.Data[_Current]._CmdBuffer.swap(draw_list->CmdBuffer);
+    _Channels.Data[_Current]._IdxBuffer.swap(draw_list->IdxBuffer);
+
     _Current = idx;
-    memcpy(&draw_list->CmdBuffer, &_Channels.Data[idx]._CmdBuffer, sizeof(draw_list->CmdBuffer));
-    memcpy(&draw_list->IdxBuffer, &_Channels.Data[idx]._IdxBuffer, sizeof(draw_list->IdxBuffer));
+
+    _Channels.Data[idx]._CmdBuffer.swap(draw_list->CmdBuffer);
+    _Channels.Data[idx]._IdxBuffer.swap(draw_list->IdxBuffer);
+
     draw_list->_IdxWritePtr = draw_list->IdxBuffer.Data + draw_list->IdxBuffer.Size;
 
-    // If current command is used with different settings we need to add a new command
     ImDrawCmd *curr_cmd =
             (draw_list->CmdBuffer.Size == 0) ? nullptr : &draw_list->CmdBuffer.Data[draw_list->CmdBuffer.Size - 1];
+
     if (curr_cmd == nullptr)
         draw_list->AddDrawCmd();
     else if (curr_cmd->ElemCount == 0)
-        ImDrawCmd_HeaderCopy(curr_cmd, &draw_list->_CmdHeader); // Copy ClipRect, TexRef, VtxOffset
+        ImDrawCmd_HeaderCopy(curr_cmd, &draw_list->_CmdHeader);
     else if (ImDrawCmd_HeaderCompare(curr_cmd, &draw_list->_CmdHeader) != 0)
         draw_list->AddDrawCmd();
 }
@@ -2724,8 +2734,8 @@ void ImDrawData::ScaleClipRects(const ::SF::Engine::Vec2 &fb_scale)
 {
     for (ImDrawList *draw_list: CmdLists)
         for (ImDrawCmd &cmd: draw_list->CmdBuffer)
-            cmd.ClipRect = ::SF::Engine::Vec4(cmd.ClipRect.x * fb_scale.x, cmd.ClipRect.y * fb_scale.y, cmd.ClipRect.z * fb_scale.x,
-                                cmd.ClipRect.w * fb_scale.y);
+            cmd.ClipRect = ::SF::Engine::Vec4(cmd.ClipRect.x * fb_scale.x, cmd.ClipRect.y * fb_scale.y,
+                                              cmd.ClipRect.z * fb_scale.x, cmd.ClipRect.w * fb_scale.y);
 }
 
 //-----------------------------------------------------------------------------
@@ -2767,7 +2777,7 @@ void ImGui::ShadeVertsLinearUV(ImDrawList *draw_list, int vert_start_idx, int ve
     const ::SF::Engine::Vec2 size    = b - a;
     const ::SF::Engine::Vec2 uv_size = uv_b - uv_a;
     const ::SF::Engine::Vec2 scale   = ::SF::Engine::Vec2(size.x != 0.0f ? (uv_size.x / size.x) : 0.0f,
-                                                        size.y != 0.0f ? (uv_size.y / size.y) : 0.0f);
+                                                          size.y != 0.0f ? (uv_size.y / size.y) : 0.0f);
 
     ImDrawVert *vert_start = draw_list->VtxBuffer.Data + vert_start_idx;
     ImDrawVert *vert_end   = draw_list->VtxBuffer.Data + vert_end_idx;
@@ -3075,9 +3085,9 @@ ImFontAtlas::ImFontAtlas()
     TexRef._TexID       = ImTextureID_Invalid;
     RendererHasTextures = false; // Assumed false by default, as apps can call e.g Atlas::Build() after backend init and
                                  // before ImGui can update.
-    TexNextUniqueID  = 1;
-    FontNextUniqueID = 1;
-    Builder          = nullptr;
+    TexNextUniqueID     = 1;
+    FontNextUniqueID    = 1;
+    Builder             = nullptr;
 }
 
 ImFontAtlas::~ImFontAtlas()
@@ -3238,7 +3248,7 @@ void ImFontAtlasUpdateNewFrame(ImFontAtlas *atlas, int frame_count, bool rendere
             ImFontBaked *p_dst = &builder->BakedPool[dst_n++];
             if (p_dst == p_src)
                 continue;
-            memcpy(p_dst, p_src, sizeof(ImFontBaked));
+            *p_dst = std::move(*p_src);
             builder->BakedMap.SetVoidPtr(p_dst->BakedId, p_dst);
         }
         IM_ASSERT(dst_n + builder->BakedDiscardedCount == src_n);
@@ -3314,7 +3324,7 @@ void ImFontAtlasTextureBlockConvert(const unsigned char *src_pixels, ImTextureFo
             const uint8_t *src_p = (const uint8_t *) src_pixels;
             uint32_t *dst_p      = (uint32_t *) (void *) dst_pixels;
             for (int nx = w; nx > 0; nx--)
-                *dst_p++ = IM_COL32(255, 255, 255, (unsigned int) (*src_p++));
+                *dst_p++ = PackCol32(255, 255, 255, (unsigned int) (*src_p++));
         }
     } else if (src_fmt == ImTextureFormat_RGBA32 && dst_fmt == ImTextureFormat_Alpha8)
     {
@@ -3364,8 +3374,8 @@ void ImFontAtlasTextureBlockPostProcessMultiply(ImFontAtlasPostProcessData *data
             {
                 unsigned int a =
                         ImMin((unsigned int) (((*p >> IM_COL32_A_SHIFT) & 0xFF) * multiply_factor), (unsigned int) 255);
-                *p = IM_COL32((*p >> IM_COL32_R_SHIFT) & 0xFF, (*p >> IM_COL32_G_SHIFT) & 0xFF,
-                              (*p >> IM_COL32_B_SHIFT) & 0xFF, a);
+                *p = PackCol32((*p >> IM_COL32_R_SHIFT) & 0xFF, (*p >> IM_COL32_G_SHIFT) & 0xFF,
+                               (*p >> IM_COL32_B_SHIFT) & 0xFF, a);
             }
         }
     } else
@@ -3549,10 +3559,10 @@ static void Decode85(const unsigned char *src, unsigned char *dst)
         unsigned int tmp = Decode85Byte(src[0]) +
                            85 * (Decode85Byte(src[1]) +
                                  85 * (Decode85Byte(src[2]) + 85 * (Decode85Byte(src[3]) + 85 * Decode85Byte(src[4]))));
-        dst[0] = ((tmp >> 0) & 0xFF);
-        dst[1] = ((tmp >> 8) & 0xFF);
-        dst[2] = ((tmp >> 16) & 0xFF);
-        dst[3] = ((tmp >> 24) & 0xFF); // We can't assume little-endianness.
+        dst[0]           = ((tmp >> 0) & 0xFF);
+        dst[1]           = ((tmp >> 8) & 0xFF);
+        dst[2]           = ((tmp >> 16) & 0xFF);
+        dst[3]           = ((tmp >> 24) & 0xFF); // We can't assume little-endianness.
         src += 5;
         dst += 4;
     }
@@ -4048,7 +4058,7 @@ static void ImFontAtlasBuildUpdateTexDataLines(ImFontAtlas *atlas)
         // Write each slice
         if (add_and_draw && tex->Format == ImTextureFormat_Alpha8)
         {
-            uint8_t *write_ptr = (uint8_t *) tex->GetPixelsAt(r.x, r.y + y);
+            auto *write_ptr = (uint8_t *) tex->GetPixelsAt(r.x, r.y + y);
             for (int i = 0; i < pad_left; i++)
                 *(write_ptr + i) = 0x00;
 
@@ -4059,15 +4069,15 @@ static void ImFontAtlasBuildUpdateTexDataLines(ImFontAtlas *atlas)
                 *(write_ptr + pad_left + line_width + i) = 0x00;
         } else if (add_and_draw && tex->Format == ImTextureFormat_RGBA32)
         {
-            uint32_t *write_ptr = (uint32_t *) (void *) tex->GetPixelsAt(r.x, r.y + y);
+            auto *write_ptr = (uint32_t *) (void *) tex->GetPixelsAt(r.x, r.y + y);
             for (int i = 0; i < pad_left; i++)
-                *(write_ptr + i) = IM_COL32(255, 255, 255, 0);
+                *(write_ptr + i) = PackCol32(255, 255, 255, 0);
 
             for (int i = 0; i < line_width; i++)
                 *(write_ptr + pad_left + i) = IM_COL32_WHITE;
 
             for (int i = 0; i < pad_right; i++)
-                *(write_ptr + pad_left + line_width + i) = IM_COL32(255, 255, 255, 0);
+                *(write_ptr + pad_left + line_width + i) = PackCol32(255, 255, 255, 0);
         }
 
         // Refresh UV coordinates
@@ -5497,8 +5507,8 @@ ImFontGlyph *ImFontBaked::FindGlyphNoFallback(ImWchar c)
             if (i != IM_FONTGLYPH_INDEX_UNUSED)
                 return &Glyphs.Data[i];
         }
-    LoadNoFallback = true; // This is actually a rare call, not done in hot-loop, so we prioritize not adding extra
-                           // cruft to ImFontBaked_BuildLoadGlyph() call sites.
+    LoadNoFallback     = true; // This is actually a rare call, not done in hot-loop, so we prioritize not adding extra
+                               // cruft to ImFontBaked_BuildLoadGlyph() call sites.
     ImFontGlyph *glyph = ImFontBaked_BuildLoadGlyph(this, c, nullptr);
     LoadNoFallback     = false;
     return glyph;
@@ -5986,8 +5996,8 @@ void ImFont::RenderChar(ImDrawList *draw_list, float size, const ::SF::Engine::V
 // Note: as with every ImDrawList drawing function, this expects that the font atlas texture is bound.
 // DO NOT CALL DIRECTLY THIS WILL CHANGE WILDLY IN 2026. Use ImDrawList::AddText().
 void ImFont::RenderText(ImDrawList *draw_list, float size, const ::SF::Engine::Vec2 &pos, uint32_t col,
-                        const ::SF::Engine::Vec4 &clip_rect, const char *text_begin, const char *text_end, float wrap_width,
-                        ImDrawTextFlags flags)
+                        const ::SF::Engine::Vec4 &clip_rect, const char *text_begin, const char *text_end,
+                        float wrap_width, ImDrawTextFlags flags)
 {
 begin:
     // Align to be pixel perfect
@@ -6480,8 +6490,8 @@ void ImGui::RenderColorRectWithAlphaCheckerboard(ImDrawList *draw_list, ::SF::En
         flags = ImDrawFlags_RoundCornersDefault_;
     if (((col & IM_COL32_A_MASK) >> IM_COL32_A_SHIFT) < 0xFF)
     {
-        uint32_t col_bg1 = GetColorU32(ImAlphaBlendColors(IM_COL32(128, 128, 128, 255), col));
-        uint32_t col_bg2 = GetColorU32(ImAlphaBlendColors(IM_COL32(204, 204, 204, 255), col));
+        uint32_t col_bg1 = GetColorU32(ImAlphaBlendColors(PackCol32(128, 128, 128, 255), col));
+        uint32_t col_bg2 = GetColorU32(ImAlphaBlendColors(PackCol32(204, 204, 204, 255), col));
         draw_list->AddRectFilled(p_min, p_max, col_bg1, rounding, flags);
 
         int yi = 0;

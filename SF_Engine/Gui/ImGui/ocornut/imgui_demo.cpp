@@ -1132,8 +1132,8 @@ static ExampleTreeNode *ExampleTree_CreateDemoTree()
 
 struct ExampleImageViewerData
 {
-    uint32_t ImageBgColor = IM_COL32(100, 100, 100, 255);
-    uint32_t GridColor    = IM_COL32(255, 255, 255, 100);
+    uint32_t ImageBgColor = PackCol32(100, 100, 100, 255);
+    uint32_t GridColor    = PackCol32(255, 255, 255, 100);
     bool GridEnabled      = true;
     bool ViewReset        = true;
     ::SF::Engine::Vec2 ViewOffset; // in image space
@@ -1190,7 +1190,7 @@ static void ExampleImageViewer_DrawCanvas(ExampleImageViewerData *data, ::SF::En
     image_max.x = (float) (int) (image_min.x + image_w * zoom);
     image_max.y = (float) (int) (image_min.y + image_h * zoom);
     draw_list->AddRect(::SF::Engine::Vec2(canvas_min.x - 1.0f, canvas_min.y - 1.0f),
-                       ::SF::Engine::Vec2(canvas_max.x + 1.0f, canvas_max.y + 1.0f), IM_COL32(255, 255, 255, 255));
+                       ::SF::Engine::Vec2(canvas_max.x + 1.0f, canvas_max.y + 1.0f), PackCol32(255, 255, 255, 255));
     draw_list->PushClipRect(canvas_min, canvas_max, true);
     draw_list->AddRectFilled(image_min, image_max, data->ImageBgColor);
     if (platform_io.DrawCallback_SetSamplerNearest != nullptr)
@@ -4251,8 +4251,8 @@ static void DemoWindowWidgetsText()
                     ImGui::Text("aaaaaaaa bbbbbbbb, c cccccccc,dddddddd. d eeeeeeee   ffffffff. gggggggg!hhhhhhhh");
 
                 // Draw actual text bounding box, following by marker of our expected limit (should not overlap!)
-                draw_list->AddRect(ImGui::GetItemRectMin(), ImGui::GetItemRectMax(), IM_COL32(255, 255, 0, 255));
-                draw_list->AddRectFilled(marker_min, marker_max, IM_COL32(255, 0, 255, 255));
+                draw_list->AddRect(ImGui::GetItemRectMin(), ImGui::GetItemRectMax(), PackCol32(255, 255, 0, 255));
+                draw_list->AddRectFilled(marker_min, marker_max, PackCol32(255, 0, 255, 255));
                 ImGui::PopTextWrapPos();
             }
 
@@ -4788,9 +4788,9 @@ static void DemoWindowWidgetsTreeNodes()
         if (ImGui::TreeNode("Advanced"))
         {
             IMGUI_DEMO_MARKER("Widgets/Tree Nodes/Advanced");
-            static ImGuiTreeNodeFlags base_flags = ImGuiTreeNodeFlags_OpenOnArrow |
-                                                   ImGuiTreeNodeFlags_OpenOnDoubleClick |
-                                                   ImGuiTreeNodeFlags_SpanAvailWidth;
+            static ImGuiTreeNodeFlags base_flags            = ImGuiTreeNodeFlags_OpenOnArrow |
+                                                              ImGuiTreeNodeFlags_OpenOnDoubleClick |
+                                                              ImGuiTreeNodeFlags_SpanAvailWidth;
             static bool align_label_with_current_x_position = false;
             static bool use_drag_and_drop                   = false;
             ImGui::CheckboxFlags("ImGuiTreeNodeFlags_OpenOnArrow", &base_flags, ImGuiTreeNodeFlags_OpenOnArrow);
@@ -5139,7 +5139,7 @@ static void DemoWindowLayout()
 
             ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (float) offset_x);
             if (override_bg_color)
-                ImGui::PushStyleColor(ImGuiCol_ChildBg, IM_COL32(255, 0, 0, 100));
+                ImGui::PushStyleColor(ImGuiCol_ChildBg, PackCol32(255, 0, 0, 100));
             ImGui::BeginChild("Red", ::SF::Engine::Vec2(200, 100), child_flags, ImGuiWindowFlags_None);
             if (override_bg_color)
                 ImGui::PopStyleColor();
@@ -5655,9 +5655,9 @@ static void DemoWindowLayout()
             float child_height = ImGui::GetTextLineHeight() + style.ScrollbarSize + style.WindowPadding.y * 2.0f;
             ImGuiWindowFlags child_flags = ImGuiWindowFlags_HorizontalScrollbar |
                                            (enable_extra_decorations ? ImGuiWindowFlags_AlwaysVerticalScrollbar : 0);
-            IdType child_id       = ImGui::GetID((void *) (intptr_t) i);
-            bool child_is_visible = ImGui::BeginChild(child_id, ::SF::Engine::Vec2(-100, child_height),
-                                                      ImGuiChildFlags_Borders, child_flags);
+            IdType child_id              = ImGui::GetID((void *) (intptr_t) i);
+            bool child_is_visible        = ImGui::BeginChild(child_id, ::SF::Engine::Vec2(-100, child_height),
+                                                             ImGuiChildFlags_Borders, child_flags);
             if (scroll_to_off)
                 ImGui::SetScrollX(scroll_to_off_px);
             if (scroll_to_pos)
@@ -5893,20 +5893,20 @@ static void DemoWindowLayout()
             {
                 case 0:
                     ImGui::PushClipRect(p0, p1, true);
-                    draw_list->AddRectFilled(p0, p1, IM_COL32(90, 90, 120, 255));
+                    draw_list->AddRectFilled(p0, p1, PackCol32(90, 90, 120, 255));
                     draw_list->AddText(text_pos, IM_COL32_WHITE, text_str);
                     ImGui::PopClipRect();
                     break;
                 case 1:
                     draw_list->PushClipRect(p0, p1, true);
-                    draw_list->AddRectFilled(p0, p1, IM_COL32(90, 90, 120, 255));
+                    draw_list->AddRectFilled(p0, p1, PackCol32(90, 90, 120, 255));
                     draw_list->AddText(text_pos, IM_COL32_WHITE, text_str);
                     draw_list->PopClipRect();
                     break;
                 case 2:
                     ::SF::Engine::Vec4 clip_rect(p0.x, p0.y, p1.x,
                                                  p1.y); // AddText() takes a ::SF::Engine::Vec4* here so let's convert.
-                    draw_list->AddRectFilled(p0, p1, IM_COL32(90, 90, 120, 255));
+                    draw_list->AddRectFilled(p0, p1, PackCol32(90, 90, 120, 255));
                     draw_list->AddText(ImGui::GetFont(), ImGui::GetFontSize(), text_pos, IM_COL32_WHITE, text_str,
                                        nullptr, 0.0f, &clip_rect);
                     break;
@@ -6898,7 +6898,7 @@ static void DemoWindowTables()
                         ImGui::Button(buf, ::SF::Engine::Vec2(-FLT_MIN, 0.0f));
                     }
                     // if (ImGui::TableGetColumnFlags() & ImGuiTableColumnFlags_IsHovered)
-                    //     ImGui::TableSetBgColor(ImGuiTableBgTarget_CellBg, IM_COL32(0, 100, 0, 255));
+                    //     ImGui::TableSetBgColor(ImGuiTableBgTarget_CellBg, PackCol32(0, 100, 0, 255));
                 }
             }
             ImGui::EndTable();
@@ -7110,8 +7110,8 @@ static void DemoWindowTables()
                                        ImGuiTableFlags_BordersOuter | ImGuiTableFlags_BordersV |
                                        ImGuiTableFlags_Resizable | ImGuiTableFlags_Reorderable |
                                        ImGuiTableFlags_Hideable;
-        static int freeze_cols = 1;
-        static int freeze_rows = 1;
+        static int freeze_cols       = 1;
+        static int freeze_rows       = 1;
 
         PushStyleCompact();
         ImGui::CheckboxFlags("ImGuiTableFlags_Resizable", &flags, ImGuiTableFlags_Resizable);
@@ -7172,7 +7172,7 @@ static void DemoWindowTables()
         static ImGuiTableFlags flags2 = ImGuiTableFlags_SizingStretchSame | ImGuiTableFlags_ScrollX |
                                         ImGuiTableFlags_ScrollY | ImGuiTableFlags_BordersOuter | ImGuiTableFlags_RowBg |
                                         ImGuiTableFlags_ContextMenuInBody;
-        static float inner_width = 1000.0f;
+        static float inner_width      = 1000.0f;
         PushStyleCompact();
         ImGui::PushID("flags3");
         ImGui::PushItemWidth(TEXT_BASE_WIDTH * 30);
@@ -11250,22 +11250,22 @@ static void ShowExampleAppCustomRendering(bool *p_open)
             // Draw gradients
             // (note that those are currently exacerbating our sRGB/Linear issues)
             // Calling ImGui::GetColorU32() multiplies the given colors by the current Style Alpha, but you may pass the
-            // IM_COL32() directly as well..
+            // PackCol32() directly as well..
             ImGui::Text("Gradients");
             ::SF::Engine::Vec2 gradient_size = ::SF::Engine::Vec2(ImGui::CalcItemWidth(), ImGui::GetFrameHeight());
             {
                 ::SF::Engine::Vec2 p0 = ImGui::GetCursorScreenPos();
                 ::SF::Engine::Vec2 p1 = ::SF::Engine::Vec2(p0.x + gradient_size.x, p0.y + gradient_size.y);
-                uint32_t col_a        = ImGui::GetColorU32(IM_COL32(0, 0, 0, 255));
-                uint32_t col_b        = ImGui::GetColorU32(IM_COL32(255, 255, 255, 255));
+                uint32_t col_a        = ImGui::GetColorU32(PackCol32(0, 0, 0, 255));
+                uint32_t col_b        = ImGui::GetColorU32(PackCol32(255, 255, 255, 255));
                 draw_list->AddRectFilledMultiColor(p0, p1, col_a, col_b, col_b, col_a);
                 ImGui::InvisibleButton("##gradient1", gradient_size);
             }
             {
                 ::SF::Engine::Vec2 p0 = ImGui::GetCursorScreenPos();
                 ::SF::Engine::Vec2 p1 = ::SF::Engine::Vec2(p0.x + gradient_size.x, p0.y + gradient_size.y);
-                uint32_t col_a        = ImGui::GetColorU32(IM_COL32(0, 255, 0, 255));
-                uint32_t col_b        = ImGui::GetColorU32(IM_COL32(255, 0, 0, 255));
+                uint32_t col_a        = ImGui::GetColorU32(PackCol32(0, 255, 0, 255));
+                uint32_t col_b        = ImGui::GetColorU32(PackCol32(255, 0, 0, 255));
                 draw_list->AddRectFilledMultiColor(p0, p1, col_a, col_b, col_b, col_a);
                 ImGui::InvisibleButton("##gradient2", gradient_size);
             }
@@ -11411,8 +11411,8 @@ static void ShowExampleAppCustomRendering(bool *p_open)
             x += sz + spacing;
 
             draw_list->AddRectFilledMultiColor(::SF::Engine::Vec2(x, y), ::SF::Engine::Vec2(x + sz, y + sz),
-                                               IM_COL32(0, 0, 0, 255), IM_COL32(255, 0, 0, 255),
-                                               IM_COL32(255, 255, 0, 255), IM_COL32(0, 255, 0, 255));
+                                               PackCol32(0, 0, 0, 255), PackCol32(255, 0, 0, 255),
+                                               PackCol32(255, 255, 0, 255), PackCol32(0, 255, 0, 255));
             x += sz + spacing;
 
             ImGui::Dummy(::SF::Engine::Vec2((sz + spacing) * 13.2f, (sz + spacing) * 3.0f));
@@ -11438,7 +11438,7 @@ static void ShowExampleAppCustomRendering(bool *p_open)
             // Here we demonstrate that this can be replaced by simple offsetting + custom drawing +
             // PushClipRect/PopClipRect() calls. To use a child window instead we could use, e.g:
             //      ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ::SF::Engine::Vec2(0, 0));      // Disable padding
-            //      ImGui::PushStyleColor(ImGuiCol_ChildBg, IM_COL32(50, 50, 50, 255));  // Set a background color
+            //      ImGui::PushStyleColor(ImGuiCol_ChildBg, PackCol32(50, 50, 50, 255));  // Set a background color
             //      ImGui::BeginChild("canvas", ::SF::Engine::Vec2(0.0f, 0.0f), ImGuiChildFlags_Borders,
             //      ImGuiWindowFlags_NoMove); ImGui::PopStyleColor(); ImGui::PopStyleVar();
             //      [...]
@@ -11457,8 +11457,8 @@ static void ShowExampleAppCustomRendering(bool *p_open)
             // Draw border and background color
             ImGuiIO &io           = ImGui::GetIO();
             ImDrawList *draw_list = ImGui::GetWindowDrawList();
-            draw_list->AddRectFilled(canvas_p0, canvas_p1, IM_COL32(50, 50, 50, 255));
-            draw_list->AddRect(canvas_p0, canvas_p1, IM_COL32(255, 255, 255, 255));
+            draw_list->AddRectFilled(canvas_p0, canvas_p1, PackCol32(50, 50, 50, 255));
+            draw_list->AddRect(canvas_p0, canvas_p1, PackCol32(255, 255, 255, 255));
 
             // This will catch our interactions
             ImGui::InvisibleButton("canvas", canvas_sz,
@@ -11518,14 +11518,14 @@ static void ShowExampleAppCustomRendering(bool *p_open)
             {
                 const float GRID_STEP = 64.0f;
                 for (float x = fmodf(scrolling.x, GRID_STEP); x < canvas_sz.x; x += GRID_STEP)
-                    draw_list->AddLineV(canvas_p0.x + x, canvas_p0.y, canvas_p1.y, IM_COL32(200, 200, 200, 40));
+                    draw_list->AddLineV(canvas_p0.x + x, canvas_p0.y, canvas_p1.y, PackCol32(200, 200, 200, 40));
                 for (float y = fmodf(scrolling.y, GRID_STEP); y < canvas_sz.y; y += GRID_STEP)
-                    draw_list->AddLineH(canvas_p0.x, canvas_p1.x, canvas_p0.y + y, IM_COL32(200, 200, 200, 40));
+                    draw_list->AddLineH(canvas_p0.x, canvas_p1.x, canvas_p0.y + y, PackCol32(200, 200, 200, 40));
             }
             for (int n = 0; n < points.Size; n += 2)
                 draw_list->AddLine(::SF::Engine::Vec2(origin.x + points[n].x, origin.y + points[n].y),
                                    ::SF::Engine::Vec2(origin.x + points[n + 1].x, origin.y + points[n + 1].y),
-                                   IM_COL32(255, 255, 0, 255), 2.0f);
+                                   PackCol32(255, 255, 0, 255), 2.0f);
             draw_list->PopClipRect();
 
             ImGui::EndTabItem();
@@ -11547,11 +11547,11 @@ static void ShowExampleAppCustomRendering(bool *p_open)
             ::SF::Engine::Vec2 window_center =
                     ::SF::Engine::Vec2(window_pos.x + window_size.x * 0.5f, window_pos.y + window_size.y * 0.5f);
             if (draw_bg)
-                ImGui::GetBackgroundDrawList()->AddCircle(window_center, window_size.x * 0.6f, IM_COL32(255, 0, 0, 200),
-                                                          0, 10 + 4);
+                ImGui::GetBackgroundDrawList()->AddCircle(window_center, window_size.x * 0.6f,
+                                                          PackCol32(255, 0, 0, 200), 0, 10 + 4);
             if (draw_fg)
-                ImGui::GetForegroundDrawList()->AddCircle(window_center, window_size.y * 0.6f, IM_COL32(0, 255, 0, 200),
-                                                          0, 10);
+                ImGui::GetForegroundDrawList()->AddCircle(window_center, window_size.y * 0.6f,
+                                                          PackCol32(0, 255, 0, 200), 0, 10);
             ImGui::EndTabItem();
         }
 
@@ -11567,9 +11567,9 @@ static void ShowExampleAppCustomRendering(bool *p_open)
                 ImGui::Text("Red shape is drawn after: appears in front");
                 ::SF::Engine::Vec2 p0 = ImGui::GetCursorScreenPos();
                 draw_list->AddRectFilled(::SF::Engine::Vec2(p0.x, p0.y), ::SF::Engine::Vec2(p0.x + 50, p0.y + 50),
-                                         IM_COL32(0, 0, 255, 255)); // Blue
+                                         PackCol32(0, 0, 255, 255)); // Blue
                 draw_list->AddRectFilled(::SF::Engine::Vec2(p0.x + 25, p0.y + 25),
-                                         ::SF::Engine::Vec2(p0.x + 75, p0.y + 75), IM_COL32(255, 0, 0, 255)); // Red
+                                         ::SF::Engine::Vec2(p0.x + 75, p0.y + 75), PackCol32(255, 0, 0, 255)); // Red
                 ImGui::Dummy(::SF::Engine::Vec2(75, 75));
             }
             ImGui::Separator();
@@ -11584,10 +11584,10 @@ static void ShowExampleAppCustomRendering(bool *p_open)
                 draw_list->ChannelsSplit(2);
                 draw_list->ChannelsSetCurrent(1);
                 draw_list->AddRectFilled(::SF::Engine::Vec2(p1.x, p1.y), ::SF::Engine::Vec2(p1.x + 50, p1.y + 50),
-                                         IM_COL32(0, 0, 255, 255)); // Blue
+                                         PackCol32(0, 0, 255, 255)); // Blue
                 draw_list->ChannelsSetCurrent(0);
                 draw_list->AddRectFilled(::SF::Engine::Vec2(p1.x + 25, p1.y + 25),
-                                         ::SF::Engine::Vec2(p1.x + 75, p1.y + 75), IM_COL32(255, 0, 0, 255)); // Red
+                                         ::SF::Engine::Vec2(p1.x + 75, p1.y + 75), PackCol32(255, 0, 0, 255)); // Red
 
                 // Flatten/reorder channels. Red shape is in channel 0 and it appears below the Blue shape in channel 1.
                 // This works by copying draw indices only (vertices are not copied).

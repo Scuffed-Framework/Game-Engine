@@ -5,7 +5,7 @@
 #include "../RHI/Renderpass/FrameBuffer.hpp"
 #include "../RHI/Renderpass/RhiRenderpass.hpp"
 #include "../RHI/Renderpass/RhiSwapchain.hpp"
-#include "Math//Vector.hpp"
+#include "Math/Vector.hpp"
 
 namespace SF::Engine
 {

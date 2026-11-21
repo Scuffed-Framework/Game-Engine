@@ -3,8 +3,7 @@
 
 namespace SF::Engine
 {
-    // ScriptAsset
-    bool ScriptAsset::Load(std::span<const uint8_t> data)
+    bool ScriptAsset::Load(const std::span<const uint8_t> data)
     {
         Source.assign(reinterpret_cast<const char *>(data.data()), data.size());
         return true;

@@ -1449,27 +1449,27 @@ ImGuiStoragePair *ImLowerBound(ImGuiStoragePair *in_begin, ImGuiStoragePair *in_
 // for future changes to this structure.
 struct ImDrawListSharedData
 {
-    ::SF::Engine::Vec2 TexUvWhitePixel;   // UV of white pixel in the atlas (== FontAtlas->TexUvWhitePixel)
-    const ::SF::Engine::Vec4 *TexUvLines; // UV of anti-aliased lines in the atlas (== FontAtlas->TexUvLines)
-    ImFontAtlas *FontAtlas;               // Current font atlas
-    ImFont *Font;                         // Current font (used for simplified AddText overload)
-    float FontSize;                       // Current font size (used for for simplified AddText overload)
-    float FontScale;                      // Current font scale (== FontSize / Font->FontSize)
-    float CurveTessellationMaxError;      // Tessellation tolerance when using PathBezierCurveTo()
-    float CircleTessellationMaxError;     // Number of circle segments to use per pixel of radius for AddCircle() etc
-    ImDrawListFlags InitialFlags; // Initial flags at the beginning of the frame (it is possible to alter flags on a
-                                  // per-drawlist basis afterwards)
-    ::SF::Engine::Vec4 ClipRectFullscreen;   // Value for PushClipRectFullscreen()
+    ::SF::Engine::Vec2 TexUvWhitePixel{};   // UV of white pixel in the atlas (== FontAtlas->TexUvWhitePixel)
+    const ::SF::Engine::Vec4 *TexUvLines{}; // UV of anti-aliased lines in the atlas (== FontAtlas->TexUvLines)
+    ImFontAtlas *FontAtlas{};               // Current font atlas
+    ImFont *Font{};                         // Current font (used for simplified AddText overload)
+    float FontSize{};                       // Current font size (used for for simplified AddText overload)
+    float FontScale{};                      // Current font scale (== FontSize / Font->FontSize)
+    float CurveTessellationMaxError{};      // Tessellation tolerance when using PathBezierCurveTo()
+    float CircleTessellationMaxError{};     // Number of circle segments to use per pixel of radius for AddCircle() etc
+    ImDrawListFlags InitialFlags{}; // Initial flags at the beginning of the frame (it is possible to alter flags on a
+                                    // per-drawlist basis afterwards)
+    ::SF::Engine::Vec4 ClipRectFullscreen{}; // Value for PushClipRectFullscreen()
     ImVector<::SF::Engine::Vec2> TempBuffer; // Temporary write buffer
     ImVector<ImDrawList *> DrawLists;        // All draw lists associated to this ImDrawListSharedData
-    ImGuiContext *Context; // [OPTIONAL] Link to Dear ImGui context. 99% of ImDrawList/ImFontAtlas can function without
-                           // an ImGui context, but this facilitate handling one legacy edge case.
+    ImGuiContext *Context{}; // [OPTIONAL] Link to Dear ImGui context. 99% of ImDrawList/ImFontAtlas can function
+                             // without an ImGui context, but this facilitate handling one legacy edge case.
 
     // Lookup tables
-    ::SF::Engine::Vec2 ArcFastVtx[IM_DRAWLIST_ARCFAST_TABLE_SIZE]; // Sample points on the quarter of the circle.
-    float ArcFastRadiusCutoff;       // Cutoff radius after which arc drawing will fallback to slower PathArcTo()
-    uint8_t CircleSegmentCounts[64]; // Precomputed segment count for given radius before we calculate it dynamically
-                                     // (to avoid calculation overhead)
+    ::SF::Engine::Vec2 ArcFastVtx[IM_DRAWLIST_ARCFAST_TABLE_SIZE]{}; // Sample points on the quarter of the circle.
+    float ArcFastRadiusCutoff{};       // Cutoff radius after which arc drawing will fallback to slower PathArcTo()
+    uint8_t CircleSegmentCounts[64]{}; // Precomputed segment count for given radius before we calculate it dynamically
+                                       // (to avoid calculation overhead)
 
     ImDrawListSharedData();
     ~ImDrawListSharedData();
@@ -1574,10 +1574,9 @@ enum ImGuiDataTypePrivate_
 enum ImGuiItemFlagsPrivate_
 {
     // Controlled by user
-    ImGuiItemFlags_ReadOnly =
-            1 << 11, // false     // [ALPHA] Allow hovering interactions but underlying value is not changed.
-    ImGuiItemFlags_MixedValue =
-            1
+    ImGuiItemFlags_ReadOnly = 1
+            << 11, // false     // [ALPHA] Allow hovering interactions but underlying value is not changed.
+    ImGuiItemFlags_MixedValue = 1
             << 12, // false     // [BETA] Represent a mixed/indeterminate value, generally multi-selection where values
                    // differ. Currently only supported by Checkbox() (later should support all sorts of widgets)
     ImGuiItemFlags_NoWindowHoverableCheck = 1 << 13, // false     // Disable hoverable check in ItemHoverable()
@@ -1585,10 +1584,10 @@ enum ImGuiItemFlagsPrivate_
                                            // Hovered transition deferred by a frame.
     ImGuiItemFlags_NoNavDisableMouseHover = 1 << 15, // false     // Nav keyboard/gamepad mode doesn't disable hover
                                                      // highlight (behave as if NavHighlightItemUnderNav==false).
-    ImGuiItemFlags_NoMarkEdited = 1 << 16,           // false     // Skip calling MarkItemEdited()
-    ImGuiItemFlags_NoFocus =
-            1 << 17, // false     // [EXPERIMENTAL: Not very well specced] Clicking doesn't take focus. Automatically
-                     // sets ImGuiButtonFlags_NoFocus + ImGuiButtonFlags_NoNavFocus in ButtonBehavior().
+    ImGuiItemFlags_NoMarkEdited           = 1 << 16, // false     // Skip calling MarkItemEdited()
+    ImGuiItemFlags_NoFocus                = 1
+            << 17, // false     // [EXPERIMENTAL: Not very well specced] Clicking doesn't take focus. Automatically
+                   // sets ImGuiButtonFlags_NoFocus + ImGuiButtonFlags_NoNavFocus in ButtonBehavior().
 
     // Controlled by widget code
     ImGuiItemFlags_Inputable = 1 << 20, // false     // [WIP] Auto-activate input mode when tab focused. Currently only
@@ -1597,7 +1596,7 @@ enum ImGuiItemFlagsPrivate_
     ImGuiItemFlags_IsMultiSelect        = 1 << 22, // false     // Set by SetNextItemSelectionUserData()
 
     ImGuiItemFlags_Default_ = ImGuiItemFlags_AutoClosePopups |
-                              ImGuiItemFlags_LiveEditOnInputText, // Please don't change, use PushItemFlag() instead.
+            ImGuiItemFlags_LiveEditOnInputText, // Please don't change, use PushItemFlag() instead.
 
     // Obsolete
     // ImGuiItemFlags_SelectableDontClosePopup = !ImGuiItemFlags_AutoClosePopups, // Can't have a redirect as we
@@ -1608,33 +1607,33 @@ enum ImGuiItemFlagsPrivate_
 // - output: stored in g.LastItemData.StatusFlags
 enum ImGuiItemStatusFlags_
 {
-    ImGuiItemStatusFlags_None = 0,
-    ImGuiItemStatusFlags_HoveredRect =
-            1 << 0, // Mouse position is within item rectangle (does NOT mean that the window is in correct z-order and
-                    // can be hovered!, this is only one part of the most-common IsItemHovered test)
+    ImGuiItemStatusFlags_None        = 0,
+    ImGuiItemStatusFlags_HoveredRect = 1
+            << 0, // Mouse position is within item rectangle (does NOT mean that the window is in correct z-order and
+                  // can be hovered!, this is only one part of the most-common IsItemHovered test)
     ImGuiItemStatusFlags_HasDisplayRect = 1 << 1, // g.LastItemData.DisplayRect is valid
     ImGuiItemStatusFlags_Edited = 1 << 2, // Value exposed by item was edited in the current frame (should match the
                                           // bool return value of most widgets)
-    ImGuiItemStatusFlags_ToggledSelection =
-            1 << 3, // Set when Selectable(), TreeNode() reports toggling a selection. We can't report "Selected", only
-                    // state changes, in order to easily handle clipping with less issues.
-    ImGuiItemStatusFlags_ToggledOpen = 1 << 4, // Set when TreeNode() reports toggling their open state.
-    ImGuiItemStatusFlags_HasDeactivated =
-            1 << 5, // Set if the widget/group is able to provide data for the ImGuiItemStatusFlags_Deactivated flag.
+    ImGuiItemStatusFlags_ToggledSelection = 1
+            << 3, // Set when Selectable(), TreeNode() reports toggling a selection. We can't report "Selected", only
+                  // state changes, in order to easily handle clipping with less issues.
+    ImGuiItemStatusFlags_ToggledOpen    = 1 << 4, // Set when TreeNode() reports toggling their open state.
+    ImGuiItemStatusFlags_HasDeactivated = 1
+            << 5, // Set if the widget/group is able to provide data for the ImGuiItemStatusFlags_Deactivated flag.
     ImGuiItemStatusFlags_Deactivated   = 1 << 6, // Only valid if ImGuiItemStatusFlags_HasDeactivated is set.
     ImGuiItemStatusFlags_HoveredWindow = 1 << 7, // Override the HoveredWindow test to allow cross-window hover testing.
-    ImGuiItemStatusFlags_Visible =
-            1 << 8, // [WIP] Set when item is overlapping the current clipping rectangle (Used internally. Please don't
-                    // use yet: API/system will change as we refactor Itemadd()).
+    ImGuiItemStatusFlags_Visible       = 1
+            << 8, // [WIP] Set when item is overlapping the current clipping rectangle (Used internally. Please don't
+                  // use yet: API/system will change as we refactor Itemadd()).
     ImGuiItemStatusFlags_HasClipRect = 1 << 9, // g.LastItemData.ClipRect is valid.
-    ImGuiItemStatusFlags_HasShortcut =
-            1 << 10, // g.LastItemData.Shortcut valid. Set by SetNextItemShortcut() -> ItemAdd().
+    ImGuiItemStatusFlags_HasShortcut = 1
+            << 10, // g.LastItemData.Shortcut valid. Set by SetNextItemShortcut() -> ItemAdd().
     // ImGuiItemStatusFlags_FocusedByTabbing = 1 << 8,   // Removed IN 1.90.1 (Dec 2023). The trigger is part of
     // g.NavActivateId. See commit 54c1bdeceb.
-    ImGuiItemStatusFlags_EditedInternal =
-            1 << 11, // Similar to ImGuiItemStatusFlags_Edited but bypassing ImGuiItemFlags_NoMarkEdited.
+    ImGuiItemStatusFlags_EditedInternal = 1
+            << 11, // Similar to ImGuiItemStatusFlags_Edited but bypassing ImGuiItemFlags_NoMarkEdited.
 
-// Additional status + semantic for ImGuiTestEngine
+    // Additional status + semantic for ImGuiTestEngine
     #ifdef IMGUI_ENABLE_TEST_ENGINE
     ImGuiItemStatusFlags_Openable  = 1 << 20, // Item is an openable (e.g. TreeNode)
     ImGuiItemStatusFlags_Opened    = 1 << 21, // Opened status
@@ -1648,17 +1647,15 @@ enum ImGuiItemStatusFlags_
 enum ImGuiHoveredFlagsPrivate_
 {
     ImGuiHoveredFlags_DelayMask_ = ImGuiHoveredFlags_DelayNone | ImGuiHoveredFlags_DelayShort |
-                                   ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_NoSharedDelay,
-    ImGuiHoveredFlags_AllowedMaskForIsWindowHovered =
-            ImGuiHoveredFlags_ChildWindows | ImGuiHoveredFlags_RootWindow | ImGuiHoveredFlags_AnyWindow |
-            ImGuiHoveredFlags_NoPopupHierarchy | ImGuiHoveredFlags_DockHierarchy |
+            ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_NoSharedDelay,
+    ImGuiHoveredFlags_AllowedMaskForIsWindowHovered = ImGuiHoveredFlags_ChildWindows | ImGuiHoveredFlags_RootWindow |
+            ImGuiHoveredFlags_AnyWindow | ImGuiHoveredFlags_NoPopupHierarchy | ImGuiHoveredFlags_DockHierarchy |
             ImGuiHoveredFlags_AllowWhenBlockedByPopup | ImGuiHoveredFlags_AllowWhenBlockedByActiveItem |
             ImGuiHoveredFlags_ForTooltip | ImGuiHoveredFlags_Stationary,
-    ImGuiHoveredFlags_AllowedMaskForIsItemHovered =
-            ImGuiHoveredFlags_AllowWhenBlockedByPopup | ImGuiHoveredFlags_AllowWhenBlockedByActiveItem |
-            ImGuiHoveredFlags_AllowWhenOverlapped | ImGuiHoveredFlags_AllowWhenDisabled |
-            ImGuiHoveredFlags_NoNavOverride | ImGuiHoveredFlags_ForTooltip | ImGuiHoveredFlags_Stationary |
-            ImGuiHoveredFlags_DelayMask_,
+    ImGuiHoveredFlags_AllowedMaskForIsItemHovered = ImGuiHoveredFlags_AllowWhenBlockedByPopup |
+            ImGuiHoveredFlags_AllowWhenBlockedByActiveItem | ImGuiHoveredFlags_AllowWhenOverlapped |
+            ImGuiHoveredFlags_AllowWhenDisabled | ImGuiHoveredFlags_NoNavOverride | ImGuiHoveredFlags_ForTooltip |
+            ImGuiHoveredFlags_Stationary | ImGuiHoveredFlags_DelayMask_,
 };
 
 // Extend ImGuiInputTextFlags_
@@ -1677,11 +1674,11 @@ enum ImGuiButtonFlagsPrivate_
     ImGuiButtonFlags_PressedOnClick        = 1 << 4, // return true on click (mouse down event)
     ImGuiButtonFlags_PressedOnClickRelease = 1 << 5, // [Default] return true on click + release on same item <-- this
                                                      // is what the majority of Button are using
-    ImGuiButtonFlags_PressedOnClickReleaseAnywhere =
-            1 << 6, // return true on click + release even if the release event is not done while hovering the item
-    ImGuiButtonFlags_PressedOnRelease =
-            1 << 7, // return true on release (default requires click+release). Prior to 2026/03/20 this implied
-                    // ImGuiButtonFlags_NoHoldingActiveId but they are separate now.
+    ImGuiButtonFlags_PressedOnClickReleaseAnywhere = 1
+            << 6, // return true on click + release even if the release event is not done while hovering the item
+    ImGuiButtonFlags_PressedOnRelease = 1
+            << 7, // return true on release (default requires click+release). Prior to 2026/03/20 this implied
+                  // ImGuiButtonFlags_NoHoldingActiveId but they are separate now.
     ImGuiButtonFlags_PressedOnDoubleClick  = 1 << 8, // return true on double-click (default requires click+release)
     ImGuiButtonFlags_PressedOnDragDropHold = 1 << 9, // return true when held into while we are drag and dropping
                                                      // another item (used by e.g. tree nodes, collapsing headers)
@@ -1690,27 +1687,26 @@ enum ImGuiButtonFlagsPrivate_
     // ImGuiButtonFlags_DontClosePopups      = 1 << 13,  // disable automatically closing parent popup on press
     // ImGuiButtonFlags_Disabled             = 1 << 14,  // disable interactions -> use BeginDisabled() or
     // ImGuiItemFlags_Disabled
-    ImGuiButtonFlags_AlignTextBaseLine =
-            1 << 15, // vertically align button to match text baseline - ButtonEx() only // FIXME: Should be removed and
-                     // handled by SmallButton(), not possible currently because of DC.CursorPosPrevLine
-    ImGuiButtonFlags_NoKeyModsAllowed = 1 << 16, // disable mouse interaction if a key modifier is held
-    ImGuiButtonFlags_NoHoldingActiveId =
-            1 << 17, // don't set ActiveId while holding the mouse (ImGuiButtonFlags_PressedOnClick only)
-    ImGuiButtonFlags_NoNavFocus =
-            1 << 18, // don't override navigation focus when activated (FIXME: this is essentially used every time an
-                     // item uses ImGuiItemFlags_NoNav, but because legacy specs don't requires LastItemData to be set
-                     // ButtonBehavior(), we can't poll g.LastItemData.ItemFlags)
+    ImGuiButtonFlags_AlignTextBaseLine = 1
+            << 15, // vertically align button to match text baseline - ButtonEx() only // FIXME: Should be removed and
+                   // handled by SmallButton(), not possible currently because of DC.CursorPosPrevLine
+    ImGuiButtonFlags_NoKeyModsAllowed  = 1 << 16, // disable mouse interaction if a key modifier is held
+    ImGuiButtonFlags_NoHoldingActiveId = 1
+            << 17, // don't set ActiveId while holding the mouse (ImGuiButtonFlags_PressedOnClick only)
+    ImGuiButtonFlags_NoNavFocus = 1
+            << 18, // don't override navigation focus when activated (FIXME: this is essentially used every time an
+                   // item uses ImGuiItemFlags_NoNav, but because legacy specs don't requires LastItemData to be set
+                   // ButtonBehavior(), we can't poll g.LastItemData.ItemFlags)
     ImGuiButtonFlags_NoHoveredOnFocus = 1 << 19, // don't report as hovered when nav focus is on this item
     ImGuiButtonFlags_NoSetKeyOwner = 1 << 20, // don't set key/input owner on the initial click (note: mouse buttons are
                                               // keys! often, the key in question will be ImGuiKey_MouseLeft!)
     ImGuiButtonFlags_NoTestKeyOwner = 1 << 21, // don't test key/input owner when polling the key (note: mouse buttons
                                                // are keys! often, the key in question will be ImGuiKey_MouseLeft!)
-    ImGuiButtonFlags_NoFocus =
-            1 << 22, // [EXPERIMENTAL: Not very well specced]. Don't focus parent window when clicking.
+    ImGuiButtonFlags_NoFocus        = 1
+            << 22, // [EXPERIMENTAL: Not very well specced]. Don't focus parent window when clicking.
     ImGuiButtonFlags_PressedOnMask_ = ImGuiButtonFlags_PressedOnClick | ImGuiButtonFlags_PressedOnClickRelease |
-                                      ImGuiButtonFlags_PressedOnClickReleaseAnywhere |
-                                      ImGuiButtonFlags_PressedOnRelease | ImGuiButtonFlags_PressedOnDoubleClick |
-                                      ImGuiButtonFlags_PressedOnDragDropHold,
+            ImGuiButtonFlags_PressedOnClickReleaseAnywhere | ImGuiButtonFlags_PressedOnRelease |
+            ImGuiButtonFlags_PressedOnDoubleClick | ImGuiButtonFlags_PressedOnDragDropHold,
     ImGuiButtonFlags_PressedOnDefault_ = ImGuiButtonFlags_PressedOnClickRelease,
     // ImGuiButtonFlags_NoKeyModifiers       = ImGuiButtonFlags_NoKeyModsAllowed, // Renamed in 1.91.4
 };
@@ -1734,12 +1730,12 @@ enum ImGuiSelectableFlagsPrivate_
     // NB: need to be in sync with last value of ImGuiSelectableFlags_
     ImGuiSelectableFlags_NoHoldingActiveID = 1 << 20,
     ImGuiSelectableFlags_SelectOnClick     = 1
-                                         << 22, // Override button behavior to react on Click (default is Click+Release)
-    ImGuiSelectableFlags_SelectOnRelease =
-            1 << 23, // Override button behavior to react on Release (default is Click+Release)
-    ImGuiSelectableFlags_SpanAvailWidth =
-            1 << 24, // Span all avail width even if we declared less for layout purpose. FIXME: We may be able to
-                     // remove this (added in 6251d379, 2bcafc86 for menus)
+            << 22, // Override button behavior to react on Click (default is Click+Release)
+    ImGuiSelectableFlags_SelectOnRelease = 1
+            << 23, // Override button behavior to react on Release (default is Click+Release)
+    ImGuiSelectableFlags_SpanAvailWidth = 1
+            << 24, // Span all avail width even if we declared less for layout purpose. FIXME: We may be able to
+                   // remove this (added in 6251d379, 2bcafc86 for menus)
     ImGuiSelectableFlags_SetNavIdOnHover      = 1 << 25, // Set Nav/Focus ID on mouse hover (used by MenuItem)
     ImGuiSelectableFlags_NoPadWithHalfSpacing = 1 << 26, // Disable padding each side with ItemSpacing * 0.5f
     ImGuiSelectableFlags_NoSetKeyOwner = 1 << 27, // Don't set key/input owner on the initial click (note: mouse buttons
@@ -1751,18 +1747,18 @@ enum ImGuiTreeNodeFlagsPrivate_
 {
     ImGuiTreeNodeFlags_NoNavFocus = 1 << 27, // Don't claim nav focus when interacting with this item (#8551)
     ImGuiTreeNodeFlags_ClipLabelForTrailingButton = 1 << 28, // FIXME-WIP: Hard-coded for CollapsingHeader()
-    ImGuiTreeNodeFlags_UpsideDownArrow =
-            1 << 29, // FIXME-WIP: Turn Down arrow into an Up arrow, for reversed trees (#6517)
-    ImGuiTreeNodeFlags_OpenOnMask_ = ImGuiTreeNodeFlags_OpenOnDoubleClick | ImGuiTreeNodeFlags_OpenOnArrow,
-    ImGuiTreeNodeFlags_DrawLinesMask_ =
-            ImGuiTreeNodeFlags_DrawLinesNone | ImGuiTreeNodeFlags_DrawLinesFull | ImGuiTreeNodeFlags_DrawLinesToNodes,
+    ImGuiTreeNodeFlags_UpsideDownArrow            = 1
+            << 29, // FIXME-WIP: Turn Down arrow into an Up arrow, for reversed trees (#6517)
+    ImGuiTreeNodeFlags_OpenOnMask_    = ImGuiTreeNodeFlags_OpenOnDoubleClick | ImGuiTreeNodeFlags_OpenOnArrow,
+    ImGuiTreeNodeFlags_DrawLinesMask_ = ImGuiTreeNodeFlags_DrawLinesNone | ImGuiTreeNodeFlags_DrawLinesFull |
+            ImGuiTreeNodeFlags_DrawLinesToNodes,
 };
 
 enum ImGuiSeparatorFlags_
 {
-    ImGuiSeparatorFlags_None = 0,
-    ImGuiSeparatorFlags_Horizontal =
-            1 << 0, // Axis default to current layout type, so generally Horizontal unless e.g. in a menu bar
+    ImGuiSeparatorFlags_None       = 0,
+    ImGuiSeparatorFlags_Horizontal = 1
+            << 0, // Axis default to current layout type, so generally Horizontal unless e.g. in a menu bar
     ImGuiSeparatorFlags_Vertical       = 1 << 1,
     ImGuiSeparatorFlags_SpanAllColumns = 1 << 2, // Make separator cover all columns of a legacy Columns() set.
 };
@@ -1807,7 +1803,7 @@ enum ImGuiLogFlags_
     ImGuiLogFlags_OutputBuffer    = 1 << 2,
     ImGuiLogFlags_OutputClipboard = 1 << 3,
     ImGuiLogFlags_OutputMask_     = ImGuiLogFlags_OutputTTY | ImGuiLogFlags_OutputFile | ImGuiLogFlags_OutputBuffer |
-                                ImGuiLogFlags_OutputClipboard,
+            ImGuiLogFlags_OutputClipboard,
 };
 
 // X/Y enums are fixed to 0/1 so they may be used to index ::SF::Engine::Vec2
@@ -1988,8 +1984,8 @@ enum ImGuiWindowRefreshFlags_
     ImGuiWindowRefreshFlags_None              = 0,
     ImGuiWindowRefreshFlags_TryToAvoidRefresh = 1 << 0, // [EXPERIMENTAL] Try to keep existing contents, USER MUST NOT
                                                         // HONOR BEGIN() RETURNING FALSE AND NOT APPEND.
-    ImGuiWindowRefreshFlags_RefreshOnHover = 1 << 1,    // [EXPERIMENTAL] Always refresh on hover
-    ImGuiWindowRefreshFlags_RefreshOnFocus = 1 << 2,    // [EXPERIMENTAL] Always refresh on focus
+    ImGuiWindowRefreshFlags_RefreshOnHover    = 1 << 1, // [EXPERIMENTAL] Always refresh on hover
+    ImGuiWindowRefreshFlags_RefreshOnFocus    = 1 << 2, // [EXPERIMENTAL] Always refresh on focus
     // Refresh policy/frequency, Load Balancing etc.
 };
 
@@ -2414,32 +2410,31 @@ enum ImGuiInputFlagsPrivate_
 {
     // Flags for IsKeyPressed(), IsKeyChordPressed(), IsMouseClicked(), Shortcut()
     // - Repeat mode: Repeat rate selection
-    ImGuiInputFlags_RepeatRateDefault = 1 << 1, // Repeat rate: Regular (default)
-    ImGuiInputFlags_RepeatRateNavMove = 1 << 2, // Repeat rate: Fast
-    ImGuiInputFlags_RepeatRateNavTweak =
-            1 << 3, // Repeat rate: Faster
-                    // - Repeat mode: Specify when repeating key pressed can be interrupted.
-                    // - In theory ImGuiInputFlags_RepeatUntilOtherKeyPress may be a desirable default, but it would
-                    // break too many behavior so everything is opt-in.
-    ImGuiInputFlags_RepeatUntilRelease =
-            1 << 4, // Stop repeating when released (default for all functions except Shortcut). This only exists to
-                    // allow overriding Shortcut() default behavior.
-    ImGuiInputFlags_RepeatUntilKeyModsChange =
-            1 << 5, // Stop repeating when released OR if keyboard mods are changed (default for Shortcut)
-    ImGuiInputFlags_RepeatUntilKeyModsChangeFromNone =
-            1 << 6, // Stop repeating when released OR if keyboard mods are leaving the None state. Allows going from
-                    // Mod+Key to Key by releasing Mod.
-    ImGuiInputFlags_RepeatUntilOtherKeyPress =
-            1 << 7, // Stop repeating when released OR if any other keyboard key is pressed during the repeat
+    ImGuiInputFlags_RepeatRateDefault  = 1 << 1, // Repeat rate: Regular (default)
+    ImGuiInputFlags_RepeatRateNavMove  = 1 << 2, // Repeat rate: Fast
+    ImGuiInputFlags_RepeatRateNavTweak = 1
+            << 3, // Repeat rate: Faster
+                  // - Repeat mode: Specify when repeating key pressed can be interrupted.
+                  // - In theory ImGuiInputFlags_RepeatUntilOtherKeyPress may be a desirable default, but it would
+                  // break too many behavior so everything is opt-in.
+    ImGuiInputFlags_RepeatUntilRelease = 1
+            << 4, // Stop repeating when released (default for all functions except Shortcut). This only exists to
+                  // allow overriding Shortcut() default behavior.
+    ImGuiInputFlags_RepeatUntilKeyModsChange = 1
+            << 5, // Stop repeating when released OR if keyboard mods are changed (default for Shortcut)
+    ImGuiInputFlags_RepeatUntilKeyModsChangeFromNone = 1
+            << 6, // Stop repeating when released OR if keyboard mods are leaving the None state. Allows going from
+                  // Mod+Key to Key by releasing Mod.
+    ImGuiInputFlags_RepeatUntilOtherKeyPress = 1
+            << 7, // Stop repeating when released OR if any other keyboard key is pressed during the repeat
 
     // Flags for SetKeyOwner(), SetItemKeyOwner()
     // - Locking key away from non-input aware code. Locking is useful to make input-owner-aware code steal keys from
     // non-input-owner-aware code. If all code is input-owner-aware locking would never be necessary.
-    ImGuiInputFlags_LockThisFrame =
-            1 << 20, // Further accesses to key data will require EXPLICIT owner ID (ImGuiKeyOwner_Any/0 will NOT
-                     // accepted for polling). Cleared at end of frame.
-    ImGuiInputFlags_LockUntilRelease =
-            1
+    ImGuiInputFlags_LockThisFrame = 1
+            << 20, // Further accesses to key data will require EXPLICIT owner ID (ImGuiKeyOwner_Any/0 will NOT
+                   // accepted for polling). Cleared at end of frame.
+    ImGuiInputFlags_LockUntilRelease = 1
             << 21, // Further accesses to key data will require EXPLICIT owner ID (ImGuiKeyOwner_Any/0 will NOT accepted
                    // for polling). Cleared when the key is released or at end of each frame if key is released.
 
@@ -2449,24 +2444,23 @@ enum ImGuiInputFlagsPrivate_
     ImGuiInputFlags_CondDefault_ = ImGuiInputFlags_CondHovered | ImGuiInputFlags_CondActive,
 
     // [Internal] Mask of which function support which flags
-    ImGuiInputFlags_RepeatRateMask_ =
-            ImGuiInputFlags_RepeatRateDefault | ImGuiInputFlags_RepeatRateNavMove | ImGuiInputFlags_RepeatRateNavTweak,
+    ImGuiInputFlags_RepeatRateMask_ = ImGuiInputFlags_RepeatRateDefault | ImGuiInputFlags_RepeatRateNavMove |
+            ImGuiInputFlags_RepeatRateNavTweak,
     ImGuiInputFlags_RepeatUntilMask_ = ImGuiInputFlags_RepeatUntilRelease | ImGuiInputFlags_RepeatUntilKeyModsChange |
-                                       ImGuiInputFlags_RepeatUntilKeyModsChangeFromNone |
-                                       ImGuiInputFlags_RepeatUntilOtherKeyPress,
-    ImGuiInputFlags_RepeatMask_ =
-            ImGuiInputFlags_Repeat | ImGuiInputFlags_RepeatRateMask_ | ImGuiInputFlags_RepeatUntilMask_,
+            ImGuiInputFlags_RepeatUntilKeyModsChangeFromNone | ImGuiInputFlags_RepeatUntilOtherKeyPress,
+    ImGuiInputFlags_RepeatMask_ = ImGuiInputFlags_Repeat | ImGuiInputFlags_RepeatRateMask_ |
+            ImGuiInputFlags_RepeatUntilMask_,
     ImGuiInputFlags_CondMask_      = ImGuiInputFlags_CondHovered | ImGuiInputFlags_CondActive,
     ImGuiInputFlags_RouteTypeMask_ = ImGuiInputFlags_RouteActive | ImGuiInputFlags_RouteFocused |
-                                     ImGuiInputFlags_RouteGlobal | ImGuiInputFlags_RouteAlways,
+            ImGuiInputFlags_RouteGlobal | ImGuiInputFlags_RouteAlways,
     ImGuiInputFlags_RouteOptionsMask_ = ImGuiInputFlags_RouteOverFocused | ImGuiInputFlags_RouteOverActive |
-                                        ImGuiInputFlags_RouteUnlessBgFocused | ImGuiInputFlags_RouteFromRootWindow,
+            ImGuiInputFlags_RouteUnlessBgFocused | ImGuiInputFlags_RouteFromRootWindow,
     ImGuiInputFlags_SupportedByIsKeyPressed   = ImGuiInputFlags_RepeatMask_,
     ImGuiInputFlags_SupportedByIsMouseClicked = ImGuiInputFlags_Repeat,
-    ImGuiInputFlags_SupportedByShortcut =
-            ImGuiInputFlags_RepeatMask_ | ImGuiInputFlags_RouteTypeMask_ | ImGuiInputFlags_RouteOptionsMask_,
+    ImGuiInputFlags_SupportedByShortcut       = ImGuiInputFlags_RepeatMask_ | ImGuiInputFlags_RouteTypeMask_ |
+            ImGuiInputFlags_RouteOptionsMask_,
     ImGuiInputFlags_SupportedBySetNextItemShortcut = ImGuiInputFlags_RepeatMask_ | ImGuiInputFlags_RouteTypeMask_ |
-                                                     ImGuiInputFlags_RouteOptionsMask_ | ImGuiInputFlags_Tooltip,
+            ImGuiInputFlags_RouteOptionsMask_ | ImGuiInputFlags_Tooltip,
     ImGuiInputFlags_SupportedBySetKeyOwner     = ImGuiInputFlags_LockThisFrame | ImGuiInputFlags_LockUntilRelease,
     ImGuiInputFlags_SupportedBySetItemKeyOwner = ImGuiInputFlags_SupportedBySetKeyOwner | ImGuiInputFlags_CondMask_,
 };
@@ -2520,16 +2514,16 @@ struct ImGuiListClipperData
 
 enum ImGuiActivateFlags_
 {
-    ImGuiActivateFlags_None = 0,
-    ImGuiActivateFlags_PreferInput =
-            1 << 0, // Favor activation that requires keyboard text input (e.g. for Slider/Drag). Default for Enter key.
-    ImGuiActivateFlags_PreferTweak = 1 << 1, // Favor activation for tweaking with arrows or gamepad (e.g. for
-                                             // Slider/Drag). Default for Space key and if keyboard is not used.
-    ImGuiActivateFlags_TryToPreserveState =
-            1 << 2, // Request widget to preserve state if it can (e.g. InputText will try to preserve cursor/selection)
-    ImGuiActivateFlags_FromTabbing = 1 << 3, // Activation requested by a tabbing request (ImGuiNavMoveFlags_IsTabbing)
-    ImGuiActivateFlags_FromShortcut =
-            1 << 4, // Activation requested by an item shortcut via SetNextItemShortcut() function.
+    ImGuiActivateFlags_None        = 0,
+    ImGuiActivateFlags_PreferInput = 1
+            << 0, // Favor activation that requires keyboard text input (e.g. for Slider/Drag). Default for Enter key.
+    ImGuiActivateFlags_PreferTweak        = 1 << 1, // Favor activation for tweaking with arrows or gamepad (e.g. for
+                                                    // Slider/Drag). Default for Space key and if keyboard is not used.
+    ImGuiActivateFlags_TryToPreserveState = 1
+            << 2, // Request widget to preserve state if it can (e.g. InputText will try to preserve cursor/selection)
+    ImGuiActivateFlags_FromTabbing  = 1 << 3, // Activation requested by a tabbing request (ImGuiNavMoveFlags_IsTabbing)
+    ImGuiActivateFlags_FromShortcut = 1
+            << 4, // Activation requested by an item shortcut via SetNextItemShortcut() function.
     ImGuiActivateFlags_FromFocusApi = 1 << 5, // Activation requested by an api request (ImGuiNavMoveFlags_FocusApi)
 };
 
@@ -2540,21 +2534,21 @@ enum ImGuiScrollFlags_
     ImGuiScrollFlags_None             = 0,
     ImGuiScrollFlags_KeepVisibleEdgeX = 1 << 0, // If item is not visible: scroll as little as possible on X axis to
                                                 // bring item back into view [default for X axis]
-    ImGuiScrollFlags_KeepVisibleEdgeY =
-            1 << 1, // If item is not visible: scroll as little as possible on Y axis to bring item back into view
-                    // [default for Y axis for windows that are already visible]
-    ImGuiScrollFlags_KeepVisibleCenterX =
-            1 << 2, // If item is not visible: scroll to make the item centered on X axis [rarely used]
+    ImGuiScrollFlags_KeepVisibleEdgeY = 1
+            << 1, // If item is not visible: scroll as little as possible on Y axis to bring item back into view
+                  // [default for Y axis for windows that are already visible]
+    ImGuiScrollFlags_KeepVisibleCenterX = 1
+            << 2, // If item is not visible: scroll to make the item centered on X axis [rarely used]
     ImGuiScrollFlags_KeepVisibleCenterY = 1 << 3, // If item is not visible: scroll to make the item centered on Y axis
     ImGuiScrollFlags_AlwaysCenterX      = 1 << 4, // Always center the result item on X axis [rarely used]
-    ImGuiScrollFlags_AlwaysCenterY =
-            1 << 5, // Always center the result item on Y axis [default for Y axis for appearing window)
+    ImGuiScrollFlags_AlwaysCenterY      = 1
+            << 5, // Always center the result item on Y axis [default for Y axis for appearing window)
     ImGuiScrollFlags_NoScrollParent = 1 << 6, // Disable forwarding scrolling to parent window if required to keep
                                               // item/rect visible (only scroll window the function was applied to).
-    ImGuiScrollFlags_MaskX_ =
-            ImGuiScrollFlags_KeepVisibleEdgeX | ImGuiScrollFlags_KeepVisibleCenterX | ImGuiScrollFlags_AlwaysCenterX,
-    ImGuiScrollFlags_MaskY_ =
-            ImGuiScrollFlags_KeepVisibleEdgeY | ImGuiScrollFlags_KeepVisibleCenterY | ImGuiScrollFlags_AlwaysCenterY,
+    ImGuiScrollFlags_MaskX_         = ImGuiScrollFlags_KeepVisibleEdgeX | ImGuiScrollFlags_KeepVisibleCenterX |
+            ImGuiScrollFlags_AlwaysCenterX,
+    ImGuiScrollFlags_MaskY_ = ImGuiScrollFlags_KeepVisibleEdgeY | ImGuiScrollFlags_KeepVisibleCenterY |
+            ImGuiScrollFlags_AlwaysCenterY,
 };
 
 enum ImGuiNavRenderCursorFlags_
@@ -2567,27 +2561,27 @@ enum ImGuiNavRenderCursorFlags_
 
 enum ImGuiNavMoveFlags_
 {
-    ImGuiNavMoveFlags_None  = 0,
-    ImGuiNavMoveFlags_LoopX = 1 << 0, // On failed request, restart from opposite side
-    ImGuiNavMoveFlags_LoopY = 1 << 1,
-    ImGuiNavMoveFlags_WrapX = 1 << 2, // On failed request, request from opposite side one line down (when
-                                      // NavDir==right) or one line up (when NavDir==left)
-    ImGuiNavMoveFlags_WrapY = 1 << 3, // This is not super useful but provided for completeness
-    ImGuiNavMoveFlags_WrapMask_ =
-            ImGuiNavMoveFlags_LoopX | ImGuiNavMoveFlags_LoopY | ImGuiNavMoveFlags_WrapX | ImGuiNavMoveFlags_WrapY,
-    ImGuiNavMoveFlags_AllowCurrentNavId =
-            1 << 4, // Allow scoring and considering the current NavId as a move target candidate. This is used when the
-                    // move source is offset (e.g. pressing PageDown actually needs to send a Up move request, if we are
-                    // pressing PageDown from the bottom-most item we need to stay in place)
-    ImGuiNavMoveFlags_AlsoScoreVisibleSet =
-            1 << 5, // Store alternate result in NavMoveResultLocalVisible that only comprise elements that are already
-                    // fully visible (used by PageUp/PageDown)
+    ImGuiNavMoveFlags_None      = 0,
+    ImGuiNavMoveFlags_LoopX     = 1 << 0, // On failed request, restart from opposite side
+    ImGuiNavMoveFlags_LoopY     = 1 << 1,
+    ImGuiNavMoveFlags_WrapX     = 1 << 2, // On failed request, request from opposite side one line down (when
+                                          // NavDir==right) or one line up (when NavDir==left)
+    ImGuiNavMoveFlags_WrapY     = 1 << 3, // This is not super useful but provided for completeness
+    ImGuiNavMoveFlags_WrapMask_ = ImGuiNavMoveFlags_LoopX | ImGuiNavMoveFlags_LoopY | ImGuiNavMoveFlags_WrapX |
+            ImGuiNavMoveFlags_WrapY,
+    ImGuiNavMoveFlags_AllowCurrentNavId = 1
+            << 4, // Allow scoring and considering the current NavId as a move target candidate. This is used when the
+                  // move source is offset (e.g. pressing PageDown actually needs to send a Up move request, if we are
+                  // pressing PageDown from the bottom-most item we need to stay in place)
+    ImGuiNavMoveFlags_AlsoScoreVisibleSet = 1
+            << 5, // Store alternate result in NavMoveResultLocalVisible that only comprise elements that are already
+                  // fully visible (used by PageUp/PageDown)
     ImGuiNavMoveFlags_ScrollToEdgeY = 1 << 6, // Force scrolling to min/max (used by Home/End) // FIXME-NAV: Aim to
                                               // remove or reword as ImGuiScrollFlags
     ImGuiNavMoveFlags_Forwarded     = 1 << 7,
     ImGuiNavMoveFlags_DebugNoResult = 1 << 8, // Dummy scoring for debug purpose, don't apply result
-    ImGuiNavMoveFlags_FocusApi      = 1 << 9, // Requests from focus API can land/focus/activate items even if they are
-                                         // marked with _NoTabStop (see NavProcessItemForTabbingRequest() for details)
+    ImGuiNavMoveFlags_FocusApi   = 1 << 9,    // Requests from focus API can land/focus/activate items even if they are
+                                           // marked with _NoTabStop (see NavProcessItemForTabbingRequest() for details)
     ImGuiNavMoveFlags_IsTabbing  = 1 << 10, // == Focus + Activate if item is Inputable + DontChangeNavHighlight
     ImGuiNavMoveFlags_IsPageMove = 1 << 11, // Identify a PageDown/PageUp request.
     ImGuiNavMoveFlags_Activate   = 1 << 12, // Activate/select target item.
@@ -2643,12 +2637,11 @@ struct ImGuiFocusScopeData
 // Flags for GetTypingSelectRequest()
 enum ImGuiTypingSelectFlags_
 {
-    ImGuiTypingSelectFlags_None = 0,
-    ImGuiTypingSelectFlags_AllowBackspace =
-            1 << 0, // Backspace to delete character inputs. If using: ensure GetTypingSelectRequest() is not called
-                    // more than once per frame (filter by e.g. focus state)
-    ImGuiTypingSelectFlags_AllowSingleCharMode =
-            1
+    ImGuiTypingSelectFlags_None           = 0,
+    ImGuiTypingSelectFlags_AllowBackspace = 1
+            << 0, // Backspace to delete character inputs. If using: ensure GetTypingSelectRequest() is not called
+                  // more than once per frame (filter by e.g. focus state)
+    ImGuiTypingSelectFlags_AllowSingleCharMode = 1
             << 1, // Allow "single char" search mode which is activated when pressing the same character multiple times.
 };
 
@@ -2693,15 +2686,14 @@ struct ImGuiTypingSelectState
 // Flags for internal's BeginColumns(). This is an obsolete API. Prefer using BeginTable() nowadays!
 enum ImGuiOldColumnFlags_
 {
-    ImGuiOldColumnFlags_None                = 0,
-    ImGuiOldColumnFlags_NoBorder            = 1 << 0, // Disable column dividers
-    ImGuiOldColumnFlags_NoResize            = 1 << 1, // Disable resizing columns when clicking on the dividers
-    ImGuiOldColumnFlags_NoPreserveWidths    = 1 << 2, // Disable column width preservation when adjusting columns
-    ImGuiOldColumnFlags_NoForceWithinWindow = 1 << 3, // Disable forcing columns to fit within window
-    ImGuiOldColumnFlags_GrowParentContentsSize =
-            1 << 4, // Restore pre-1.51 behavior of extending the parent window contents size but _without affecting the
-                    // columns width at all_. Will eventually remove.
-
+    ImGuiOldColumnFlags_None                   = 0,
+    ImGuiOldColumnFlags_NoBorder               = 1 << 0, // Disable column dividers
+    ImGuiOldColumnFlags_NoResize               = 1 << 1, // Disable resizing columns when clicking on the dividers
+    ImGuiOldColumnFlags_NoPreserveWidths       = 1 << 2, // Disable column width preservation when adjusting columns
+    ImGuiOldColumnFlags_NoForceWithinWindow    = 1 << 3, // Disable forcing columns to fit within window
+    ImGuiOldColumnFlags_GrowParentContentsSize = 1
+            << 4, // Restore pre-1.51 behavior of extending the parent window contents size but _without affecting the
+                  // columns width at all_. Will eventually remove.
 };
 
 struct ImGuiOldColumnData
@@ -2852,50 +2844,49 @@ enum ImGuiDockNodeFlagsPrivate_
                                             // window. Otherwise the node is floating and create its own window.
     ImGuiDockNodeFlags_CentralNode = 1 << 11, // Saved // The central node has 2 main properties: stay visible when
                                               // empty, only use "remaining" spaces from its neighbor.
-    ImGuiDockNodeFlags_NoTabBar =
-            1 << 12, // Saved // Tab bar is completely unavailable. No triangle in the corner to enable it back.
-    ImGuiDockNodeFlags_HiddenTabBar =
-            1 << 13, // Saved // Tab bar is hidden, with a triangle in the corner to show it again (NB: actual tab-bar
-                     // instance may be destroyed as this is only used for single-window tab bar)
-    ImGuiDockNodeFlags_NoWindowMenuButton =
-            1 << 14, // Saved // Disable window/docking menu (that one that appears instead of the collapse button)
-    ImGuiDockNodeFlags_NoCloseButton = 1 << 15, // Saved // Disable close button
-    ImGuiDockNodeFlags_NoResizeX     = 1 << 16, //       //
-    ImGuiDockNodeFlags_NoResizeY     = 1 << 17, //       //
-    ImGuiDockNodeFlags_DockedWindowsInFocusRoute =
-            1 << 18, //       // Any docked window will be automatically be focus-route chained
-                     //       (window->ParentWindowForFocusRoute set to this) so Shortcut() in this window can run when
-                     //       any docked window is focused.
+    ImGuiDockNodeFlags_NoTabBar    = 1
+            << 12, // Saved // Tab bar is completely unavailable. No triangle in the corner to enable it back.
+    ImGuiDockNodeFlags_HiddenTabBar = 1
+            << 13, // Saved // Tab bar is hidden, with a triangle in the corner to show it again (NB: actual tab-bar
+                   // instance may be destroyed as this is only used for single-window tab bar)
+    ImGuiDockNodeFlags_NoWindowMenuButton = 1
+            << 14, // Saved // Disable window/docking menu (that one that appears instead of the collapse button)
+    ImGuiDockNodeFlags_NoCloseButton             = 1 << 15, // Saved // Disable close button
+    ImGuiDockNodeFlags_NoResizeX                 = 1 << 16, //       //
+    ImGuiDockNodeFlags_NoResizeY                 = 1 << 17, //       //
+    ImGuiDockNodeFlags_DockedWindowsInFocusRoute = 1
+            << 18, //       // Any docked window will be automatically be focus-route chained
+                   //       (window->ParentWindowForFocusRoute set to this) so Shortcut() in this window can run when
+                   //       any docked window is focused.
 
     // Disable docking/undocking actions in this dockspace or individual node (existing docked nodes will be preserved)
     // Those are not exposed in public because the desirable sharing/inheriting/copy-flag-on-split behaviors are quite
     // difficult to design and understand. The two public flags
     // ImGuiDockNodeFlags_NoDockingOverCentralNode/ImGuiDockNodeFlags_NoDockingSplit don't have those issues.
     ImGuiDockNodeFlags_NoDockingSplitOther = 1 << 19, //       // Disable this node from splitting other windows/nodes.
-    ImGuiDockNodeFlags_NoDockingOverMe =
-            1 << 20, //       // Disable other windows/nodes from being docked over this node.
-    ImGuiDockNodeFlags_NoDockingOverOther =
-            1 << 21, //       // Disable this node from being docked over another window or non-empty node.
+    ImGuiDockNodeFlags_NoDockingOverMe     = 1
+            << 20, //       // Disable other windows/nodes from being docked over this node.
+    ImGuiDockNodeFlags_NoDockingOverOther = 1
+            << 21, //       // Disable this node from being docked over another window or non-empty node.
     ImGuiDockNodeFlags_NoDockingOverEmpty = 1 << 22, //       // Disable this node from being docked over an empty node
                                                      //       (e.g. DockSpace with no other windows)
-    ImGuiDockNodeFlags_NoDocking = ImGuiDockNodeFlags_NoDockingOverMe | ImGuiDockNodeFlags_NoDockingOverOther |
-                                   ImGuiDockNodeFlags_NoDockingOverEmpty | ImGuiDockNodeFlags_NoDockingSplit |
-                                   ImGuiDockNodeFlags_NoDockingSplitOther,
+    ImGuiDockNodeFlags_NoDocking          = ImGuiDockNodeFlags_NoDockingOverMe | ImGuiDockNodeFlags_NoDockingOverOther |
+            ImGuiDockNodeFlags_NoDockingOverEmpty | ImGuiDockNodeFlags_NoDockingSplit |
+            ImGuiDockNodeFlags_NoDockingSplitOther,
 
     // Masks
     ImGuiDockNodeFlags_SharedFlagsInheritMask_ = ~0,
-    ImGuiDockNodeFlags_NoResizeFlagsMask_ =
-            (int) ImGuiDockNodeFlags_NoResize | ImGuiDockNodeFlags_NoResizeX | ImGuiDockNodeFlags_NoResizeY,
+    ImGuiDockNodeFlags_NoResizeFlagsMask_      = (int) ImGuiDockNodeFlags_NoResize | ImGuiDockNodeFlags_NoResizeX |
+            ImGuiDockNodeFlags_NoResizeY,
 
     // When splitting, those local flags are moved to the inheriting child, never duplicated
-    ImGuiDockNodeFlags_LocalFlagsTransferMask_ =
-            (int) ImGuiDockNodeFlags_NoDockingSplit | ImGuiDockNodeFlags_NoResizeFlagsMask_ |
-            (int) ImGuiDockNodeFlags_AutoHideTabBar | ImGuiDockNodeFlags_CentralNode | ImGuiDockNodeFlags_NoTabBar |
-            ImGuiDockNodeFlags_HiddenTabBar | ImGuiDockNodeFlags_NoWindowMenuButton | ImGuiDockNodeFlags_NoCloseButton,
+    ImGuiDockNodeFlags_LocalFlagsTransferMask_ = (int) ImGuiDockNodeFlags_NoDockingSplit |
+            ImGuiDockNodeFlags_NoResizeFlagsMask_ | (int) ImGuiDockNodeFlags_AutoHideTabBar |
+            ImGuiDockNodeFlags_CentralNode | ImGuiDockNodeFlags_NoTabBar | ImGuiDockNodeFlags_HiddenTabBar |
+            ImGuiDockNodeFlags_NoWindowMenuButton | ImGuiDockNodeFlags_NoCloseButton,
     ImGuiDockNodeFlags_SavedFlagsMask_ = ImGuiDockNodeFlags_NoResizeFlagsMask_ | ImGuiDockNodeFlags_DockSpace |
-                                         ImGuiDockNodeFlags_CentralNode | ImGuiDockNodeFlags_NoTabBar |
-                                         ImGuiDockNodeFlags_HiddenTabBar | ImGuiDockNodeFlags_NoWindowMenuButton |
-                                         ImGuiDockNodeFlags_NoCloseButton,
+            ImGuiDockNodeFlags_CentralNode | ImGuiDockNodeFlags_NoTabBar | ImGuiDockNodeFlags_HiddenTabBar |
+            ImGuiDockNodeFlags_NoWindowMenuButton | ImGuiDockNodeFlags_NoCloseButton,
 };
 
 // Store the source authority (dock node vs window) of a field
@@ -3163,7 +3154,7 @@ struct ImGuiWindowSettings
 
 struct ImGuiSettingsCleanupArgs
 {
-    IdType TypeHashFilter = 0;       // Set to restrict cleanup to a given .ini type, e.g. == ImHashStr("Window"),
+    IdType TypeHashFilter       = 0; // Set to restrict cleanup to a given .ini type, e.g. == ImHashStr("Window"),
                                      // ImHashStr("Table"). Otherwise every types supporting Cleanup will be affected.
     int DiscardOlderThanMonths  = 0; // Enable to discard entries older than XX months.
     bool DiscardWhenMissingDate = false; // Enable to discard entries missing a date.
@@ -3173,7 +3164,7 @@ struct ImGuiSettingsCleanupArgs
                                              // know in #9460 if you use this.
     bool SetCurrentSessionDateWhenMissingDate = false; // Enable to write current SessionDate to all supporting entries
                                                        // missing a date. // Let us know in #9460 if you use this.
-    int _DiscardOlderThanDate = 0;                     // [Internal]
+    int _DiscardOlderThanDate                 = 0;     // [Internal]
 };
 
 struct ImGuiSettingsHandler
@@ -3305,12 +3296,11 @@ enum ImGuiDebugLogFlags_
     ImGuiDebugLogFlags_EventViewport     = 1 << 11,
     ImGuiDebugLogFlags_EventTable        = 1 << 12,
 
-    ImGuiDebugLogFlags_EventMask_ =
-            ImGuiDebugLogFlags_EventError | ImGuiDebugLogFlags_EventActiveId | ImGuiDebugLogFlags_EventFocus |
-            ImGuiDebugLogFlags_EventPopup | ImGuiDebugLogFlags_EventNav | ImGuiDebugLogFlags_EventClipper |
-            ImGuiDebugLogFlags_EventSelection | ImGuiDebugLogFlags_EventTable | ImGuiDebugLogFlags_EventIO |
-            ImGuiDebugLogFlags_EventFont | ImGuiDebugLogFlags_EventInputRouting | ImGuiDebugLogFlags_EventDocking |
-            ImGuiDebugLogFlags_EventViewport,
+    ImGuiDebugLogFlags_EventMask_ = ImGuiDebugLogFlags_EventError | ImGuiDebugLogFlags_EventActiveId |
+            ImGuiDebugLogFlags_EventFocus | ImGuiDebugLogFlags_EventPopup | ImGuiDebugLogFlags_EventNav |
+            ImGuiDebugLogFlags_EventClipper | ImGuiDebugLogFlags_EventSelection | ImGuiDebugLogFlags_EventTable |
+            ImGuiDebugLogFlags_EventIO | ImGuiDebugLogFlags_EventFont | ImGuiDebugLogFlags_EventInputRouting |
+            ImGuiDebugLogFlags_EventDocking | ImGuiDebugLogFlags_EventViewport,
     ImGuiDebugLogFlags_OutputToTTY        = 1 << 20, // Also send output to TTY
     ImGuiDebugLogFlags_OutputToDebugger   = 1 << 21, // Also send output to Debugger Console [Windows only]
     ImGuiDebugLogFlags_OutputToTestEngine = 1 << 22, // Also send output to Dear ImGui Test Engine
@@ -4250,8 +4240,8 @@ public:
 // Extend ImGuiTabBarFlags_
 enum ImGuiTabBarFlagsPrivate_
 {
-    ImGuiTabBarFlags_DockNode = 1 << 20, // Part of a dock node [we don't use this in the master branch but it
-                                         // facilitate branch syncing to keep this around]
+    ImGuiTabBarFlags_DockNode     = 1 << 20, // Part of a dock node [we don't use this in the master branch but it
+                                             // facilitate branch syncing to keep this around]
     ImGuiTabBarFlags_IsFocused    = 1 << 21,
     ImGuiTabBarFlags_SaveSettings = 1 << 22, // FIXME: Settings are handled by the docking system, this only request the
                                              // tab bar to mark settings dirty when reordering tabs
@@ -4263,8 +4253,8 @@ enum ImGuiTabItemFlagsPrivate_
     ImGuiTabItemFlags_SectionMask_  = ImGuiTabItemFlags_Leading | ImGuiTabItemFlags_Trailing,
     ImGuiTabItemFlags_NoCloseButton = 1 << 20, // Track whether p_open was set or not (we'll need this info on the next
                                                // frame to recompute ContentWidth during layout)
-    ImGuiTabItemFlags_Button    = 1 << 21,     // Used by TabItemButton, change the tab item behavior to mimic a button
-    ImGuiTabItemFlags_Invisible = 1 << 22,     // To reserve space e.g. with ImGuiTabItemFlags_Leading
+    ImGuiTabItemFlags_Button        = 1 << 21, // Used by TabItemButton, change the tab item behavior to mimic a button
+    ImGuiTabItemFlags_Invisible     = 1 << 22, // To reserve space e.g. with ImGuiTabItemFlags_Leading
     ImGuiTabItemFlags_Unsorted = 1 << 23, // [Docking] Trailing tabs with the _Unsorted flag will be sorted based on the
                                           // DockOrder of their Window.
 };
@@ -4348,7 +4338,7 @@ struct ImGuiTabBar
 // [SECTION] Table support + internal API
 //-----------------------------------------------------------------------------
 
-    #define IM_COL32_DISABLE IM_COL32(0, 0, 0, 1) // Special sentinel code which cannot be used as a regular color.
+    #define IM_COL32_DISABLE PackCol32(0, 0, 0, 1) // Special sentinel code which cannot be used as a regular color.
     #define IMGUI_TABLE_MAX_COLUMNS                                                                                    \
         512 // Arbitrary "safety" maximum, may be lifted in the future if needed. Must fit in
             // ImGuiTableColumnIdx/ImGuiTableDrawChannelIdx.
@@ -5289,8 +5279,7 @@ namespace ImGui
                               ImGuiDir split_dir, float split_ratio, bool split_outer);
     void DockContextQueueUndockWindow(ImGuiContext *ctx, ImGuiWindow *window);
     void DockContextQueueUndockNode(ImGuiContext *ctx, ImGuiDockNode *node);
-    void DockContextProcessUndockWindow(ImGuiWindow *window,
-                                        bool clear_persistent_docking_ref = true);
+    void DockContextProcessUndockWindow(ImGuiWindow *window, bool clear_persistent_docking_ref = true);
     void DockContextProcessUndockNode(ImGuiContext *ctx, ImGuiDockNode *node);
     bool DockContextCalcDropPosForDocking(ImGuiWindow *target, ImGuiDockNode *target_node, ImGuiWindow *payload_window,
                                           ImGuiDockNode *payload_node, ImGuiDir split_dir, bool split_outer,
@@ -5677,9 +5666,9 @@ namespace ImGui
     // Debug Tools
     void DebugAllocHook(ImGuiDebugAllocInfo *info, int frame_count, void *ptr,
                         size_t size); // size >= 0 : alloc, size = -1 : free
-    void DebugDrawCursorPos(uint32_t col = IM_COL32(255, 0, 0, 255));
-    void DebugDrawLineExtents(uint32_t col = IM_COL32(255, 0, 0, 255));
-    void DebugDrawItemRect(uint32_t col = IM_COL32(255, 0, 0, 255));
+    void DebugDrawCursorPos(uint32_t col = PackCol32(255, 0, 0, 255));
+    void DebugDrawLineExtents(uint32_t col = PackCol32(255, 0, 0, 255));
+    void DebugDrawItemRect(uint32_t col = PackCol32(255, 0, 0, 255));
     void DebugTextUnformattedWithLocateItem(const char *line_begin, const char *line_end);
     void DebugLocateItem(IdType target_id); // Call sparingly: only 1 at the same time!
     void DebugLocateItemOnHover(
