@@ -9,7 +9,7 @@
 
 namespace SF::Engine
 {
-    AudioClip::AudioClip(const DataInput &input, const Audio::Type &type, bool begin, bool loop, float gain,
+    AudioClip::AudioClip(const InputDataVariant &input, const Audio::Type &type, bool begin, bool loop, float gain,
                          float pitch) : buffer(SoundBuffer::Create(input)), type(type), gain(gain), pitch(pitch)
     {
         alGenSources(1, &source);

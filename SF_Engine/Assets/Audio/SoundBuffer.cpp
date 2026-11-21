@@ -6,45 +6,44 @@
     #include <al.h>
 #endif
 #include <Math/Math.hpp>
+#include <filesystem>
 #include <iostream>
+#include <random>
+#include "AudioInput.hpp"
 #include "Waves.hpp"
 
 namespace SF::Engine
 {
     // Initialize static members
-    std::unordered_map<DataInput, std::weak_ptr<SoundBuffer>> SoundBuffer::cache;
+    std::unordered_map<std::string, std::weak_ptr<SoundBuffer>> SoundBuffer::cache;
     std::mutex SoundBuffer::cacheMutex;
 
-    std::shared_ptr<SoundBuffer> SoundBuffer::Create(const DataInput &input)
+    std::shared_ptr<SoundBuffer> SoundBuffer::Create(const InputDataVariant &input)
     {
+        // Only file-backed inputs are cached (keyed by full path). A memory span is a non-owning view, so its
+        // address is not a safe identity: the block could be freed and reused with different contents.
+        const auto *filePtr = std::get_if<File *>(&input);
+        if (filePtr == nullptr || *filePtr == nullptr)
+            return std::make_shared<SoundBuffer>(input, true);
+
+        const std::string key = std::filesystem::path((*filePtr)->GetFullPath()).string();
+
         std::lock_guard lock(cacheMutex);
 
-        DataInput key;
-        // Convert to absolute path for consistent caching
-        if (input.memory == nullptr)
-            key.file = input.file;
-        else
-            key.memory = (input.memory);
-
-        // Check if already cached
         if (const auto it = cache.find(key); it != cache.end())
         {
             if (auto existing = it->second.lock())
-            {
                 return existing;
-            }
             // Expired weak_ptr, remove it
             cache.erase(it);
         }
 
-        // Create new sound buffer
         auto soundBuffer = std::make_shared<SoundBuffer>(input, true);
         cache[key]       = soundBuffer;
-
         return soundBuffer;
     }
 
-    SoundBuffer::SoundBuffer(const DataInput input, const bool load) : input(input), buffer(0)
+    SoundBuffer::SoundBuffer(const InputDataVariant &input, const bool load) : input(input), buffer(0)
     {
         // Generate OpenAL buffer
         alGenBuffers(1, &buffer);
@@ -115,55 +114,40 @@ namespace SF::Engine
 
     void SoundBuffer::Load()
     {
-        const bool hasFile = input.file != nullptr && input.file->Exists();
-        if (!hasFile && input.memory == nullptr)
-        {
-            std::cerr << "Cannot load sound buffer: input is empty" << std::endl;
-            return;
-        }
-
         if (buffer == 0)
         {
             std::cerr << "Cannot load sound buffer: OpenAL buffer is invalid" << std::endl;
             return;
         }
 
-        if (hasFile)
+        const auto src = AudioInput::Resolve(input); // logs on failure
+        if (!src)
+            return;
+
+        if (src->extension.empty())
         {
-            // Get file extension
-            const std::string extension = input.file->GetExtension();
+            std::cerr << "Cannot determine audio format for " << src->Describe() << std::endl;
+            return;
+        }
 
-            // Look up loader in registry
-            auto &registry = Registry();
-            const auto it  = registry.find(extension);
-
-            if (it == registry.end())
-            {
-                std::cerr << "No loader registered for file extension: " << extension << std::endl;
-                return;
-            }
-            // Call the registered loader
-            try
-            {
-                it->second.first(*this, input);
-            } catch (const std::exception &e)
-            {
-                std::cerr << "Failed to load sound buffer from " << input.file->GetFullPath() << input.memory << ": "
-                          << e.what() << std::endl;
-            }
-        } else // reading from mem
+        auto &registry = Registry();
+        const auto it  = registry.find(src->extension);
+        if (it == registry.end())
         {
-            alBufferData(this->GetBuffer(), AL_FORMAT_STEREO16, input.memory, static_cast<ALsizei>(64),
-                         static_cast<ALsizei>(128));
+            std::cerr << "No loader registered for file extension: " << src->extension << std::endl;
+            return;
+        }
 
-            if (const ALenum error = alGetError(); error != AL_NO_ERROR)
-            {
-                std::cerr << "Failed to buffer data from memory" << error << std::endl;
-            }
+        try
+        {
+            it->second.first(*this, input);
+        } catch (const std::exception &e)
+        {
+            std::cerr << "Failed to load sound buffer from " << src->Describe() << ": " << e.what() << std::endl;
         }
     }
 
-    std::shared_ptr<SoundBuffer> SoundBuffer::CreateFromHandle(const ALuint existingBuffer, DataInput input)
+    std::shared_ptr<SoundBuffer> SoundBuffer::CreateFromHandle(const ALuint existingBuffer, InputDataVariant input)
     {
         if (existingBuffer == 0 || alIsBuffer(existingBuffer) == AL_FALSE)
         {
@@ -180,7 +164,7 @@ namespace SF::Engine
     std::shared_ptr<SoundBuffer> SoundBuffer::CreateWave(const ALuint waveType, const float frequency,
                                                          const float durationSeconds, const uint32_t sampleRate)
     {
-        auto sb = std::make_shared<SoundBuffer>(DataInput{}, /*load=*/false);
+        auto sb = std::make_shared<SoundBuffer>(InputDataVariant{}, /*load=*/false);
         if (sb->buffer == 0)
             return nullptr;
 

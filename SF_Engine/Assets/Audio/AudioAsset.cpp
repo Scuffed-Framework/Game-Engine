@@ -33,8 +33,7 @@ namespace SF::Engine
 
         file_ = std::make_unique<File>(assetPath);
 
-        DataInput input;
-        input.file = file_.get();
+        const InputDataVariant input = file_.get();
 
         auto created = SoundBuffer::Create(input);
         if (!created || created->GetBuffer() == 0)

@@ -5,10 +5,11 @@ namespace SF::Engine
 {
     class OpusSoundBuffer : public SoundBuffer::Registrar<OpusSoundBuffer>
     {
-        inline static const bool Registered = Register(".ogg", ".mka"); // if audio encoding is opus
+        // .ogg is owned by OggSoundBuffer (it forwards here when the stream is Opus) and .mka by MkaSoundBuffer.
+        inline static const bool Registered = Register(".opus");
         friend class SoundBuffer;
 
     public:
-        static void Load(SoundBuffer &soundBuffer, const DataInput &input);
+        static void Load(SoundBuffer &soundBuffer, const InputDataVariant &input);
     };
 } // namespace SF::Engine

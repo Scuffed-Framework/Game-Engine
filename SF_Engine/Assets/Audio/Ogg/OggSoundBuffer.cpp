@@ -1,10 +1,7 @@
 #include "OggSoundBuffer.hpp"
-
-#ifdef _PLATFORM_MACOS
-    #include <OpenAL/al.h>
-#else
-    #include <al.h>
-#endif
+#include <climits>
+#include "../AudioInput.hpp"
+#include "../Opus/OpusSoundBuffer.hpp"
 
 extern "C"
 {
@@ -12,20 +9,44 @@ extern "C"
 }
 
 #include <iostream>
+#include <vector>
 
 namespace SF::Engine
 {
-    void OggSoundBuffer::Load(SoundBuffer &soundBuffer, const DataInput &input)
+    void OggSoundBuffer::Load(SoundBuffer &soundBuffer, const InputDataVariant &input)
     {
+        const auto src = AudioInput::Resolve(input);
+        if (!src)
+            return;
+
+        // .ogg is also a valid container for Opus; stb_vorbis can't decode that.
+        if (AudioInput::LooksLikeOggOpus(*src))
+        {
+            OpusSoundBuffer::Load(soundBuffer, input);
+            return;
+        }
+
         int channels = 0, sampleRate = 0;
         short *output = nullptr;
+        int framesPerChannel;
 
-        const int framesPerChannel =
-                stb_vorbis_decode_filename(input.file->GetFullPath().c_str(), &channels, &sampleRate, &output);
+        if (src->IsFile())
+        {
+            framesPerChannel = stb_vorbis_decode_filename(src->path.c_str(), &channels, &sampleRate, &output);
+        } else
+        {
+            if (src->memory.size() > static_cast<size_t>(INT_MAX))
+            {
+                std::cerr << "OGG memory block too large for stb_vorbis" << std::endl;
+                return;
+            }
+            framesPerChannel = stb_vorbis_decode_memory(src->memory.data(), static_cast<int>(src->memory.size()),
+                                                        &channels, &sampleRate, &output);
+        }
 
         if (framesPerChannel <= 0 || output == nullptr)
         {
-            std::cerr << "Failed to decode OGG file: " << input.file->GetFullPath() << std::endl;
+            std::cerr << "Failed to decode OGG: " << src->Describe() << std::endl;
             return;
         }
 

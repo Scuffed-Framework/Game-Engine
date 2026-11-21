@@ -1,10 +1,5 @@
 #include "FlacSoundBuffer.hpp"
-
-#ifdef _PLATFORM_MACOS
-    #include <OpenAL/al.h>
-#else
-    #include <al.h>
-#endif
+#include "../AudioInput.hpp"
 
 #define DR_FLAC_IMPLEMENTATION
 #include "dr_flac.hpp"
@@ -14,12 +9,17 @@
 
 namespace SF::Engine
 {
-    void FlacSoundBuffer::Load(SoundBuffer &soundBuffer, const DataInput &input)
+    void FlacSoundBuffer::Load(SoundBuffer &soundBuffer, const InputDataVariant &input)
     {
-        drflac *flac = drflac_open_file(input.file->GetFullPath().c_str(), nullptr);
+        const auto src = AudioInput::Resolve(input);
+        if (!src)
+            return;
+
+        drflac *flac = src->IsFile() ? drflac_open_file(src->path.c_str(), nullptr)
+                                     : drflac_open_memory(src->memory.data(), src->memory.size(), nullptr);
         if (!flac)
         {
-            std::cerr << "Failed to open FLAC file: " << input.file->GetFullPath() << std::endl;
+            std::cerr << "Failed to open FLAC: " << src->Describe() << std::endl;
             return;
         }
 

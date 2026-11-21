@@ -10,6 +10,8 @@ namespace SF::Engine
 {
     MatroskaAudioLoader::MatroskaAudioLoader(std::string filePath) : filePath(std::move(filePath)) {}
 
+    MatroskaAudioLoader::MatroskaAudioLoader(std::span<const uint8_t> memory) : memory_(memory) {}
+
     MatroskaAudioLoader::~MatroskaAudioLoader() { Reset(); }
 
     void MatroskaAudioLoader::Reset()
@@ -27,13 +29,27 @@ namespace SF::Engine
     {
         Reset();
 
-        fileStream.open(filePath, std::ios::binary);
-        if (!fileStream)
-            return false;
+        // The reader parses the whole Segment into memory, so these only need to live for this call.
+        std::unique_ptr<MemoryStreamBuf> memBuf;
+        std::istream memStream(nullptr);
+        std::istream *in;
+
+        if (!memory_.empty())
+        {
+            memBuf = std::make_unique<MemoryStreamBuf>(memory_);
+            memStream.rdbuf(memBuf.get());
+            in = &memStream;
+        } else
+        {
+            fileStream.open(filePath, std::ios::binary);
+            if (!fileStream)
+                return false;
+            in = &fileStream;
+        }
 
         try
         {
-            StreamingReader reader(fileStream, schema);
+            StreamingReader reader(*in, schema);
 
             if (const auto headerElement = reader.read_next_element();
                 !headerElement || headerElement->id() != ::SF::EBML::ids::EBML)

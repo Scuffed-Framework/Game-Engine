@@ -4,8 +4,11 @@
 #include <cmath>
 #include <filesystem>
 #include <fstream>
+#include <istream>
 #include <memory>
 #include <span>
+#include <streambuf>
+#include <string>
 
 // 1st-party EBML/Matroska library
 #include <1stPartyLibs/EBML/Element.hpp>
@@ -62,10 +65,56 @@ namespace SF::Engine
     // allFrames_. For audio (as opposed to video) this is normally a
     // non-issue memory-wise, but it does mean Load() does the full pass
     // over the file rather than only reading headers immediately.
+    // Read-only std::streambuf over a non-owning memory block, so StreamingReader can parse from memory.
+    class MemoryStreamBuf final : public std::streambuf
+    {
+    public:
+        explicit MemoryStreamBuf(std::span<const uint8_t> d)
+        {
+            auto *b = const_cast<char *>(reinterpret_cast<const char *>(d.data()));
+            setg(b, b, b + d.size());
+        }
+
+    protected:
+        pos_type seekoff(off_type off, std::ios_base::seekdir dir, std::ios_base::openmode which) override
+        {
+            if (!(which & std::ios_base::in))
+                return {off_type(-1)};
+            char *base          = eback();
+            const off_type size = egptr() - base;
+            off_type target;
+            switch (dir)
+            {
+                case std::ios_base::beg:
+                    target = off;
+                    break;
+                case std::ios_base::cur:
+                    target = (gptr() - base) + off;
+                    break;
+                case std::ios_base::end:
+                    target = size + off;
+                    break;
+                default:
+                    return {off_type(-1)};
+            }
+            if (target < 0 || target > size)
+                return {off_type(-1)};
+            setg(base, base + target, base + size);
+            return {target};
+        }
+
+        pos_type seekpos(pos_type pos, std::ios_base::openmode which) override
+        {
+            return seekoff(off_type(pos), std::ios_base::beg, which);
+        }
+    };
+
     class MatroskaAudioLoader
     {
     public:
         explicit MatroskaAudioLoader(std::string filePath);
+        /** Parses from a non-owning memory block; it must outlive the Load() call. */
+        explicit MatroskaAudioLoader(std::span<const uint8_t> memory);
         ~MatroskaAudioLoader();
 
         bool Load();
@@ -79,6 +128,7 @@ namespace SF::Engine
 
     private:
         std::string filePath;
+        std::span<const uint8_t> memory_;
         std::ifstream fileStream;
 
         SF::EBML::Schema schema{SF::Matroska::create_matroska_schema()};

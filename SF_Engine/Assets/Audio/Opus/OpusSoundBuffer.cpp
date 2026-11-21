@@ -1,14 +1,8 @@
 #include "OpusSoundBuffer.hpp"
-
-#ifdef _PLATFORM_MACOS
-    #include <OpenAL/al.h>
-#else
-    #include <al.h>
-#endif
+#include "../AudioInput.hpp"
 
 #include <opus/opusfile.h>
 
-#include <filesystem>
 #include <iostream>
 #include <memory>
 #include <vector>
@@ -23,16 +17,19 @@ namespace SF::Engine
         };
     } // namespace
 
-    void OpusSoundBuffer::Load(SoundBuffer &soundBuffer, const DataInput &input)
+    void OpusSoundBuffer::Load(SoundBuffer &soundBuffer, const InputDataVariant &input)
     {
-        // Works whether GetFullPath() returns std::string or std::filesystem::path.
-        const std::string path = std::filesystem::path(input.file->GetFullPath()).string();
+        const auto src = AudioInput::Resolve(input);
+        if (!src)
+            return;
 
         int err = 0;
-        const std::unique_ptr<OggOpusFile, OpusFileDeleter> opus(op_open_file(path.c_str(), &err));
+        const std::unique_ptr<OggOpusFile, OpusFileDeleter> opus(
+                src->IsFile() ? op_open_file(src->path.c_str(), &err)
+                              : op_open_memory(src->memory.data(), src->memory.size(), &err));
         if (!opus)
         {
-            std::cerr << "Failed to open Opus file: " << path << " (opusfile error " << err << ")" << std::endl;
+            std::cerr << "Failed to open Opus: " << src->Describe() << " (opusfile error " << err << ")" << std::endl;
             return;
         }
 
@@ -41,7 +38,6 @@ namespace SF::Engine
         // downmixed to stereo by op_read_stereo (core AL has no >2 channel formats).
         const bool mono       = (channels == 1);
         const int outChannels = mono ? 1 : 2;
-        // const ALenum format   = mono ? AL_FORMAT_MONO16 : AL_FORMAT_STEREO16;
 
         std::vector<opus_int16> pcm;
         if (const ogg_int64_t totalFrames = op_pcm_total(opus.get(), -1); totalFrames > 0)
@@ -61,7 +57,7 @@ namespace SF::Engine
                 // OP_HOLE means a gap in the data, which is recoverable; anything else is fatal.
                 if (frames == OP_HOLE)
                     continue;
-                std::cerr << "Opus decode error " << frames << " in " << path << std::endl;
+                std::cerr << "Opus decode error " << frames << " in " << src->Describe() << std::endl;
                 return;
             }
             pcm.insert(pcm.end(), chunk.begin(), chunk.begin() + static_cast<long>(frames) * outChannels);
@@ -69,20 +65,11 @@ namespace SF::Engine
 
         if (pcm.empty())
         {
-            std::cerr << "Opus file decoded to zero samples: " << path << std::endl;
+            std::cerr << "Opus decoded to zero samples: " << src->Describe() << std::endl;
             return;
         }
 
-        alGetError(); // clear any stale error so we only report ours
-        if (pcm.empty())
-        {
-            Log::Error("PCM empty!");
-            return;
-        }
         soundBuffer.SetPCM(
                 {.Samples = std::move(pcm), .SampleRate = 48000, .ChannelCount = static_cast<uint8_t>(outChannels)});
-
-        if (const ALenum error = alGetError(); error != AL_NO_ERROR)
-            std::cerr << "Failed to buffer Opus data for " << path << ": " << error << std::endl;
     }
 } // namespace SF::Engine

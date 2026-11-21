@@ -5,8 +5,11 @@
 #include <functional>
 #include <memory>
 #include <mutex>
+#include <span>
+#include <string>
 #include <unordered_map>
 #include <utility>
+#include <variant>
 #include "Audio.hpp"
 
 namespace SF::Engine
@@ -20,7 +23,7 @@ namespace SF::Engine
     class SoundBufferFactory
     {
     public:
-        using TLoadMethod  = std::function<void(Base &, const DataInput &)>;
+        using TLoadMethod  = std::function<void(Base &, const InputDataVariant &)>;
         using TWriteMethod = std::function<void(const Base &, const std::filesystem::path &)>;
         using TRegistryMap = std::unordered_map<std::string, std::pair<TLoadMethod, TWriteMethod>>;
 
@@ -94,17 +97,20 @@ namespace SF::Engine
 
         /**
          * @brief Creates or retrieves a cached sound buffer.
-         * @param input Path to the audio file.
+         *
+         * File inputs are cached by full path. Memory inputs (std::span) are non-owning views, so they are
+         * decoded immediately and never cached. A void* carries no size and cannot be decoded.
+         * @param input File* or memory span holding an encoded audio file.
          * @return Shared pointer to the sound buffer.
          */
-        static std::shared_ptr<SoundBuffer> Create(const DataInput &input);
+        static std::shared_ptr<SoundBuffer> Create(const InputDataVariant &input);
 
         /**
          * @brief Wraps an already-existing OpenAL buffer handle.
          * @param existingBuffer A valid OpenAL buffer name; ownership transfers to the SoundBuffer.
          * @param input data
          */
-        static std::shared_ptr<SoundBuffer> CreateFromHandle(ALuint existingBuffer, DataInput input = {});
+        static std::shared_ptr<SoundBuffer> CreateFromHandle(ALuint existingBuffer, InputDataVariant input = {});
 
         /**
          * @brief Creates a buffer filled with a procedurally generated waveform.
@@ -117,7 +123,7 @@ namespace SF::Engine
          * @param input Path to the audio file.
          * @param load If true, loads the file immediately. Otherwise call Load() later.
          */
-        explicit SoundBuffer(DataInput input, bool load = true);
+        explicit SoundBuffer(const InputDataVariant &input, bool load = true);
         ~SoundBuffer();
 
         // Delete copy operations (OpenAL buffer is non-copyable resource)
@@ -130,7 +136,7 @@ namespace SF::Engine
 
         [[nodiscard]] std::type_index GetTypeIndex() const { return typeid(SoundBuffer); }
 
-        [[nodiscard]] const DataInput &GetInput() const { return input; }
+        [[nodiscard]] const InputDataVariant &GetInput() const { return input; }
         [[nodiscard]] std::uint32_t GetBuffer() const { return buffer; }
         void SetBuffer(std::uint32_t buffer);
 
@@ -149,11 +155,11 @@ namespace SF::Engine
 
 
     private:
-        DataInput input;
+        InputDataVariant input;
         std::uint32_t buffer = 0;
         PCMData pcm;
 
-        static std::unordered_map<DataInput, std::weak_ptr<SoundBuffer>> cache;
+        static std::unordered_map<std::string, std::weak_ptr<SoundBuffer>> cache;
         static std::mutex cacheMutex;
     };
 } // namespace SF::Engine

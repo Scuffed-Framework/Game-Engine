@@ -1,8 +1,10 @@
 #include "MkaSoundBuffer.hpp"
+#include <cstring>
 #include <iostream>
 #include <memory>
 #include <opus/opus.h>
 #include <vector>
+#include "../AudioInput.hpp"
 #include "MatroskaAudioLoader.hpp"
 
 namespace SF::Engine
@@ -15,12 +17,16 @@ namespace SF::Engine
         };
     } // namespace
 
-    void MkaSoundBuffer::Load(SoundBuffer &soundBuffer, const DataInput &input)
+    void MkaSoundBuffer::Load(SoundBuffer &soundBuffer, const InputDataVariant &input)
     {
-        MatroskaAudioLoader loader(input.file->GetFullPath());
+        const auto src = AudioInput::Resolve(input);
+        if (!src)
+            return;
+
+        MatroskaAudioLoader loader = src->IsFile() ? MatroskaAudioLoader(src->path) : MatroskaAudioLoader(src->memory);
         if (!loader.Load())
         {
-            std::cerr << "Failed to parse MKA file: " << input.file->GetFullPath() << std::endl;
+            std::cerr << "Failed to parse MKA: " << src->Describe() << std::endl;
             return;
         }
 
@@ -107,7 +113,7 @@ namespace SF::Engine
             std::cerr << "MkaSoundBuffer::Write: buffer has no PCM (was ReleasePCM() called?): " << file << std::endl;
             return;
         }
- 
+
         const auto &pcm = soundBuffer.GetPCM();
         if (!WriteOpusMka(pcm.Samples, pcm.SampleRate, pcm.ChannelCount, file))
             std::cerr << "MkaSoundBuffer::Write: failed to write " << file << std::endl;

@@ -41,8 +41,8 @@ namespace SF::Engine
 
     public:
         AudioClip() = default;
-        explicit AudioClip(const DataInput &input, const Audio::Type &type = Audio::Type::General, bool begin = false,
-                           bool loop = false, float gain = 1.0f, float pitch = 1.0f);
+        explicit AudioClip(const InputDataVariant &input, const Audio::Type &type = Audio::Type::General,
+                           bool begin = false, bool loop = false, float gain = 1.0f, float pitch = 1.0f);
 
         explicit AudioClip(std::shared_ptr<SoundBuffer> buffer, const Audio::Type &type = Audio::Type::General,
                            bool begin = false, bool loop = false, float gain = 1.0f, float pitch = 1.0f);

@@ -38,7 +38,7 @@ namespace SF::Engine
         void DeserializeImportSettings(const XMLNode &node) override;
 
     private:
-        // SoundBuffer keeps a raw File* in its DataInput, so the asset owns the File for the buffer's lifetime.
+        // SoundBuffer keeps a raw File* in its InputDataVariant, so the asset owns the File for the buffer's lifetime.
         std::unique_ptr<File> file_;
     };
 } // namespace SF::Engine

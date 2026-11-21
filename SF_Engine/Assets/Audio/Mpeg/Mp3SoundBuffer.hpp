@@ -9,6 +9,6 @@ namespace SF::Engine
         friend class SoundBuffer;
 
     public:
-        static void Load(SoundBuffer &soundBuffer, const DataInput &input);
+        static void Load(SoundBuffer &soundBuffer, const InputDataVariant &input);
     };
 } // namespace SF::Engine

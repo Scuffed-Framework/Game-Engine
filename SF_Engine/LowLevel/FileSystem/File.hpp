@@ -14,6 +14,7 @@
 #include <string>
 #include <unordered_map>
 #include <utility>
+#include <variant>
 #include <vector>
 
 namespace fs = std::filesystem;
@@ -365,16 +366,8 @@ namespace SF::Engine
         return reinterpret_cast<const T *>(m_data);
     }
 
-    struct DataInput
-    {
-        File *file   = nullptr;
-        void *memory = nullptr;
-    };
-
-    inline bool operator==(const DataInput &lhs, const DataInput &rhs)
-    {
-        return lhs.file == rhs.file && lhs.memory == rhs.memory;
-    }
+    // add more ways if needed
+    using InputDataVariant = std::variant<File *, void *, std::span<const uint8_t>>;
 
     inline std::string SanitizeFileName(std::string s)
     {
@@ -385,14 +378,3 @@ namespace SF::Engine
     }
 
 } // namespace SF::Engine
-
-template<>
-struct std::hash<SF::Engine::DataInput>
-{
-    size_t operator()(const SF::Engine::DataInput &d) const noexcept
-    {
-        const size_t h1 = std::hash<void *>{}(static_cast<void *>(d.file));
-        const size_t h2 = std::hash<void *>{}(d.memory);
-        return h1 ^ (h2 << 1);
-    }
-}; // namespace std
