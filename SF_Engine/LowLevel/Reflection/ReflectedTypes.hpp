@@ -4,7 +4,6 @@
 
 namespace SF::Engine
 {
-
     bool IsReflected(std::type_index ti);
     bool DrawReflected(std::type_index ti, void *obj, const char *id, float labelW = 90.0f);
 

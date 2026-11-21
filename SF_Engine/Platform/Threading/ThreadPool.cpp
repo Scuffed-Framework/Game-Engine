@@ -1,7 +1,6 @@
 #include "ThreadPool.hpp"
 namespace SF::Engine
 {
-
     ThreadPool::ThreadPool(uint32_t threadCount)
     {
         // A pool with zero workers would accept jobs that can never execute.

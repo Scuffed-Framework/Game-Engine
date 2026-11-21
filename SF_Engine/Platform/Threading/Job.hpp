@@ -1,18 +1,17 @@
 #pragma once
 #include <UtilityClasses/NoCopy.hpp>
-#include <thread>
+#include <execution>
 
 namespace SF::Engine
 {
-
     class Job : NoCopy
     {
     public:
-        Job(bool isAutoDelete, bool isCompletion = false, uint8_t priority = 0);
+        explicit Job(bool isAutoDelete, bool isCompletion = false, uint8_t priority = 0);
         enum State
         {
-            STATE_COMPLETE_OR_CANCELLED, // Default to a cancelled state so if something searches for a job, and it
-                                         // returns nothing, it is done or cancelled
+            STATE_COMPLETE_OR_CANCELLED, // Default to a canceled state so if something searches for a job, and it
+                                         // returns nothing, it is done or canceled
             STATE_SETUP,
             STATE_STARTED,
             STATE_PENDING,
