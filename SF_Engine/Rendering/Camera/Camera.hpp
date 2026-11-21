@@ -3,6 +3,7 @@
 #include <EntityComponentSystem/Component.hpp>
 #include <LowLevel/Reflection/RTTI/SerializeContext.hpp>
 #include <Math/Math.hpp>
+#include <Math/Transform.hpp>
 #include <Physics/Frustum.hpp>
 #include <Physics/Ray.hpp>
 #include <Platform/Windowing/Window.hpp>
@@ -22,7 +23,7 @@ namespace SF::Engine
             Reflection::SerializeContext::Instance()
                     .Class<Camera>()
                     ->Version(1)
-                    ->Field("Position", &Camera::position)
+                    ->Field("Transform", &Camera::transform)
                     ->Speed(0.05f)
                     ->ResetTo(0, 0, 0)
                     ->Field("FOV", &Camera::fovDeg)
@@ -85,8 +86,8 @@ namespace SF::Engine
          */
         [[nodiscard]] float GetFieldOfView() const { return fieldOfView; }
         void SetFieldOfView(float fieldOfView) { this->fieldOfView = fieldOfView; }
-        [[nodiscard]] Vec3 GetPosition() const { return position; }
-        [[nodiscard]] const Vec3 &GetRotation() const { return rotation; }
+        [[nodiscard]] Vec3 GetPosition() const { return transform.position; }
+        [[nodiscard]] Vec3 GetRotation() const { return transform.rotation.Radians().value; }
         [[nodiscard]] const Vec3 &GetVelocity() const { return velocity; }
 
         /**
@@ -141,8 +142,8 @@ namespace SF::Engine
         bool inverseZ;
         bool infiniteFarPlane{};
 
-        Vec3 position{};
-        Vec3 rotation{};
+        Transform transform;
+
         Vec3 velocity{};
 
         Mat4 viewMatrix{};
@@ -175,11 +176,11 @@ namespace SF::Engine
          */
         void CachePrevViewProjection() { prevViewProjection = GetProjection(lastAspect_) * GetView(); }
 
-        void SetPosition(Vec3 p) { position = p; }
+        void SetPosition(const Vec3 p) { transform.position = p; }
 
-        [[nodiscard]] Mat4 InfiniteFarProjection(float aspect) const
+        [[nodiscard]] Mat4 InfiniteFarProjection(const float aspect) const
         {
-            float f = 1.0f / std::tan(glm::radians(fovDeg) * 0.5f);
+            const float f = 1.0f / std::tan(glm::radians(fovDeg) * 0.5f);
             Mat4 p(0.0f);
             p[0][0] = f / aspect;
             p[1][1] = f;
@@ -203,7 +204,7 @@ namespace SF::Engine
 
         void UpdateVectors()
         {
-            float yR = glm::radians(yaw_), pR = glm::radians(pitch_);
+            float yR = radians(yaw_), pR = radians(pitch_);
             front_ = normalize(Vec3(std::cos(yR) * std::cos(pR), std::sin(pR), std::sin(yR) * std::cos(pR)));
             right_ = normalize(cross(front_, Vec3(0, 1, 0)));
             up_    = normalize(cross(right_, front_));
@@ -215,9 +216,9 @@ namespace SF::Engine
             // lookAt(position_, position_ + front_, up) loses precision at large |position_|
             // because front_ (magnitude ~1) gets swallowed into position_'s float mantissa,
             // causing the "target" to jump between discrete representable values -> jittery rotation.
-            Vec3 f = normalize(front_);
-            Vec3 r = normalize(cross(f, Vec3(0, 1, 0)));
-            Vec3 u = cross(r, f);
+            const Vec3 f = normalize(front_);
+            const Vec3 r = normalize(cross(f, Vec3(0, 1, 0)));
+            const Vec3 u = cross(r, f);
 
             Mat4 view(1.0f);
             view[0][0] = r.x;
@@ -229,9 +230,9 @@ namespace SF::Engine
             view[0][2] = -f.x;
             view[1][2] = -f.y;
             view[2][2] = -f.z;
-            view[3][0] = -glm::dot(r, position);
-            view[3][1] = -glm::dot(u, position);
-            view[3][2] = glm::dot(f, position);
+            view[3][0] = -glm::dot(r, transform.position);
+            view[3][1] = -glm::dot(u, transform.position);
+            view[3][2] = glm::dot(f, transform.position);
 
             return view;
         }
@@ -244,6 +245,28 @@ namespace SF::Engine
         float fovDeg = 60.0f;
         float minFov = 10.0f;
         float maxFov = 120.0f;
+
+        void Serialize(XMLNode &f) const override
+        {
+            auto cam = f.AddChild("Camera");
+            cam.SetAttribute("FOV", fovDeg);
+            transform.Serialize(cam);
+            cam.SetAttribute("Near", nearPlane);
+            cam.SetAttribute("Far", farPlane);
+            cam.SetAttribute("Inf", infiniteFarPlane);
+            cam.SetAttribute("Inv", inverseZ);
+        }
+
+        void Deserialize(const XMLNode &f) override
+        {
+            const auto cam = f.GetChild("Camera");
+            cam.GetAttribute("FOV", fovDeg);
+            transform.Deserialize(cam);
+            cam.GetAttribute("Near", nearPlane);
+            cam.GetAttribute("Far", farPlane);
+            cam.GetAttribute("Inf", infiniteFarPlane);
+            cam.GetAttribute("Inv", inverseZ);
+        }
     };
 
     struct Std140 CameraUBO
