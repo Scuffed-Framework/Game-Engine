@@ -74,20 +74,20 @@ namespace SF::Engine
                 // Wire up texture handle here:
                 // ImGui::Image((ImTextureID)(intptr_t)img->GetTextureID(), size);
                 // For now draw a tinted placeholder so it looks distinct.
-                dl->AddRectFilled(cursor, {cursor.x + size.x, cursor.y + size.y}, IM_COL32(30, 50, 70, 255));
-                dl->AddRect(cursor, {cursor.x + size.x, cursor.y + size.y}, IM_COL32(80, 140, 200, 255));
+                dl->AddRectFilled(cursor, {cursor.x + size.x, cursor.y + size.y}, PackCol32(30, 50, 70, 255));
+                dl->AddRect(cursor, {cursor.x + size.x, cursor.y + size.y}, PackCol32(80, 140, 200, 255));
                 const char *lbl = "Preview";
                 Vec2 lsize      = ImGui::CalcTextSize(lbl);
                 dl->AddText({cursor.x + (size.x - lsize.x) * 0.5f, cursor.y + (size.y - lsize.y) * 0.5f},
-                            IM_COL32(80, 140, 200, 255), lbl);
+                            PackCol32(80, 140, 200, 255), lbl);
             } else
             {
-                dl->AddRectFilled(cursor, {cursor.x + size.x, cursor.y + size.y}, IM_COL32(45, 45, 45, 255));
-                dl->AddRect(cursor, {cursor.x + size.x, cursor.y + size.y}, IM_COL32(100, 100, 100, 255));
+                dl->AddRectFilled(cursor, {cursor.x + size.x, cursor.y + size.y}, PackCol32(45, 45, 45, 255));
+                dl->AddRect(cursor, {cursor.x + size.x, cursor.y + size.y}, PackCol32(100, 100, 100, 255));
                 const char *lbl = "No Preview";
                 Vec2 lsize      = ImGui::CalcTextSize(lbl);
                 dl->AddText({cursor.x + (size.x - lsize.x) * 0.5f, cursor.y + (size.y - lsize.y) * 0.5f},
-                            IM_COL32(130, 130, 130, 255), lbl);
+                            PackCol32(130, 130, 130, 255), lbl);
             }
             ImGui::Dummy(size);
         }
@@ -494,7 +494,7 @@ namespace SF::Engine
             if (s_statusTimer > 0.0f)
             {
                 ImGui::Spacing();
-                ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(200, 200, 80, 255));
+                ImGui::PushStyleColor(ImGuiCol_Text, PackCol32(200, 200, 80, 255));
                 ImGui::TextUnformatted(s_statusMsg.c_str());
                 ImGui::PopStyleColor();
             }

@@ -85,6 +85,28 @@ namespace SF::Engine
         float gain       = 1.0f;
         float pitch      = 1.0f;
         float length{};
+
+        void Serialize(XMLNode &node) const override
+        {
+            Component::Serialize(node);
+            auto clip = node.AddChild("Audioclip");
+            SerializeVec3(clip, "position", position);
+            SerializeVec3(clip, "direction", direction);
+            SerializeVec3(clip, "velocity", velocity);
+            clip.SetAttribute("gain", gain);
+            clip.SetAttribute("pitch", pitch);
+        }
+
+        void Deserialize(const XMLNode &node) override
+        {
+            Component::Deserialize(node);
+            const auto clip = node.GetChild("Audioclip");
+            DeserializeVec3(clip, "position", position);
+            DeserializeVec3(clip, "direction", direction);
+            DeserializeVec3(clip, "velocity", velocity);
+            clip.GetAttribute("gain", gain);
+            clip.GetAttribute("pitch", pitch);
+        }
     };
 
     class AudioClipSystem

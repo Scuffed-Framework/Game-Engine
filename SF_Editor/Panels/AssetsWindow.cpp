@@ -844,10 +844,10 @@ namespace SF::Engine
         ImDrawList *dl = ImGui::GetWindowDrawList();
 
         // card + thumbnail well
-        dl->AddRectFilled(min, max, hovered ? IM_COL32(62, 62, 62, 255) : IM_COL32(44, 44, 44, 255), kRound);
+        dl->AddRectFilled(min, max, hovered ? PackCol32(62, 62, 62, 255) : PackCol32(44, 44, 44, 255), kRound);
         const Vec2 tMin = min + Vec2(kPad, kPad);
         const Vec2 tMax = tMin + Vec2(thumb, thumb);
-        dl->AddRectFilled(tMin, tMax, IM_COL32(20, 20, 20, 255), 3.0f);
+        dl->AddRectFilled(tMin, tMax, PackCol32(20, 20, 20, 255), 3.0f);
 
         if (card.thumbTex)
         {
@@ -879,13 +879,13 @@ namespace SF::Engine
             dl->AddText(ImGui::GetFont(), ImGui::GetFontSize(), nameMin, nameCol, card.name.c_str(), nullptr, textW);
             dl->PopClipRect();
         }
-        dl->AddText(Vec2(nameMin.x, nameMin.y + lineH * 2.0f), IM_COL32(150, 150, 150, 255), card.typeLabel.c_str());
+        dl->AddText(Vec2(nameMin.x, nameMin.y + lineH * 2.0f), PackCol32(150, 150, 150, 255), card.typeLabel.c_str());
 
         // selection: tinted fill + border
         if (card.selected)
         {
-            dl->AddRectFilled(min, max, IM_COL32(66, 150, 250, 40), kRound);
-            dl->AddRect(min, max, IM_COL32(66, 150, 250, 255), kRound, 2.0f);
+            dl->AddRectFilled(min, max, PackCol32(66, 150, 250, 40), kRound);
+            dl->AddRect(min, max, PackCol32(66, 150, 250, 255), kRound, 2.0f);
         }
 
         return result;

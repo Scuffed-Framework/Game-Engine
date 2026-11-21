@@ -138,7 +138,7 @@ namespace SF::Engine
         WindowsPlatform, // includes xbox
         Linux,
         MacIpadIPhoneOs,
-        Horizon, // nintendo swich
+        Horizon, // Nintendo Switch
         Android,
         Orbis, // ps
     };

@@ -12,6 +12,7 @@
 #include <functional>
 #include <memory>
 #include <string>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -390,8 +391,8 @@ struct std::hash<SF::Engine::DataInput>
 {
     size_t operator()(const SF::Engine::DataInput &d) const noexcept
     {
-        size_t h1 = std::hash<void *>{}(static_cast<void *>(d.file));
-        size_t h2 = std::hash<void *>{}(d.memory);
+        const size_t h1 = std::hash<void *>{}(static_cast<void *>(d.file));
+        const size_t h2 = std::hash<void *>{}(d.memory);
         return h1 ^ (h2 << 1);
     }
 }; // namespace std

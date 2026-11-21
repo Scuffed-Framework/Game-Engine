@@ -822,11 +822,23 @@ namespace SF::Engine
 
     void MemoryMappedFile::Close()
     {
-        if (m_data)
-        {
-            // Platform-specific cleanup
-            m_data = nullptr;
-        }
+#ifdef _PLATFORM_WINDOWS
+        if (m_mappingData)
+            UnmapViewOfFile(m_mappingData);
+        if (m_mappingHandle)
+            CloseHandle(m_mappingHandle);
+        if (m_fileHandle)
+            CloseHandle(m_fileHandle);
+        m_fileHandle = m_mappingHandle = nullptr;
+#else
+        if (m_mappingData)
+            munmap(m_mappingData, m_mappingSize);
+        if (m_fileDescriptor != -1)
+            close(m_fileDescriptor);
+        m_fileDescriptor = -1;
+#endif
+        m_data = m_mappingData = nullptr;
+        m_size = m_mappingSize = m_offset = 0;
     }
 
     bool MemoryMappedFile::IsOpen() const { return m_data != nullptr; }

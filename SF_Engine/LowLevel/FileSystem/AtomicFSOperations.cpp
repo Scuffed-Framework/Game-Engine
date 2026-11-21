@@ -1,6 +1,6 @@
 #include "AtomicFSOperations.hpp"
-#include <stdexcept>
 #include <mutex>
+#include <stdexcept>
 
 namespace SF::Engine
 {
@@ -9,7 +9,7 @@ namespace SF::Engine
 
     std::shared_mutex &AtomicFSOperations::MutexForPath(const std::filesystem::path &path)
     {
-        // Canonicalise so "foo/../bar" and "bar" map to the same mutex.
+        // Canonicalize so "foo/../bar" and "bar" map to the same mutex.
         std::error_code ec;
         auto canonical = std::filesystem::weakly_canonical(path, ec).string();
         if (ec)
@@ -19,12 +19,11 @@ namespace SF::Engine
         return s_pathMutexes[canonical]; // default-constructs if missing
     }
 
-    bool AtomicFSOperations::AtomicWriteFile(const std::filesystem::path &path,
-                                             const std::vector<uint8_t> &data)
+    bool AtomicFSOperations::AtomicWriteFile(const std::filesystem::path &path, const std::vector<uint8_t> &data)
     {
         std::unique_lock lock(MutexForPath(path));
 
-        auto temp = std::filesystem::path(path) += ".tmp";
+        const auto temp = std::filesystem::path(path) += ".tmp";
 
         File f(temp.string());
         if (!f.Open(FileMode::Write))
@@ -43,14 +42,12 @@ namespace SF::Engine
         return true;
     }
 
-    bool AtomicFSOperations::AtomicWriteFile(const std::filesystem::path &path,
-                                             const std::string &data)
+    bool AtomicFSOperations::AtomicWriteFile(const std::filesystem::path &path, const std::string &data)
     {
         return AtomicWriteFile(path, std::vector<uint8_t>(data.begin(), data.end()));
     }
 
-    bool AtomicFSOperations::AtomicWriteFile(const std::filesystem::path &path,
-                                             const char *data)
+    bool AtomicFSOperations::AtomicWriteFile(const std::filesystem::path &path, const char *data)
     {
         return AtomicWriteFile(path, std::string(data));
     }
