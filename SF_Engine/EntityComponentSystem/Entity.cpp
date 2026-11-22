@@ -39,6 +39,7 @@ namespace SF::Engine
     {
         if (this != &other)
         {
+            ShutdownComponents(); // components about to be overwritten
             name             = std::move(other.name);
             tags             = std::move(other.tags);
             active           = other.active;
@@ -124,7 +125,59 @@ namespace SF::Engine
         if (it == components.end())
             return false;
 
+        RetireComponent(std::move(it->second));
         components.erase(it);
         return true;
+    }
+
+    bool Entity::IsActiveInHierarchy() const
+    {
+        for (const Entity *e = this; e; e = e->parent)
+            if (!e->active)
+                return false;
+        return true;
+    }
+
+    // Callbacks may add/remove components (rehashing `components`), so never iterate the map while calling out.
+    std::vector<Component *> Entity::SnapshotComponents() const
+    {
+        std::vector<Component *> out;
+        out.reserve(components.size());
+        for (const auto &component: components | std::views::values)
+            out.push_back(component.get());
+        return out;
+    }
+
+    void Entity::SyncComponents()
+    {
+        const bool ownerActive = IsActiveInHierarchy();
+        for (Component *c: SnapshotComponents())
+            if (!c->IsRemoved())
+                c->SyncLifecycle(ownerActive);
+    }
+
+    void Entity::UpdateComponents()
+    {
+        for (Component *c: SnapshotComponents())
+            if (c->IsLive()) // false once an earlier callback removed or disabled it
+                c->Update();
+    }
+
+    void Entity::ShutdownComponents()
+    {
+        for (Component *c: SnapshotComponents())
+            c->ShutdownLifecycle();
+    }
+
+    void Entity::RetireComponent(std::unique_ptr<Component> component)
+    {
+        if (!component)
+            return;
+
+        component->ShutdownLifecycle();
+        component->SetRemoved(true);
+
+        if (ownerRegistry && ownerRegistry->IsTicking())
+            graveyard_.push_back(std::move(component)); // a callback up the stack may still point at it
     }
 } // namespace SF::Engine

@@ -18,6 +18,11 @@ namespace SF::Engine
 
         void Update() { registry.CleanupRemovedEntities(); }
 
+        /**
+         * @brief One frame of component lifecycle (OnEnable/OnDisable/Start/Update). See EntityRegistry::Tick().
+         */
+        void Tick() { registry.Tick(); }
+
         void CleanupRemovedEntities() { registry.CleanupRemovedEntities(); }
 
         Entity *GetEntity(const std::string &name) const { return registry.FindByName(name); }

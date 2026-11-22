@@ -44,7 +44,8 @@ namespace SF::Engine
          */
         explicit Entity(const std::string &entityName);
 
-        virtual ~Entity()                 = default;
+        // Safety net: normally the registry has already shut components down (Clear/DestroyEntity).
+        virtual ~Entity() { ShutdownComponents(); }
         Entity(const Entity &)            = delete;
         Entity &operator=(const Entity &) = delete;
         Entity(Entity &&other) noexcept;
@@ -111,7 +112,10 @@ namespace SF::Engine
             auto component  = std::make_unique<T>(std::forward<Args>(args)...);
             T *componentPtr = component.get();
             componentPtr->SetOwner(this);
-            components[std::type_index(typeid(T))] = std::move(component);
+            auto &slot = components[std::type_index(typeid(T))];
+            if (slot)
+                RetireComponent(std::move(slot)); // replaced: shut it down properly
+            slot = std::move(component);
             return componentPtr;
         }
 
@@ -232,6 +236,7 @@ namespace SF::Engine
             auto it = components.find(std::type_index(typeid(T)));
             if (it != components.end())
             {
+                RetireComponent(std::move(it->second));
                 components.erase(it);
                 return true;
             }
@@ -269,6 +274,27 @@ namespace SF::Engine
             }
             return false;
         }
+
+        /**
+         * @brief True if this entity and every ancestor is active.
+         */
+        [[nodiscard]] bool IsActiveInHierarchy() const;
+
+        /**
+         * @brief Lifecycle fan-out, driven by EntityRegistry::Tick(): OnEnable/OnDisable/Start reconciliation.
+         *        Safe against components being added/removed by the callbacks.
+         */
+        void SyncComponents();
+
+        /**
+         * @brief Calls Update() on every live component (enabled, started, not removed).
+         */
+        void UpdateComponents();
+
+        /**
+         * @brief OnDisable/Shutdown on every component. Idempotent per component.
+         */
+        void ShutdownComponents();
 
         Entity *GetParent() const { return parent; }
 
@@ -378,6 +404,13 @@ namespace SF::Engine
     private:
         friend class EntityRegistry;
 
+        // Shuts the component down and takes it out of play. While the registry is ticking it is parked in
+        // graveyard_ (callbacks up the stack may still hold a pointer) and destroyed by FlushGraveyard().
+        void RetireComponent(std::unique_ptr<Component> component);
+        void FlushGraveyard() { graveyard_.clear(); }
+        [[nodiscard]] std::vector<Component *> SnapshotComponents() const;
+        std::vector<std::unique_ptr<Component>> graveyard_;
+
         // Set by EntityRegistry while this entity is registered, null otherwise.
         // Lets SetName / SetParent keep the registry consistent.
         EntityRegistry *ownerRegistry = nullptr;
@@ -424,6 +457,9 @@ namespace SF::Engine
          */
         void Clear()
         {
+            ++tickDepth_; // a Shutdown() callback that destroys entities is deferred, not re-entered
+            ForEach([](Entity *e) { e->ShutdownComponents(); }); // while the whole tree is still alive
+            --tickDepth_;
             roots.clear();
             lookup.clear();
             nameIndex.clear();
@@ -489,6 +525,17 @@ namespace SF::Engine
         {
             if (!IsValid(entity))
                 return;
+
+            // Mid-Tick a callback may be running on this very entity: defer to CleanupRemovedEntities().
+            if (tickDepth_ > 0)
+            {
+                entity->MarkForRemoval();
+                return;
+            }
+
+            ++tickDepth_; // a Shutdown() callback that destroys entities is deferred, not re-entered
+            VisitRecursive(entity, [](Entity *e) { e->ShutdownComponents(); });
+            --tickDepth_;
 
             // Unregister first: this also clears ids/back-pointers while the
             // whole subtree is still alive.
@@ -592,6 +639,42 @@ namespace SF::Engine
         {
             for (auto &root: roots)
                 VisitRecursive(root.get(), fn);
+        }
+
+        /**
+         * @brief True while Tick() is running; destruction/removal of components and entities is deferred.
+         */
+        [[nodiscard]] bool IsTicking() const { return tickDepth_ > 0; }
+
+        /**
+         * @brief Runs one frame of component lifecycle: OnEnable/OnDisable/Start for everything, then Update()
+         *        for everything active. Entities spawned during the tick are picked up next tick.
+         *        Entities marked for removal are skipped (CleanupRemovedEntities() destroys them).
+         */
+        void Tick()
+        {
+            std::vector<EntityId> ids;
+            ForEach([&](Entity *e) { ids.push_back(e->GetId()); });
+
+            {
+                struct Scope
+                {
+                    int &depth;
+                    explicit Scope(int &d) : depth(d) { ++depth; }
+                    ~Scope() { --depth; }
+                } scope{tickDepth_};
+
+                // Ids, not pointers, and re-looked-up each time: callbacks may destroy entities.
+                for (const EntityId id: ids)
+                    if (Entity *e = Find(id); e && !e->IsMarkedForRemoval())
+                        e->SyncComponents();
+
+                for (const EntityId id: ids)
+                    if (Entity *e = Find(id); e && !e->IsMarkedForRemoval() && e->IsActiveInHierarchy())
+                        e->UpdateComponents();
+            }
+
+            ForEach([](Entity *e) { e->FlushGraveyard(); });
         }
 
         void MarkForRemoval(Entity *entity)
@@ -769,6 +852,7 @@ namespace SF::Engine
             ForEach([this](Entity *e) { e->ownerRegistry = this; });
         }
 
+        int tickDepth_ = 0;
         std::vector<std::unique_ptr<Entity>> roots;
         std::unordered_map<EntityId, Entity *> lookup;
         std::unordered_multimap<std::string, Entity *> nameIndex; // supports duplicate names
