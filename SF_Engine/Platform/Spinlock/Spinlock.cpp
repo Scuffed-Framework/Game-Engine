@@ -12,7 +12,7 @@ namespace SF::Engine
             // Spin on a read-only load until the lock looks free
             while (atomic_load_explicit(lock, STD memory_order_relaxed) != 0)
             {
-                PAUSE();
+                PAUSE(); // asm volatile("pause")
             }
         }
     }
