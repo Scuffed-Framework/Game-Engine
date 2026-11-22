@@ -81,8 +81,6 @@ namespace SF::Engine
                     return JoystickPowerState::Unknown;
             }
         }
-
-        std::string SafeStr(const char *s) { return s ? std::string(s) : std::string(); }
     } // namespace
 
     bool Joystick::Open(const uint32_t id, const JoystickPort slot)
