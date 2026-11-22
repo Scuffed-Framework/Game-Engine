@@ -229,7 +229,7 @@ namespace SF::Engine
                     return "Material";
                 case AssetType::Library:
                     return "Library";
-                case AssetTypeStateMachine:
+                case AssetType::AnimationStateMachine:
                     return "Animation State Machine";
                 default:
                     return "Unknown";
