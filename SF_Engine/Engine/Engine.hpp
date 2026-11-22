@@ -1,14 +1,5 @@
 #pragma once
 
-// Macro Section
-#define MEMORY_BARRIER() asm volatile("" ::: "memory")
-#define PREFETCH(addr) asm volatile("prefetcht0 %0" ::"m"(*(const char *) (addr)))
-#define PREFETCHW(addr) asm volatile("prefetcht0 %0" ::"m"(*(char *) (addr)))
-#define PAUSE() asm volatile("pause")
-#define CPU_RELAX() asm volatile("rep nop" ::: "memory")
-#define NO_MANGLE __attribute__((visibility("default"))) extern "C"
-#define NO_MANGLE_EXPORT __attribute__((visibility("default"))) __declspec(dllexport) extern "C"
-
 #include <LowLevel/LayerStack/LayerStack.hpp>
 #include "Application/Application.hpp"
 #include "Log/Log.hpp"
