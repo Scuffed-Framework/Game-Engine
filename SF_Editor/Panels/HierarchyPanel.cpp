@@ -25,10 +25,13 @@ namespace SF::Engine
         {
             if (filter.empty() || ContainsNoCase(e->GetName(), filter))
                 return true;
-            for (const auto &c: e->GetChildren())
-                if (Matches(c.get(), filter))
-                    return true;
-            return false;
+            return std::ranges::all_of(e->GetChildren(),
+                                       [filter](auto &c)
+                                       {
+                                           if (Matches(c.get(), filter))
+                                               return true;
+                                           return false;
+                                       });
         }
     } // namespace
 
@@ -49,7 +52,7 @@ namespace SF::Engine
         ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 12.0f);
         ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, Vec2(10, 5));
         ImGui::SetNextItemWidth(-1);
-        static const std::string hint("Search...");
+        static constexpr std::string hint("Search...");
         InputTextWithHint("##search", &hint, &m_filter);
         ImGui::PopStyleVar(2);
         ImGui::Spacing();

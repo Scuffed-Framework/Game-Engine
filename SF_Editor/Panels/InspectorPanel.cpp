@@ -123,6 +123,13 @@ namespace SF::Engine
             {
                 if (DrawReflected(type, component.get(), "##w"))
                     OnComponentEdited(*component);
+            } else
+            {
+                // Never let a component vanish from the inspector just because it has no Reflect().
+                std::string label(component->GetTypeName());
+                if (label.empty())
+                    label = ::SF::Reflection::Detail::Demangle(type.name());
+                ImGui::TextDisabled("%s  (no reflected fields)", label.c_str());
             }
 
             ImGui::PopID();
