@@ -35,7 +35,6 @@
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-function"
 
-#include <Globals.hpp>
 #include <algorithm>
 #include <chrono>
 #include <cmath>
@@ -45,6 +44,7 @@
 #include <optional>
 #include <sstream>
 #include <string>
+#include <thread>
 #include <utility>
 
 namespace SF::Engine
