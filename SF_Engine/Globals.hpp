@@ -75,6 +75,7 @@
     #define NO_MANGLE extern "C" __attribute__((visibility("default")))
     #define NO_MANGLE_EXPORT extern "C" __attribute__((visibility("default")))
 #endif
+
 namespace SF::Engine
 {
     inline constexpr STD string EngineCVarNamespace       = "SFE";

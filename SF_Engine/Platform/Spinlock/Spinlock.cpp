@@ -1,7 +1,7 @@
 #include "Spinlock.hpp"
 namespace SF::Engine
 {
-    void Spinlock::Lock(spinlock_t *lock)
+    void Spinlock::Lock(spinlock_t *lock) noexcept
     {
         int32_t expected = 0;
         // Use acquire semantics so hardware reads after the lock aren't reordered before it
@@ -17,7 +17,7 @@ namespace SF::Engine
         }
     }
     
-    void Spinlock::Unlock(spinlock_t *lock)
+    void Spinlock::Unlock(spinlock_t *lock) noexcept
     {
         // Release semantics ensure all hardware writes finish before releasing the lock
         atomic_store_explicit(lock, 0, STD memory_order_release);
