@@ -383,6 +383,11 @@ namespace SF::Engine
     void Scene::Update()
     {
         ZoneScopedN("Scene::Update systems");
+        if (!IsPaused())
+        {
+            ZoneScopedN("Entity lifecycle");
+            entities.Tick(); // OnEnable/OnDisable/Start/Update on components
+        }
         systems.ForEach(
                 [](auto, auto system)
                 {
