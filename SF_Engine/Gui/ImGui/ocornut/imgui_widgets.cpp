@@ -4642,8 +4642,7 @@ bool ImGui::InputTextMultiline(const char *label, char *buf, size_t buf_size, co
 }
 
 bool ImGui::InputTextWithHint(const char *label, const char *hint, char *buf, size_t buf_size,
-                              ImGuiInputTextFlags flags, ImGuiInputTextCallback callback,
-                              void *user_data)
+                              ImGuiInputTextFlags flags, ImGuiInputTextCallback callback, void *user_data)
 {
     IM_ASSERT(!(flags & ImGuiInputTextFlags_Multiline)); // call InputTextMultiline() or  InputTextEx() manually if you
                                                          // need multi-line + hint.
@@ -6740,8 +6739,8 @@ bool ImGui::ColorEdit4(const char *label, float col[4], ImGuiColorEditFlags flag
         flags |= (g.IO.ConfigColorEditFlags & ImGuiColorEditFlags_InputMask_);
     flags |= (g.IO.ConfigColorEditFlags & ~(ImGuiColorEditFlags_DisplayMask_ | ImGuiColorEditFlags_DataTypeMask_ |
                                             ImGuiColorEditFlags_PickerMask_ | ImGuiColorEditFlags_InputMask_));
-    IM_ASSERT(ImIsPowerOfTwo(flags & ImGuiColorEditFlags_DisplayMask_)); // Check that only 1 is selected
-    IM_ASSERT(ImIsPowerOfTwo(flags & ImGuiColorEditFlags_InputMask_));   // Check that only 1 is selected
+    IM_ASSERT(ImIsPowerOfTwo((int) flags & ImGuiColorEditFlags_DisplayMask_)); // Check that only 1 is selected
+    IM_ASSERT(ImIsPowerOfTwo((int) flags & ImGuiColorEditFlags_InputMask_));   // Check that only 1 is selected
 
     const bool alpha     = (flags & ImGuiColorEditFlags_NoAlpha) == 0;
     const bool hdr       = (flags & ImGuiColorEditFlags_HDR) != 0;

@@ -4511,20 +4511,20 @@ enum ImGuiListClipperFlags_
 // anything else than the default is DirectX9.
 #define IMGUI_DISABLE_DEBUG_TOOLS
 
-constexpr uint32_t IM_COL32_R_SHIFT = 0;
-constexpr uint32_t IM_COL32_G_SHIFT = 8;
-constexpr uint32_t IM_COL32_B_SHIFT = 16;
-constexpr uint32_t IM_COL32_A_SHIFT = 24;
-constexpr uint32_t IM_COL32_A_MASK  = 0xFF000000;
+inline constexpr uint32_t IM_COL32_R_SHIFT = 0;
+inline constexpr uint32_t IM_COL32_G_SHIFT = 8;
+inline constexpr uint32_t IM_COL32_B_SHIFT = 16;
+inline constexpr uint32_t IM_COL32_A_SHIFT = 24;
+inline constexpr uint32_t IM_COL32_A_MASK  = 0xFF000000;
 
 constexpr uint32_t PackCol32(const uint32_t R, const uint32_t G, const uint32_t B, const uint32_t A)
 {
     return (A << IM_COL32_A_SHIFT) | (B << IM_COL32_B_SHIFT) | (G << IM_COL32_G_SHIFT) | (R << IM_COL32_R_SHIFT);
 }
 
-constexpr uint32_t IM_COL32_WHITE       = PackCol32(255, 255, 255, 255); // Opaque white = 0xFFFFFFFF
-constexpr uint32_t IM_COL32_BLACK       = PackCol32(0, 0, 0, 255);       // Opaque black
-constexpr uint32_t IM_COL32_BLACK_TRANS = PackCol32(0, 0, 0, 0);         // Transparent black = 0x00000000
+inline constexpr uint32_t IM_COL32_WHITE       = PackCol32(255, 255, 255, 255); // Opaque white = 0xFFFFFFFF
+inline constexpr uint32_t IM_COL32_BLACK       = PackCol32(0, 0, 0, 255);       // Opaque black
+inline constexpr uint32_t IM_COL32_BLACK_TRANS = PackCol32(0, 0, 0, 0);         // Transparent black = 0x00000000
 
 //-----------------------------------------------------------------------------
 // [SECTION] Multi-Select API flags and structures (ImGuiMultiSelectFlags, ImGuiSelectionRequestType,
