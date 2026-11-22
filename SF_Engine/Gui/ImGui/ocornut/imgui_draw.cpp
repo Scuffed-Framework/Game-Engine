@@ -4045,7 +4045,7 @@ static void ImFontAtlasBuildUpdateTexDataLines(ImFontAtlas *atlas)
     // The +2 here is to give space for the end caps, whilst height +1 is to accommodate the fact we have a zero-width
     // row This generates a triangular shape in the texture, with the various line widths stacked on top of each other
     // to allow interpolation between them
-    for (int n = 0; n < IM_DRAWLIST_TEX_LINES_WIDTH_MAX + 1; n++) // +1 because of the zero-width row
+    for (int n = 0; n < (int)IM_DRAWLIST_TEX_LINES_WIDTH_MAX + 1; n++) // +1 because of the zero-width row
     {
         // Each line consists of at least two empty pixels at the ends, with a line of solid pixels in the middle
         const int y          = n;

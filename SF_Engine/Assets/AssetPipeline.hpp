@@ -168,6 +168,7 @@ namespace SF::Engine
 
     using AssetFactoryFn = std::function<std::shared_ptr<AssetBase>()>;
 
+    // TODO: LoadResourceFiles()
     class AssetController : public ModuleRegistrar<AssetController>
     {
         friend class ModuleRegistrar<AssetController>;

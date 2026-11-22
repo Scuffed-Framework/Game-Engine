@@ -56,7 +56,7 @@ namespace SF::Engine
 
         [[nodiscard]] virtual std::unique_ptr<Component> Clone() const { return nullptr; }
 
-        // ---- Lifecycle driver (called by Entity / EntityRegistry, not by gameplay code) ----
+        // Lifecycle driver (called by Entity / EntityRegistry, not by gameplay code)
 
         /** True once Start() has run. */
         [[nodiscard]] bool HasStarted() const { return life.started; }

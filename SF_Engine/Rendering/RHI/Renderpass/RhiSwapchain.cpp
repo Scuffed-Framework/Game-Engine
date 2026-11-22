@@ -178,7 +178,6 @@ namespace SF::Engine
     {
         if (fence != VK_NULL_HANDLE)
         {
-            const auto t0         = std::chrono::steady_clock::now();
             const auto waitResult = vkWaitForFences(logicalDevice, 1, &fence, VK_TRUE, 1'000'000'000);
             if (waitResult == VK_TIMEOUT)
                 return VK_TIMEOUT; // GPU/present stalled, not a stale swapchain; caller decides
