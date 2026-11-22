@@ -2,7 +2,6 @@
 #include <3rdPartyLibs/Rocket.hpp>
 #include <Assets/AssetPipeline.hpp>
 #include <Assets/AssetTextures.hpp>
-#include <Gui/ImGui/IconHeaders/IconMaterialDesign.hpp>
 #include <Gui/ImGui/UIRegistry.hpp>
 #include <Gui/ImGui/ocornut/imgui.h>
 #include <Gui/ImGui/ocornut/imgui_internal.h>

@@ -122,6 +122,8 @@ namespace SF::Engine
             static_assert(N >= 2 && N <= 4, "VecRow supports 2 to 4 components");
             const float btnW = ImGui::GetFrameHeight();
             bool changed     = false;
+            ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 0.0f);
+            ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 0.0f);
 
             ImGui::PushID(id);
             for (int i = 0; i < N; ++i)
@@ -155,6 +157,8 @@ namespace SF::Engine
                 ImGui::PopID();
             }
             ImGui::PopID();
+            ImGui::PopStyleVar();
+            ImGui::PopStyleVar();
             return changed;
         }
 

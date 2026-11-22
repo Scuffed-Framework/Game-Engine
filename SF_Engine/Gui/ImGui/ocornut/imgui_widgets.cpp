@@ -4642,7 +4642,8 @@ bool ImGui::InputTextMultiline(const char *label, char *buf, size_t buf_size, co
 }
 
 bool ImGui::InputTextWithHint(const char *label, const char *hint, char *buf, size_t buf_size,
-                              ImGuiInputTextFlags flags, ImGuiInputTextCallback callback, void *user_data)
+                              ImGuiInputTextFlags flags, ImGuiInputTextCallback callback,
+                              void *user_data)
 {
     IM_ASSERT(!(flags & ImGuiInputTextFlags_Multiline)); // call InputTextMultiline() or  InputTextEx() manually if you
                                                          // need multi-line + hint.

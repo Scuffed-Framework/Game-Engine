@@ -32,10 +32,12 @@ namespace SF::Engine
         virtual void Shutdown() {}
 
         /**
-         * @brief Called every time the fixed interval passes. You need to register this function in Start() using a
-         * Timers::Get()->... lambda
+         * @brief You need to register this function in Start() using a
+         * @code
+         * Timers::Get()->Repeat([this]{FixedUpdate();}, interval, condition or #of repeats)
+         * @endcode lambda
          */
-        virtual void FixedUpdate(DurationAsNanoseconds /*t*/) {}
+        virtual void FixedUpdate() {}
 
         /**
          * @brief reset component stuff (override)

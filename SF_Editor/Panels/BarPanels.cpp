@@ -205,6 +205,7 @@ namespace SF::Engine
         {
             ImGui::MenuItem("Hierarchy", nullptr, &ShowHierarchy);
             ImGui::MenuItem("Inspector", nullptr, &ShowInspector);
+            ImGui::MenuItem("Asset Browser", nullptr, &ShowAssetBrowser);
             ImGui::MenuItem("Pipeline Controller", nullptr, &ShowExecutingPasses);
             ImGui::MenuItem("Audio Tests", nullptr, &audioTests->gShowAudioTools);
             ImGui::EndMenu();

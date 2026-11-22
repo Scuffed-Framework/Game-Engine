@@ -91,7 +91,7 @@ namespace SF::Engine
                 {
                     if (!m.enumItems)
                     {
-                        ImGui::TextDisabled("(enum: add .Enum(\"A\\0B\\0\"))");
+                        ImGui::TextDisabled(R"((enum: add .Enum("A\0B\0")))");
                         return false;
                     }
                     int v = f.GetEnum(obj);

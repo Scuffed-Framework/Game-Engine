@@ -29,6 +29,8 @@
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-function"
 
+#include <Gui/ImGui/IconHeaders/IconMaterialDesign.hpp>
+
 namespace SF::Engine
 {
     namespace
@@ -50,7 +52,7 @@ namespace SF::Engine
                                                     "Library",
                                                     "AnimationStateMachine"};
 
-        constexpr char kWindowTitle[]   = ICON_MD_FOLDER " Asset Browser";
+        constexpr char kWindowTitle[]   = "Asset Browser";
         constexpr char kAssetPayload[]  = "SF_ASSET";  // ImGui drag-drop payload: a 16-byte asset UUID
         constexpr char kFolderPayload[] = "SF_FOLDER"; // payload: UTF-8 path of a folder
         constexpr char kScenePayload[]  = "SF_SCENE";  // payload: UTF-8 path of a scene file
@@ -301,7 +303,24 @@ namespace SF::Engine
     void AssetBrowser::Draw()
     {
         if (!ProjectManager::Get()->IsAProjectLoaded())
+        {
+            // Keep the panel visible so it doesn't look like it's missing; forget the old project's folder.
+            m_windowRectValid = false;
+            if (!m_currentPath.empty())
+            {
+                m_currentPath.clear();
+                m_currentPathText.clear();
+                m_dirDirty = true;
+            }
+            if (ImGui::Begin(kWindowTitle))
+            {
+                ImGui::TextDisabled("No project loaded.");
+                if (ImGui::Button("Open / Create Project"))
+                    ProjectManager::Get()->OpenProjectManagerWindow();
+            }
+            ImGui::End();
             return;
+        }
 
         EnsureIconsLoaded();
         SyncAssetsWithDisk(false);
@@ -309,7 +328,7 @@ namespace SF::Engine
         ProcessPendingDrops();
         ProcessSceneAssetDrag();
 
-        if (!ImGui::Begin(kWindowTitle, nullptr, ImGuiWindowFlags_MenuBar))
+        if (!ImGui::Begin(kWindowTitle, &ShowAssetBrowser, ImGuiWindowFlags_MenuBar))
         {
             m_windowRectValid = false;
             ImGui::End();
@@ -1141,19 +1160,19 @@ namespace SF::Engine
         if (!ImGui::BeginPopupContextItem("AssetContext"))
             return;
 
-        if (ImGui::MenuItem(ICON_MD_OPEN_IN_NEW " Open"))
+        if (ImGui::MenuItem(" Open"))
             m_selectedAsset = asset->uuid;
         // Procedural assets have no file, so there is nothing to rename on disk.
-        if (ImGui::MenuItem(ICON_MD_DRIVE_FILE_RENAME_OUTLINE " Rename", nullptr, false, !asset->assetPath.empty()))
+        if (ImGui::MenuItem(" Rename", nullptr, false, !asset->assetPath.empty()))
             BeginRenameAsset(asset);
-        if (ImGui::MenuItem(ICON_MD_DELETE " Delete"))
+        if (ImGui::MenuItem(" Delete"))
             RequestDeleteAsset(asset);
         ImGui::Separator();
-        if (ImGui::MenuItem(ICON_MD_SAVE " Save"))
+        if (ImGui::MenuItem(" Save"))
             asset->Save();
-        if (ImGui::MenuItem(ICON_MD_CONTENT_COPY " Copy UUID"))
+        if (ImGui::MenuItem(" Copy UUID"))
             ImGui::SetClipboardText(asset->uuid.ToString().c_str());
-        if (ImGui::MenuItem(ICON_MD_CONTENT_COPY " Copy Path", nullptr, false, !asset->assetPath.empty()))
+        if (ImGui::MenuItem(" Copy Path", nullptr, false, !asset->assetPath.empty()))
             ImGui::SetClipboardText(asset->assetPath.string().c_str());
 
         ImGui::EndPopup();

@@ -6,8 +6,5 @@ namespace SF::Engine
     {
     public:
         static void SetStyle();
-        static void SetStyle2();
-        static void SetStyle3();
-        static void SetStyle4();
     };
-}
+} // namespace SF::Engine

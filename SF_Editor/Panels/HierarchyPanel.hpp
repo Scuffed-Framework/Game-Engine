@@ -10,10 +10,15 @@
 
 namespace SF::Engine
 {
+    class Image2d;
     class EntityRegistry;
 
     class HierarchyPanel : public StaticSingleInstancePanel<HierarchyPanel>
     {
+        std::shared_ptr<Image2d> m_iconEye, m_iconEyeOff, m_iconEntity, m_iconFolder, m_iconWorld;
+        std::string m_filter;
+        void DrawEntityRow(Entity *e);
+
     public:
         HierarchyPanel()
         {

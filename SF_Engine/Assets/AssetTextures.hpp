@@ -205,6 +205,77 @@ namespace SF::Engine
             body += LogoBody();
             return Svg(body);
         }
+
+        inline std::string FolderColoredSvg(std::string_view back, std::string_view frontTop,
+                                            std::string_view frontBottom)
+        {
+            std::string s;
+            s += R"(<defs><linearGradient id="ff" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color=")";
+            s += frontTop;
+            s += R"("/><stop offset="1" stop-color=")";
+            s += frontBottom;
+            s += R"("/></linearGradient></defs>)";
+            s += R"(<path d="M24 56a16 16 0 0 1 16-16h60l24 24h92a16 16 0 0 1 16 16v128a16 16 0 0 1-16 16H40a16 16 0 0 1-16-16z" fill=")";
+            s += back;
+            s += R"("/>)";
+            s += R"SVG(<path d="M24 104a16 16 0 0 1 16-16h176a16 16 0 0 1 16 16v104a16 16 0 0 1-16 16H40a16 16 0 0 1-16-16z" fill="url(#ff)"/>)SVG";
+            return Svg(s);
+        }
+
+        struct FolderTint
+        {
+            std::string_view back, top, bottom;
+        };
+        inline constexpr FolderTint kFolderOrange{"#B87A1E", "#F2B24A", "#D9922A"}; // Unreal default
+        inline constexpr FolderTint kFolderBlue{"#1F5FB8", "#4FA3FF", "#2A7FE0"};
+        inline constexpr FolderTint kFolderGreen{"#2E7D3E", "#6FD08A", "#3FAE5C"};
+        inline constexpr FolderTint kFolderRed{"#A8322B", "#FF7A70", "#E04A3F"};
+        inline constexpr FolderTint kFolderPurple{"#6A3FA8", "#B58CFF", "#8A5CE0"};
+        inline constexpr FolderTint kFolderGrey{"#5A5A5A", "#A8A8A8", "#808080"};
+
+        inline std::string FolderTintedSvg(const FolderTint &t) { return FolderColoredSvg(t.back, t.top, t.bottom); }
+
+        // Eye (visible). Light grey so it reads on the dark panel.
+        inline std::string EyeSvg()
+        {
+            return Svg(R"svg(
+<path d="M16 128C48 72 92 48 128 48s80 24 112 80c-32 56-76 80-112 80S48 184 16 128z"
+      fill="none" stroke="#C0C0C0" stroke-width="16" stroke-linejoin="round"/>
+<circle cx="128" cy="128" r="32" fill="#C0C0C0"/>
+)svg");
+        }
+
+        // Eye with a slash (hidden / disabled).
+        inline std::string EyeClosedSvg()
+        {
+            return Svg(R"svg(
+<path d="M16 128C48 72 92 48 128 48s80 24 112 80c-32 56-76 80-112 80S48 184 16 128z"
+      fill="none" stroke="#6E6E6E" stroke-width="16" stroke-linejoin="round"/>
+<circle cx="128" cy="128" r="32" fill="#6E6E6E"/>
+<path d="M44 220L212 36" stroke="#1A1A1A" stroke-width="40" stroke-linecap="round"/>
+<path d="M44 220L212 36" stroke="#6E6E6E" stroke-width="16" stroke-linecap="round"/>
+)svg");
+        }
+
+        // Generic entity (isometric cube, like Unreal's StaticMeshActor icon).
+        inline std::string EntityCubeSvg()
+        {
+            return Svg(R"svg(
+<path d="M128 24L224 76V180L128 232L32 180V76Z" fill="#8C8C8C"/>
+<path d="M128 128L32 76L128 24L224 76Z" fill="#C8C8C8"/>
+<path d="M128 128V232L32 180V76Z" fill="#6A6A6A"/>
+<path d="M128 128V232L224 180V76Z" fill="#9A9A9A"/>
+)svg");
+        }
+
+        // Scene / world root (mountain-and-pillar glyph, like Unreal's World icon).
+        inline std::string WorldSvg()
+        {
+            return Svg(R"svg(
+<path d="M16 208L88 88L128 152L160 104L240 208Z" fill="#C0C0C0"/>
+<rect x="104" y="40" width="16" height="64" fill="#C0C0C0"/>
+)svg");
+        }
     } // namespace EmbeddedIcons
 
     // Same entry points as before; the optional size gives crisp icons at any resolution.
@@ -251,5 +322,25 @@ namespace SF::Engine
     inline std::shared_ptr<Image2d> GetEngineLogo(uint32_t size = 256)
     {
         return EmbeddedIcons::Construct(EmbeddedIcons::EngineSvg(), size);
+    }
+    inline std::shared_ptr<Image2d> GetFolderTintedLogo(const EmbeddedIcons::FolderTint &t, uint32_t size = 256)
+    {
+        return EmbeddedIcons::Construct(EmbeddedIcons::FolderTintedSvg(t), size);
+    }
+    inline std::shared_ptr<Image2d> GetEyeLogo(uint32_t size = 256)
+    {
+        return EmbeddedIcons::Construct(EmbeddedIcons::EyeSvg(), size);
+    }
+    inline std::shared_ptr<Image2d> GetEyeClosedLogo(uint32_t size = 256)
+    {
+        return EmbeddedIcons::Construct(EmbeddedIcons::EyeClosedSvg(), size);
+    }
+    inline std::shared_ptr<Image2d> GetEntityLogo(uint32_t size = 256)
+    {
+        return EmbeddedIcons::Construct(EmbeddedIcons::EntityCubeSvg(), size);
+    }
+    inline std::shared_ptr<Image2d> GetWorldLogo(uint32_t size = 256)
+    {
+        return EmbeddedIcons::Construct(EmbeddedIcons::WorldSvg(), size);
     }
 } // namespace SF::Engine
