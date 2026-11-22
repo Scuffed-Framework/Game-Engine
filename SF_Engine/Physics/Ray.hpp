@@ -2,11 +2,12 @@
 
 #include <Math/Matrix.hpp>
 #include <Math/Vector.hpp>
+#include <optional>
 
 namespace SF::Engine
 {
     /**
-     * @brief Class that represents a 3 dimensional ray.
+     * @brief Class that represents a 3-dimensional ray.
      */
     class Ray
     {
@@ -33,7 +34,7 @@ namespace SF::Engine
          * @param distance Distance down the ray to sample.
          * @return The destination vector.
          */
-        Vec3 GetPointOnRay(float distance) const;
+        [[nodiscard]] Vec3 GetPointOnRay(float distance) const;
 
         /**
          * Converts a position from world space to screen space.
@@ -41,16 +42,18 @@ namespace SF::Engine
          * @return The destination vector X and Y being screen space coords and Z being the distance
          * to the camera.
          */
-        Vec3 ConvertToScreenSpace(const Vec3 &position) const;
+        [[nodiscard]] Vec3 ConvertToScreenSpace(const Vec3 &position) const;
 
-        bool IsUseMouse() const { return useMouse; }
+        [[nodiscard]] bool IsUseMouse() const { return useMouse; }
         void SetUseMouse(bool useMouse) { this->useMouse = useMouse; }
 
-        const Vec2 &GetScreenStart() const { return screenStart; }
+        [[nodiscard]] const Vec2 &GetScreenStart() const { return screenStart; }
         void SetScreenStart(const Vec2 &screenStart) { this->screenStart = screenStart; }
 
-        const Vec3 &GetOrigin() const { return origin; }
-        const Vec3 &GetCurrentRay() const { return currentRay; }
+        [[nodiscard]] const Vec3 &GetOrigin() const { return origin; }
+        [[nodiscard]] const Vec3 &GetCurrentRay() const { return currentRay; }
+
+        [[nodiscard]] std::optional<float> IntersectTriangle(const Vec3 &v0, const Vec3 &v1, const Vec3 &v2) const;
 
     private:
         void UpdateNormalizedDeviceCoordinates(float mouseX, float mouseY);
@@ -60,16 +63,16 @@ namespace SF::Engine
         bool useMouse;
         Vec2 screenStart;
 
-        Mat4 projectionMatrix, viewMatrix;
+        Mat4 projectionMatrix{}, viewMatrix{};
 
-        Vec2 normalizedCoords;
-        Vec4 clipCoords;
-        Vec4 eyeCoords;
+        Vec2 normalizedCoords{};
+        Vec4 clipCoords{};
+        Vec4 eyeCoords{};
 
-        Mat4 invertedProjection, invertedView;
-        Vec4 rayWorld;
+        Mat4 invertedProjection{}, invertedView{};
+        Vec4 rayWorld{};
 
-        Vec3 origin;
-        Vec3 currentRay;
+        Vec3 origin{};
+        Vec3 currentRay{};
     };
-}
+} // namespace SF::Engine
