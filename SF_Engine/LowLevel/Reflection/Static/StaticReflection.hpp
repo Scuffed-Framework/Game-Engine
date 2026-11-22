@@ -1,7 +1,7 @@
 #pragma once
 /*
 Compile-time reflection, no external deps (C++17, MSVC / Clang / GCC).
-    1. Type names            SF::Reflect::TypeName<T>(), StaticTypeId<T>()
+    1. Type names            SF::Reflection::TypeName<T>(), StaticTypeId<T>()
     2. Enum reflection       enum_count / enum_values / enum_names / enum_name /
                             enum_cast / enum_index / enum_contains / enum_for_each
     3. Flag enums            enum_flags_name / enum_flags_cast
@@ -9,10 +9,10 @@ Compile-time reflection, no external deps (C++17, MSVC / Clang / GCC).
 
     enum class Blend : uint8_t { Opaque, Alpha, Additive };
 
-    static_assert(SF::Reflect::enum_count<Blend>() == 3);
-    constexpr auto n = SF::Reflect::enum_name(Blend::Alpha);      // "Alpha"
-    auto b = SF::Reflect::enum_cast<Blend>("Additive");           // optional<Blend>
-    auto c = SF::Reflect::enum_cast<Blend>(1);                    // optional<Blend>, Alpha
+    static_assert(SF::Reflection::enum_count<Blend>() == 3);
+    constexpr auto n = SF::Reflection::enum_name(Blend::Alpha);      // "Alpha"
+    auto b = SF::Reflection::enum_cast<Blend>("Additive");           // optional<Blend>
+    auto c = SF::Reflection::enum_cast<Blend>(1);                    // optional<Blend>, Alpha
 
 Values are discovered by probing a range (default -128..128, or 0..128 for
 unsigned underlying types). Widen/narrow it per enum BEFORE first use:
@@ -37,8 +37,8 @@ Clang/GCC. Prefer "enum class Foo : Type", or use SF_ENUM_RANGE(Foo, 0, N).
        SF_FIELDS(SF_FIELD(m_scale), SF_FIELD(m_mips))
     };
 
-    SF::Reflect::for_each_field(cloud, [](string_view name, auto& v) { ... });
-    SF::Reflect::visit_field(cloud, "m_mips", [](auto& v) { v = 8; });
+    SF::Reflection::for_each_field(cloud, [](string_view name, auto& v) { ... });
+    SF::Reflection::visit_field(cloud, "m_mips", [](auto& v) { v = 8; });
 */
 #include "../RTTI/TypeId.hpp"
 
@@ -388,7 +388,7 @@ namespace SF::Reflection
         if (remaining == 0)
         {
             const auto n = enum_name(value);
-            return n.empty() ? std::string("0") : string(n);
+            return n.empty() ? std::string("0") : std::string(n);
         }
 
         std::string out;
@@ -456,7 +456,7 @@ namespace SF::Reflection
         template<typename O>
         constexpr decltype(auto) Get(O &&obj) const
         {
-            return forward<O>(obj).*ptr;
+            return std::forward<O>(obj).*ptr;
         }
     };
 
@@ -469,7 +469,7 @@ namespace SF::Reflection
     template<typename... Fs>
     constexpr auto MakeFields(Fs... fs)
     {
-        return make_tuple(fs...);
+        return std::make_tuple(fs...);
     }
 
     namespace Detail
@@ -500,8 +500,8 @@ namespace SF::Reflection
     constexpr void for_each_field_info(F &&f)
     {
         static_assert(HasFields<T>, "Type has no SF_FIELDS declared.");
-        apply([&](const auto &...fi) { (void) (f(fi), ...); },
-              std::remove_cv_t<std::remove_reference_t<T>>::RTTI_Fields());
+        std::apply([&](const auto &...fi) { (void) (f(fi), ...); },
+                   std::remove_cv_t<std::remove_reference_t<T>>::RTTI_Fields());
     }
 
     // f(string_view name, FieldRef value) for each field.
@@ -509,8 +509,8 @@ namespace SF::Reflection
     constexpr void for_each_field(T &&obj, F &&f)
     {
         static_assert(HasFields<T>, "Type has no SF_FIELDS declared.");
-        apply([&](const auto &...fi) { (f(fi.name, fi.Get(obj)), ...); },
-              std::remove_cv_t<std::remove_reference_t<T>>::RTTI_Fields());
+        std::apply([&](const auto &...fi) { (f(fi.name, fi.Get(obj)), ...); },
+                   std::remove_cv_t<std::remove_reference_t<T>>::RTTI_Fields());
     }
 
     // Calls f(FieldRef) on the field called "name". Returns false if none matches.
@@ -519,9 +519,9 @@ namespace SF::Reflection
     {
         static_assert(HasFields<T>, "Type has no SF_FIELDS declared.");
         bool found = false;
-        apply([&](const auto &...fi)
-              { ((fi.name == name ? (void) ((void) f(fi.Get(obj)), found = true) : (void) 0), ...); },
-              std::remove_cv_t<std::remove_reference_t<T>>::RTTI_Fields());
+        std::apply([&](const auto &...fi)
+                   { ((fi.name == name ? (void) ((void) f(fi.Get(obj)), found = true) : (void) 0), ...); },
+                   std::remove_cv_t<std::remove_reference_t<T>>::RTTI_Fields());
         return found;
     }
 } // namespace SF::Reflection
@@ -529,7 +529,7 @@ namespace SF::Reflection
 // Set the probe range for an enum. Place at global scope, before first use.
 #define SF_ENUM_RANGE(EnumType, MinValue, MaxValue)                                                                    \
     template<>                                                                                                         \
-    struct SF::Reflect::EnumRange<EnumType>                                                                            \
+    struct SF::Reflection::EnumRange<EnumType>                                                                         \
     {                                                                                                                  \
         static constexpr int Min      = (MinValue);                                                                    \
         static constexpr int Max      = (MaxValue);                                                                    \
@@ -539,7 +539,7 @@ namespace SF::Reflection
 // Mark an enum as a bit-flag enum. Place at global scope, before first use.
 #define SF_ENUM_FLAGS(EnumType)                                                                                        \
     template<>                                                                                                         \
-    struct SF::Reflect::EnumRange<EnumType>                                                                            \
+    struct SF::Reflection::EnumRange<EnumType>                                                                         \
     {                                                                                                                  \
         static constexpr int Min      = 0;                                                                             \
         static constexpr int Max      = 0;                                                                             \
@@ -548,8 +548,8 @@ namespace SF::Reflection
 
 // Inside a class that has SF_TYPE_INFO / SF_RTTI / SF_RTTI_BASE:
 //   SF_FIELDS(SF_FIELD(m_a), SF_FIELD(m_b))
-#define SF_FIELD(member) ::SF::Reflect::MakeField(#member, &RTTI_ThisType::member)
+#define SF_FIELD(member) ::SF::Reflection::MakeField(#member, &RTTI_ThisType::member)
 
 #define SF_FIELDS(...)                                                                                                 \
 public:                                                                                                                \
-    static constexpr auto RTTI_Fields() { return ::SF::Reflect::MakeFields(__VA_ARGS__); }
+    static constexpr auto RTTI_Fields() { return ::SF::Reflection::MakeFields(__VA_ARGS__); }

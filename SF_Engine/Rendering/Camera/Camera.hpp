@@ -32,6 +32,8 @@ namespace SF::Engine
             return true;
         }
 
+        inline static const bool Registered = (Register("Camera"), Reflect());
+
     public:
         using Component::Update;
         Camera() :

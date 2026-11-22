@@ -212,23 +212,24 @@ namespace SF::Engine
          */
         virtual void Shutdown() {}
 
+
         /**
-         * @brief Get the module's update stage
+         * @brief Get the module's update stage (auto-implemented by ModuleRegistar, use by : public ModuleRegistrar<T>)
          */
         [[nodiscard]] virtual Stage GetStage() const = 0;
 
         /**
-         * @brief Get the module's start up stage
+         * @brief Get the module's start up stage (auto-implemented by ModuleRegistar, use by : public ModuleRegistrar<T>)
          */
         [[nodiscard]] virtual StartupStage GetStartupStage() const = 0;
 
         /**
-         * @brief Get the module's type ID
+         * @brief Get the module's type ID (auto-implemented by ModuleRegistar, use by : public ModuleRegistrar<T>)
          */
         [[nodiscard]] virtual TypeId GetTypeId() const = 0;
 
         /**
-         * @brief Get the module's name (for debugging)
+         * @brief Get the module's name (for debugging) (auto-implemented by ModuleRegistar, use by : public ModuleRegistrar<T>)
          */
         [[nodiscard]] virtual std::string_view GetName() const = 0;
     };

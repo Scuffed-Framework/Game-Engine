@@ -5,11 +5,12 @@
 
 namespace SF::Engine
 {
-    class Animation
+    class Animation : public DragAndDropObjectTag
     {
         DurationAsMilliseconds length;
         std::vector<Keyframe> keyframes;
         Entity *actingObject = nullptr;
+        UUID uuid;
 
     public:
         Animation(const DurationAsMilliseconds &length, std::vector<Keyframe> keyframes) :
@@ -22,5 +23,7 @@ namespace SF::Engine
 
         void SetActiveObject(Entity &entity) { actingObject = &entity; }
         [[nodiscard]] const Entity &GetActingObject() const { return *actingObject; }
+
+        [[nodiscard]] UUID GetUUID() const { return uuid; }
     };
 } // namespace SF::Engine

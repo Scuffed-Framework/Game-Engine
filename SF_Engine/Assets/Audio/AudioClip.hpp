@@ -37,7 +37,7 @@ namespace SF::Engine
                     ->Field("Pitch", &AudioClip::pitch);
             return true;
         }
-        inline static const bool Registered = Register("audioClip");
+        inline static const bool Registered = (Register("Audio Clip"), Reflect());
 
     public:
         AudioClip() = default;

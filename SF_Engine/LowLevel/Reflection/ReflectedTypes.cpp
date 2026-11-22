@@ -89,16 +89,50 @@ namespace SF::Engine
                     return wb.VecRow("v", *static_cast<Vec4 *>(p), m.resetVec, m.speed, fmt ? fmt : "%.3f");
                 case FieldKind::Enum:
                 {
-                    if (!m.enumItems)
+                    int cur = f.GetEnum(obj);
+
+                    // Hand-written item string (index == value) still wins if someone supplied one.
+                    if (m.enumItems)
                     {
-                        ImGui::TextDisabled(R"((enum: add .Enum("A\0B\0")))");
-                        return false;
+                        if (!ImGui::Combo("##v", &cur, m.enumItems))
+                            return false;
+                        f.SetEnum(obj, cur);
+                        return true;
                     }
-                    int v = f.GetEnum(obj);
-                    if (!ImGui::Combo("##v", &v, m.enumItems))
-                        return false;
-                    f.SetEnum(obj, v);
-                    return true;
+
+                    // Otherwise the enumerators come from the enum itself.
+                    const auto &entries = f.EnumEntries();
+                    if (entries.empty())
+                    {
+                        // unscoped / unnamed values: fall back to the raw number
+                        if (!ImGui::DragInt("##v", &cur))
+                            return false;
+                        f.SetEnum(obj, cur);
+                        return true;
+                    }
+
+                    const EnumEntry *current = nullptr;
+                    for (const EnumEntry &e: entries)
+                        if (e.value == cur)
+                            current = &e;
+
+                    bool changed = false;
+                    if (ImGui::BeginCombo("##v", current ? current->name.c_str() : "(unknown)"))
+                    {
+                        for (const EnumEntry &e: entries)
+                        {
+                            const bool selected = e.value == cur;
+                            if (ImGui::Selectable(e.name.c_str(), selected))
+                            {
+                                f.SetEnum(obj, e.value);
+                                changed = true;
+                            }
+                            if (selected)
+                                ImGui::SetItemDefaultFocus();
+                        }
+                        ImGui::EndCombo();
+                    }
+                    return changed;
                 }
                 case FieldKind::Quat:
                     return DrawQuat(wb, *static_cast<Quaternion *>(p), m);
@@ -119,7 +153,19 @@ namespace SF::Engine
                 const char *label = m.displayName ? m.displayName : f->GetName();
                 ImGui::PushID(f->GetName());
 
-                if (f->Kind() == FieldKind::Object)
+                // Registered drawers win over everything built in, so any type can teach the inspector to draw
+                // itself (SF_REGISTER_FIELD_DRAWER) without this file changing.
+                if (const FieldDrawFn *custom = FieldDrawers::Instance().Find(f->GetFieldStdType()))
+                {
+                    wb.PropLabel(label);
+                    if (m.readOnly)
+                        ImGui::BeginDisabled();
+                    changed |= (*custom)(wb, f->GetPtr(obj), m);
+                    if (m.readOnly)
+                        ImGui::EndDisabled();
+                    if (m.tooltip && ImGui::IsItemHovered())
+                        ImGui::SetTooltip("%s", m.tooltip);
+                } else if (f->Kind() == FieldKind::Object)
                 {
                     if (const ClassData *nested = SerializeContext::Instance().FindClassData(f->GetFieldTypeId()))
                     {
@@ -128,7 +174,8 @@ namespace SF::Engine
                     } else
                     {
                         wb.PropLabel(label);
-                        ImGui::TextDisabled("(not reflected)");
+                        const std::string typeName = ::SF::Reflection::Detail::Demangle(f->GetFieldStdType().name());
+                        ImGui::TextDisabled("(no drawer for %s)", typeName.c_str());
                     }
                 } else
                 {
@@ -146,6 +193,12 @@ namespace SF::Engine
             return changed;
         }
     } // namespace
+
+    FieldDrawers &FieldDrawers::Instance()
+    {
+        static FieldDrawers instance;
+        return instance;
+    }
 
     bool IsReflected(std::type_index ti) { return SerializeContext::Instance().FindTypeId(ti) != nullptr; }
 

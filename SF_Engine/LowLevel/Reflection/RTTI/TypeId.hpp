@@ -25,8 +25,6 @@
 // for some reason this engine had 2 typeid systems prior to this ????
 namespace SF::Reflection
 {
-
-
     namespace Detail
     {
         inline constexpr std::uint64_t FnvOffset = 14695981039346656037ull;
@@ -128,7 +126,44 @@ namespace SF::Reflection
 
     template<typename T>
     inline constexpr bool HasRtti = Detail::HasRttiImpl<T>::value;
+
+    namespace Detail
+    {
+        template<typename T, typename = void>
+        struct HasInstanceTypeName : std::false_type
+        {
+        };
+        template<typename T>
+        struct HasInstanceTypeName<T, std::void_t<decltype(std::declval<const T &>().RTTI_GetTypeName())>>
+            : std::true_type
+        {
+        };
+    } // namespace Detail
+
+    // Dynamic type name of an object (most-derived if the hierarchy is polymorphic).
+    template<typename T>
+    std::string NameOf(const T &obj)
+    {
+        if constexpr (Detail::HasInstanceTypeName<T>::value)
+            return obj.RTTI_GetTypeName(); // virtual, SF_RTTI / SF_RTTI_BASE
+        else if constexpr (HasRtti<T>)
+            return T::RTTI_TypeName(); // SF_TYPE_INFO, static only
+        else
+            return GetTypeName<T>(); // no macros, demangled
+    }
+
+    // Name of a type with no object available.
+    template<typename T>
+    std::string NameOf()
+    {
+        if constexpr (HasRtti<T>)
+            return T::RTTI_TypeName();
+        else
+            return GetTypeName<T>();
+    }
 } // namespace SF::Reflection
+
+#define RTTI_GET_CLASS_NAME(x) ::SF::Reflection::NameOf(x)
 
 namespace std
 {

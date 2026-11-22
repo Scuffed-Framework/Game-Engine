@@ -41,6 +41,7 @@
 #include <typeindex>
 #include <unordered_map>
 #include <vector>
+#include "../Static/StaticReflection.hpp"
 #include "ReflectContext.hpp"
 
 #ifdef Bool
@@ -99,6 +100,19 @@ namespace SF::Reflection
             return FieldKind::Object;
     }
 
+    namespace Detail
+    {
+        // "SF::Engine::Foo<int>" -> "Foo"
+        inline std::string ShortTypeName(std::string full)
+        {
+            if (const auto lt = full.find('<'); lt != std::string::npos)
+                full.resize(lt);
+            if (const auto sep = full.rfind("::"); sep != std::string::npos)
+                full.erase(0, sep + 2);
+            return full;
+        }
+    } // namespace Detail
+
     template<typename T, typename = void>
     struct ReflectedTypeName
     {
@@ -107,7 +121,18 @@ namespace SF::Reflection
     template<typename T>
     struct ReflectedTypeName<T, std::enable_if_t<HasRtti<T>>>
     {
-        static const char *Get() { return T::RTTI_TypeName(); }
+        static const char *Get()
+        {
+            // A class that only *inherits* SF_RTTI (e.g. Transform via Component::Registrar<Transform>) would
+            // report its base's name, so derive the real one from the compiler instead.
+            if constexpr (std::is_same_v<typename T::RTTI_ThisType, T>)
+                return T::RTTI_TypeName();
+            else
+            {
+                static const std::string name = Detail::ShortTypeName(GetTypeName<T>());
+                return name.c_str();
+            }
+        }
     };
 
     template<typename T, typename = void>
@@ -148,6 +173,13 @@ namespace SF::Reflection
         virtual void EndObject()                                    = 0;
     };
 
+    // One named value of an enum field, taken from the enum itself (see StaticReflection.hpp).
+    struct EnumEntry
+    {
+        int32_t value = 0;
+        std::string name;
+    };
+
     struct ClassData
     {
         TypeId typeId;
@@ -182,6 +214,12 @@ namespace SF::Reflection
         [[nodiscard]] virtual bool IsEnum() const                 = 0;
         virtual int32_t GetEnum(const void *instance) const       = 0;
         virtual void SetEnum(void *instance, int32_t value) const = 0;
+
+        // Exact C++ type of the field; lets the inspector find a registered drawer for it.
+        [[nodiscard]] virtual std::type_index GetFieldStdType() const = 0;
+        // Enumerators of an enum field, discovered automatically. Empty for non-enums, unscoped enums
+        // (can't be probed safely) and enums with no named values in range.
+        [[nodiscard]] virtual const std::vector<EnumEntry> &EnumEntries() const = 0;
         FieldMeta meta;
     };
 
@@ -213,6 +251,25 @@ namespace SF::Reflection
         }
 
         [[nodiscard]] bool IsEnum() const override { return std::is_enum_v<FieldT>; }
+
+        [[nodiscard]] std::type_index GetFieldStdType() const override { return std::type_index(typeid(FieldT)); }
+
+        [[nodiscard]] const std::vector<EnumEntry> &EnumEntries() const override
+        {
+            static const std::vector<EnumEntry> entries = []
+            {
+                std::vector<EnumEntry> out;
+                // Scoped enums only: probing an unscoped enum without a fixed underlying type is ill-formed.
+                if constexpr (std::is_scoped_enum_v<FieldT>)
+                {
+                    for (std::size_t i = 0; i < enum_count<FieldT>(); ++i)
+                        out.push_back({static_cast<int32_t>(enum_values<FieldT>()[i]),
+                                       std::string(enum_names<FieldT>()[i])});
+                }
+                return out;
+            }();
+            return entries;
+        }
 
         [[nodiscard]] FieldKind Kind() const override { return KindOf<FieldT>(); }
         void *GetPtr(void *i) const override { return &(static_cast<ClassT *>(i)->*m_member); }

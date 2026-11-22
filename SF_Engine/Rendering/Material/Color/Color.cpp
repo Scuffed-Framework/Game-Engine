@@ -1,6 +1,10 @@
 #include "Color.hpp"
 #include <algorithm>
 
+#include <Gui/ImGui/Declare_Widget.hpp>
+#include <Gui/ImGui/ocornut/imgui.h>
+#include <LowLevel/Reflection/ReflectedTypes.hpp>
+
 namespace SF::Engine
 {
     // Predefined colors
@@ -33,9 +37,9 @@ namespace SF::Engine
 
     Color Color::FromHSV(float hue, float saturation, float value, float alpha)
     {
-        hue = Mathematics::WrapDegrees(hue) / 60.0f;
+        hue        = Mathematics::WrapDegrees(hue) / 60.0f;
         saturation = Mathematics::Saturate(saturation);
-        value = Mathematics::Saturate(value);
+        value      = Mathematics::Saturate(value);
 
         float c = value * saturation;
         float x = c * (1.0f - std::abs(std::fmod(hue, 2.0f) - 1.0f));
@@ -48,32 +52,27 @@ namespace SF::Engine
             r = c;
             g = x;
             b = 0;
-        }
-        else if (hue < 2.0f)
+        } else if (hue < 2.0f)
         {
             r = x;
             g = c;
             b = 0;
-        }
-        else if (hue < 3.0f)
+        } else if (hue < 3.0f)
         {
             r = 0;
             g = c;
             b = x;
-        }
-        else if (hue < 4.0f)
+        } else if (hue < 4.0f)
         {
             r = 0;
             g = x;
             b = c;
-        }
-        else if (hue < 5.0f)
+        } else if (hue < 5.0f)
         {
             r = x;
             g = 0;
             b = c;
-        }
-        else
+        } else
         {
             r = c;
             g = 0;
@@ -85,9 +84,9 @@ namespace SF::Engine
 
     Color Color::FromHSL(float hue, float saturation, float lightness, float alpha)
     {
-        hue = Mathematics::WrapDegrees(hue) / 60.0f;
+        hue        = Mathematics::WrapDegrees(hue) / 60.0f;
         saturation = Mathematics::Saturate(saturation);
-        lightness = Mathematics::Saturate(lightness);
+        lightness  = Mathematics::Saturate(lightness);
 
         float c = (1.0f - std::abs(2.0f * lightness - 1.0f)) * saturation;
         float x = c * (1.0f - std::abs(std::fmod(hue, 2.0f) - 1.0f));
@@ -100,32 +99,27 @@ namespace SF::Engine
             r = c;
             g = x;
             b = 0;
-        }
-        else if (hue < 2.0f)
+        } else if (hue < 2.0f)
         {
             r = x;
             g = c;
             b = 0;
-        }
-        else if (hue < 3.0f)
+        } else if (hue < 3.0f)
         {
             r = 0;
             g = c;
             b = x;
-        }
-        else if (hue < 4.0f)
+        } else if (hue < 4.0f)
         {
             r = 0;
             g = x;
             b = c;
-        }
-        else if (hue < 5.0f)
+        } else if (hue < 5.0f)
         {
             r = x;
             g = 0;
             b = c;
-        }
-        else
+        } else
         {
             r = c;
             g = 0;
@@ -137,8 +131,8 @@ namespace SF::Engine
 
     std::array<float, 3> Color::ToHSV() const
     {
-        float cMax = std::max({r, g, b});
-        float cMin = std::min({r, g, b});
+        float cMax  = std::max({r, g, b});
+        float cMin  = std::min({r, g, b});
         float delta = cMax - cMin;
 
         float h = 0.0f;
@@ -160,8 +154,8 @@ namespace SF::Engine
 
     std::array<float, 3> Color::ToHSL() const
     {
-        float cMax = std::max({r, g, b});
-        float cMin = std::min({r, g, b});
+        float cMax  = std::max({r, g, b});
+        float cMin  = std::min({r, g, b});
         float delta = cMax - cMin;
 
         float h = 0.0f;
@@ -180,4 +174,19 @@ namespace SF::Engine
 
         return {Mathematics::WrapDegrees(h), s, l};
     }
-}
+
+    SF_REGISTER_FIELD_DRAWER(
+            Color,
+            [](WidgetBuilder &, Color &c, const Reflection::FieldMeta &)
+            {
+                constexpr ::ImGuiColorEditFlags flags =
+                        ImGuiColorEditFlags_NoInputs | // swatch only, click opens the picker
+                        ImGuiColorEditFlags_Float | ImGuiColorEditFlags_AlphaBar |
+                        ImGuiColorEditFlags_AlphaPreviewHalf | // checkerboard behind transparent colors
+                        ImGuiColorEditFlags_PickerHueBar;
+
+                // r,g,b,a are declared contiguously as floats, so &c.r is a valid float[4]
+                return ::ImGui::ColorEdit4("##v", &c.r, flags);
+            });
+
+} // namespace SF::Engine

@@ -10,8 +10,16 @@ namespace SF::Engine
 
     class AnimatorComponent : public Component::Registrar<AnimatorComponent>
     {
+        static bool Reflect()
+        {
+            Reflection::SerializeContext::Instance().Class<AnimatorComponent>()->Version(1);
+            return true;
+        }
+
         bool playing                         = false;
         std::unique_ptr<Animation> animation = nullptr;
+
+        inline static const bool Registered = (Register("Animator"), Reflect());
 
     public:
         void Start() override

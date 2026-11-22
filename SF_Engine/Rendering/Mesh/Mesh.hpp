@@ -1,6 +1,7 @@
 #pragma once
 
 #include <EntityComponentSystem/Component.hpp>
+#include <LowLevel/Reflection/RTTI/SerializeContext.hpp>
 #include <LowLevel/XML/XMLModule.hpp>
 #include <Rendering/Mesh/Vertex.hpp>
 #include <Rendering/RHI/Commands/CommandBuffer.hpp>
@@ -8,22 +9,28 @@
 #include <Scene/SceneSerialization.hpp>
 #include <UtilityClasses/UUID.hpp>
 #include <span>
-#include <vector>
 
 namespace SF::Engine
 {
     /**
      * @brief GPU mesh : owns vertex and index buffers, knows how to bind and draw itself.
      */
-    class Mesh : public Component::Registrar<Mesh>
+    class Mesh : public Component::Registrar<Mesh>, public DragAndDropObjectTag
     {
+        static bool Reflect()
+        {
+            Reflection::SerializeContext::Instance().Class<Mesh>()->Version(1)->Field("ID", &Mesh::ID);
+            return true;
+        }
+        inline static const bool Registered = (Register("Mesh"), Reflect());
+
     public:
         /**
          * Upload mesh data to the GPU.
          * @param vertices  Vertex data.
          * @param indices   Index data (uint32). Empty = non-indexed draw.
          */
-        Mesh(std::span<const Vertex> vertices, std::span<const uint32_t> indices = {});
+        Mesh(std::span<const Vertex> vertices = {}, std::span<const uint32_t> indices = {});
 
         ~Mesh() = default;
 
@@ -48,7 +55,7 @@ namespace SF::Engine
         uint32_t vertexCount_ = 0;
         uint32_t indexCount_  = 0;
 
-        UUID ID;
+        UUID ID; // use for dnd
 
     public:
         void Serialize(XMLNode &node) const override

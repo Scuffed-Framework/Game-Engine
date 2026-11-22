@@ -21,24 +21,35 @@ namespace SF::Engine
     {
         static bool Reflect()
         {
+            // Position/direction are driven by the entity's Transform, so they're not exposed here.
             Reflection::SerializeContext::Instance()
                     .Class<Light>()
                     ->Version(1)
-                    ->Field("Position", &Light::position)
-                    ->Speed(0.05f)
-                    ->ResetTo(0, 0, 0)
-                    ->Field("Color", &Light::color)
-                    ->Speed(0.05f)
-                    ->ResetTo(0, 0, 0)
                     ->Field("Type", &Light::type)
-                    ->Field("CastShadow", &Light::castShadow)
+                    ->Field("Color", &Light::color)
+                    ->Color()
                     ->Field("Intensity", &Light::intensity)
+                    ->Speed(0.1f)
+                    ->Range(0.0f, 1.0e6f)
                     ->Field("Radius", &Light::radius)
+                    ->Speed(0.1f)
+                    ->Range(0.0f, 1.0e6f)
+                    ->ShowIf([](const Light &l) { return l.type != Lighting::LightType::Directional; })
                     ->Field("InnerConeAngleDeg", &Light::innerConeAngleDeg)
+                    ->DisplayName("Inner Cone")
+                    ->Format("%.1f deg")
+                    ->Range(0.0f, 90.0f)
+                    ->ShowIf([](const Light &l) { return l.type == Lighting::LightType::Spot; })
                     ->Field("OuterConeAngleDeg", &Light::outerConeAngleDeg)
-                    ->Field("Type", &Light::type);
+                    ->DisplayName("Outer Cone")
+                    ->Format("%.1f deg")
+                    ->Range(0.0f, 90.0f)
+                    ->ShowIf([](const Light &l) { return l.type == Lighting::LightType::Spot; })
+                    ->Field("CastShadow", &Light::castShadow);
             return true;
         }
+
+        inline static const bool Registered = (Register("Light"), Reflect());
 
         Lighting::LightType type = Lighting::LightType::Point;
 
@@ -54,7 +65,7 @@ namespace SF::Engine
         std::string name;
 
         /// Convert to GPU-ready struct
-        Lighting::GpuLight ToGpu() const
+        [[nodiscard]] Lighting::GpuLight ToGpu() const
         {
             Lighting::GpuLight g{};
             g.position       = position;

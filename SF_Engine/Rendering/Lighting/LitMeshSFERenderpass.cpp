@@ -144,7 +144,7 @@ namespace SF::Engine
 
             LitPushConstants pc{};
             pc.model           = dc.transform;
-            pc.baseColor       = dc.material.baseColor;
+            pc.baseColor       = dc.material.baseColor.AsVec4();
             pc.roughnessFactor = dc.material.roughnessFactor;
             pc.metallicFactor  = dc.material.metallicFactor;
             pc.aoFactor        = dc.material.aoFactor;

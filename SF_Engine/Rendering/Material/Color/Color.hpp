@@ -8,8 +8,9 @@
 #include <string_view>
 
 #include <Math/Math.hpp>
+#include <Math/Vector.hpp>
 
-#include "Math/Vector.hpp"
+#include <LowLevel/Reflection/RTTI/SerializeContext.hpp>
 
 namespace SF::Engine
 {
@@ -33,6 +34,21 @@ namespace SF::Engine
      */
     class Color
     {
+        SF_TYPE_INFO(Color)
+
+    private:
+        static bool Reflect()
+        {
+            Reflection::SerializeContext::Instance()
+                    .Class<Color>()
+                    ->Version(1)
+                    ->Field("r", &Color::r)
+                    ->Field("g", &Color::g)
+                    ->Field("b", &Color::b)
+                    ->Field("a", &Color::a);
+            return true;
+        }
+
     public:
         /**
          * @brief Component packing order for integer conversion
@@ -415,33 +431,33 @@ namespace SF::Engine
             switch (order)
             {
                 case PackingOrder::RGBA:
-                    r = ((value >> 24) & 0xFF) / 255.0f;
-                    g = ((value >> 16) & 0xFF) / 255.0f;
-                    b = ((value >> 8) & 0xFF) / 255.0f;
-                    a = (value & 0xFF) / 255.0f;
+                    r = static_cast<float>((value >> 24) & 0xFF) / 255.0f;
+                    g = static_cast<float>((value >> 16) & 0xFF) / 255.0f;
+                    b = static_cast<float>((value >> 8) & 0xFF) / 255.0f;
+                    a = static_cast<float>(value & 0xFF) / 255.0f;
                     break;
                 case PackingOrder::ARGB:
-                    a = ((value >> 24) & 0xFF) / 255.0f;
-                    r = ((value >> 16) & 0xFF) / 255.0f;
-                    g = ((value >> 8) & 0xFF) / 255.0f;
-                    b = (value & 0xFF) / 255.0f;
+                    a = static_cast<float>((value >> 24) & 0xFF) / 255.0f;
+                    r = static_cast<float>((value >> 16) & 0xFF) / 255.0f;
+                    g = static_cast<float>((value >> 8) & 0xFF) / 255.0f;
+                    b = static_cast<float>(value & 0xFF) / 255.0f;
                     break;
                 case PackingOrder::BGRA:
-                    b = ((value >> 24) & 0xFF) / 255.0f;
-                    g = ((value >> 16) & 0xFF) / 255.0f;
-                    r = ((value >> 8) & 0xFF) / 255.0f;
-                    a = (value & 0xFF) / 255.0f;
+                    b = static_cast<float>((value >> 24) & 0xFF) / 255.0f;
+                    g = static_cast<float>((value >> 16) & 0xFF) / 255.0f;
+                    r = static_cast<float>((value >> 8) & 0xFF) / 255.0f;
+                    a = static_cast<float>(value & 0xFF) / 255.0f;
                     break;
                 case PackingOrder::ABGR:
-                    a = ((value >> 24) & 0xFF) / 255.0f;
-                    b = ((value >> 16) & 0xFF) / 255.0f;
-                    g = ((value >> 8) & 0xFF) / 255.0f;
-                    r = (value & 0xFF) / 255.0f;
+                    a = static_cast<float>((value >> 24) & 0xFF) / 255.0f;
+                    b = static_cast<float>((value >> 16) & 0xFF) / 255.0f;
+                    g = static_cast<float>((value >> 8) & 0xFF) / 255.0f;
+                    r = static_cast<float>(value & 0xFF) / 255.0f;
                     break;
                 case PackingOrder::RGB:
-                    r = ((value >> 16) & 0xFF) / 255.0f;
-                    g = ((value >> 8) & 0xFF) / 255.0f;
-                    b = (value & 0xFF) / 255.0f;
+                    r = static_cast<float>((value >> 16) & 0xFF) / 255.0f;
+                    g = static_cast<float>((value >> 8) & 0xFF) / 255.0f;
+                    b = static_cast<float>(value & 0xFF) / 255.0f;
                     a = 1.0f;
                     break;
             }
@@ -460,15 +476,15 @@ namespace SF::Engine
 
             if (hex.size() == 6)
             {
-                r = ((hexValue >> 16) & 0xFF) / 255.0f;
-                g = ((hexValue >> 8) & 0xFF) / 255.0f;
-                b = (hexValue & 0xFF) / 255.0f;
+                r = static_cast<float>((hexValue >> 16) & 0xFF) / 255.0f;
+                g = static_cast<float>((hexValue >> 8) & 0xFF) / 255.0f;
+                b = static_cast<float>(hexValue & 0xFF) / 255.0f;
             } else // 8 characters (RGBA)
             {
-                r = ((hexValue >> 24) & 0xFF) / 255.0f;
-                g = ((hexValue >> 16) & 0xFF) / 255.0f;
-                b = ((hexValue >> 8) & 0xFF) / 255.0f;
-                a = (hexValue & 0xFF) / 255.0f;
+                r = static_cast<float>((hexValue >> 24) & 0xFF) / 255.0f;
+                g = static_cast<float>((hexValue >> 16) & 0xFF) / 255.0f;
+                b = static_cast<float>((hexValue >> 8) & 0xFF) / 255.0f;
+                a = static_cast<float>(hexValue & 0xFF) / 255.0f;
             }
         }
     };

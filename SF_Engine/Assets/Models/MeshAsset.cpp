@@ -170,7 +170,7 @@ namespace SF::Engine
                     aiColor4D color;
                     if (mat->Get(AI_MATKEY_BASE_COLOR, color) == AI_SUCCESS ||
                         mat->Get(AI_MATKEY_COLOR_DIFFUSE, color) == AI_SUCCESS)
-                        part.baseColor = Vec4(color.r, color.g, color.b, color.a);
+                        part.baseColor = Color(Vec4(color.r, color.g, color.b, color.a));
 
                     float factor = 0.0f;
                     if (mat->Get(AI_MATKEY_METALLIC_FACTOR, factor) == AI_SUCCESS)

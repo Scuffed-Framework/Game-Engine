@@ -3,10 +3,11 @@
 #include <Assets/AssetPipeline.hpp>
 #include <Math/BasicMath.hpp>
 #include <Rendering/Mesh/Mesh.hpp>
-#include <cstdint>
 #include <memory>
 #include <string>
 #include <vector>
+
+#include <Rendering/Material/Color/Color.hpp>
 
 namespace SF::Engine
 {
@@ -31,7 +32,7 @@ namespace SF::Engine
         {
             std::string name;
             std::shared_ptr<Mesh> mesh;
-            Vec4 baseColor              = {1.0f, 1.0f, 1.0f, 1.0f};
+            Color baseColor             = {1.0f, 1.0f, 1.0f, 1.0f};
             float metallic              = 0.0f;
             float roughness             = 1.0f;
             std::uint32_t vertexCount   = 0;
