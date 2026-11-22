@@ -14,7 +14,11 @@ namespace SF::Engine
         std::unique_ptr<Animation> animation = nullptr;
 
     public:
-        void Start() override { animation->SetActiveObject(*GetOwner()); };
+        void Start() override
+        {
+            if (animation && GetOwner()) // Start() is now actually called; animation is null until one is assigned
+                animation->SetActiveObject(*GetOwner());
+        };
         void Reset() override;
 
         void Update() override
