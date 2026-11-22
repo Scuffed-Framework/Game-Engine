@@ -199,6 +199,8 @@ namespace SF::Engine
 
         const char *GetAssetTypeName(AssetType type)
         {
+            // TODO: find a way to get rid of this, AssetType shouldn't exist. All asset types should be a class
+            // Unreal style!
             switch (type)
             {
                 case AssetType::Mesh:

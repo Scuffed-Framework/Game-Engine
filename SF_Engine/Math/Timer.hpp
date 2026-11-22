@@ -137,8 +137,8 @@ namespace SF::Engine
             worker.join();
         }
 
-        /** @brief Per-frame module update. */
-        void Update() override;
+        /** @brief Per-frame module update. Nothing to do: the worker thread drives all timers. */
+        void Update() override {}
 
         /**
          * @brief Schedules a callback bound to an object to fire once after a delay.
