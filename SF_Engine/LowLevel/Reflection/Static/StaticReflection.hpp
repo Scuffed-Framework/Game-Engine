@@ -25,9 +25,10 @@ Bit-flag enums: probes every bit instead of a numeric range.
     SF_ENUM_FLAGS(Usage)
     enum_flags_name(Usage::Vertex | Usage::Uniform)   // "Vertex|Uniform"
 
-Caveat (same as magic_enum unfortunately): plain "enum Foo { A, B }" with NO fixed
-underlying type makes probing values outside its range ill-formed on
-Clang/GCC. Prefer "enum class Foo : Type", or use SF_ENUM_RANGE(Foo, 0, N).
+Caveat (same as magic_enum unfortunately): a plain "enum Foo { A, B }" with NO fixed
+underlying type can't be probed safely, so it is skipped (the inspector shows a number box) unless
+you vouch for a range that stays inside the enum's own value range: SF_ENUM_RANGE(Foo, 0, N).
+`enum class Foo : Type` and `enum Foo : Type` need nothing.
 
     struct Cloud
     {
@@ -150,7 +151,38 @@ namespace SF::Reflection
         static constexpr int Min      = std::is_signed_v<U> ? -128 : 0;
         static constexpr int Max      = 128; // inclusive
         static constexpr bool IsFlags = false;
+        static constexpr bool Explicit = false; // true when SF_ENUM_RANGE / SF_ENUM_FLAGS gave this enum its range
     };
+
+    namespace Detail
+    {
+        // `enum class` and `enum Foo : int` accept `Foo{underlyingValue}`; a plain `enum Foo { A, B }` does not.
+        template<typename E, bool = std::is_enum_v<E>>
+        struct HasFixedUnderlyingType : std::false_type
+        {
+        };
+
+        template<typename E>
+        struct HasFixedUnderlyingType<E, true> : std::bool_constant<requires(std::underlying_type_t<E> u) { E{u}; }>
+        {
+        };
+    } // namespace Detail
+
+    namespace Detail
+    {
+        template<typename E>
+        struct IsExplicitRange : std::bool_constant<EnumRange<E>::Explicit>
+        {
+        };
+    } // namespace Detail
+
+    // True when probing E for named values is well-formed: any enum with a fixed underlying type, or a plain
+    // `enum Foo { ... }` whose author vouched for a safe range with SF_ENUM_RANGE(Foo, 0, N).
+    // (conjunction/disjunction so EnumRange<E> is never instantiated for non-enums.)
+    template<typename E>
+    inline constexpr bool IsEnumReflectable =
+            std::conjunction_v<std::is_enum<E>,
+                               std::disjunction<Detail::HasFixedUnderlyingType<E>, Detail::IsExplicitRange<E>>>;
 
     namespace Detail
     {
@@ -534,6 +566,7 @@ namespace SF::Reflection
         static constexpr int Min      = (MinValue);                                                                    \
         static constexpr int Max      = (MaxValue);                                                                    \
         static constexpr bool IsFlags = false;                                                                         \
+        static constexpr bool Explicit = true;                                                                         \
     };
 
 // Mark an enum as a bit-flag enum. Place at global scope, before first use.
@@ -544,6 +577,7 @@ namespace SF::Reflection
         static constexpr int Min      = 0;                                                                             \
         static constexpr int Max      = 0;                                                                             \
         static constexpr bool IsFlags = true;                                                                          \
+        static constexpr bool Explicit = true;                                                                         \
     };
 
 // Inside a class that has SF_TYPE_INFO / SF_RTTI / SF_RTTI_BASE:

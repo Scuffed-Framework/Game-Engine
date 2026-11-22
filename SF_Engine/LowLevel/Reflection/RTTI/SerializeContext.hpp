@@ -217,8 +217,8 @@ namespace SF::Reflection
 
         // Exact C++ type of the field; lets the inspector find a registered drawer for it.
         [[nodiscard]] virtual std::type_index GetFieldStdType() const = 0;
-        // Enumerators of an enum field, discovered automatically. Empty for non-enums, unscoped enums
-        // (can't be probed safely) and enums with no named values in range.
+        // Enumerators of an enum field, discovered automatically. Empty for non-enums and for plain
+        // `enum Foo {..}` without a fixed underlying type or SF_ENUM_RANGE (can't be probed safely).
         [[nodiscard]] virtual const std::vector<EnumEntry> &EnumEntries() const = 0;
         FieldMeta meta;
     };
@@ -259,8 +259,8 @@ namespace SF::Reflection
             static const std::vector<EnumEntry> entries = []
             {
                 std::vector<EnumEntry> out;
-                // Scoped enums only: probing an unscoped enum without a fixed underlying type is ill-formed.
-                if constexpr (std::is_scoped_enum_v<FieldT>)
+                // Only enums that can be probed safely (see IsEnumReflectable in StaticReflection.hpp).
+                if constexpr (IsEnumReflectable<FieldT>)
                 {
                     for (std::size_t i = 0; i < enum_count<FieldT>(); ++i)
                         out.push_back({static_cast<int32_t>(enum_values<FieldT>()[i]),
