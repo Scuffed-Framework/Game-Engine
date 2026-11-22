@@ -30,8 +30,8 @@ namespace SF::Engine
 
         EditorCamera()
         {
-            position  = {0.0f, 0.0f, 0.0f};
-            moveSpeed = 100.0f;
+            transform.position = {0.0f, 0.0f, 0.0f};
+            moveSpeed          = 100.0f;
             UpdateVectors();
             SetInverseZ(true);
             SetFarPlaneInfinite(true); // oopsies
@@ -83,17 +83,17 @@ namespace SF::Engine
                     speed *= 3.0f;
 
                 if (window->GetKey(Key::W) != InputAction::Release)
-                    position += front_ * speed;
+                    transform.position += front_ * speed;
                 if (window->GetKey(Key::S) != InputAction::Release)
-                    position -= front_ * speed;
+                    transform.position -= front_ * speed;
                 if (window->GetKey(Key::A) != InputAction::Release)
-                    position -= right_ * speed;
+                    transform.position -= right_ * speed;
                 if (window->GetKey(Key::D) != InputAction::Release)
-                    position += right_ * speed;
+                    transform.position += right_ * speed;
                 if (window->GetKey(Key::Q) != InputAction::Release)
-                    position -= up_ * speed;
+                    transform.position -= up_ * speed;
                 if (window->GetKey(Key::E) != InputAction::Release)
-                    position += up_ * speed;
+                    transform.position += up_ * speed;
             }
 
             //  FOV: scroll wheel
