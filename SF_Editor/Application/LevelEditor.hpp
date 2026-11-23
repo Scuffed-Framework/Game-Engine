@@ -33,7 +33,8 @@ namespace SF::Engine
             if (const auto r = Application::OnInit(engine); r != Success)
                 return r;
 
-            SetOnSceneReplaced(
+            // should be available now since engine should be initialized
+            SceneManager::Get()->AddOnSceneReplaced(
                     [this]
                     {
                         inspector->SetEntity(nullptr);

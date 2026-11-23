@@ -42,7 +42,7 @@ namespace SF::Engine
         // Fullscreen-triangle draw blending atmoColorRT_ into "hdr", as this
         // pass's actual subpass (see SceneRenderer.hpp for where it sits;
         // must be before DeferredLight's subpass draw returns non-background
-        // pixels' final colour, i.e. this needs to run so its PremultipliedAlpha
+        // pixels' final color, i.e. this needs to run so its PremultipliedAlpha
         // background write doesn't clobber already-lit geometry - see .cpp).
         void Render(const CommandBuffer &commandBuffer) override;
 

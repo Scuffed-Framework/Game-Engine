@@ -10,31 +10,12 @@ namespace SF::Engine
     namespace fs = std::filesystem;
     namespace
     {
-        std::function<void()> gOnReplaced;
-
-        fs::path Norm(const fs::path &p) { return fs::absolute(p).lexically_normal(); }
-
-        // fs::equivalent handles case-insensitive filesystems, symlinks, etc. but needs both paths to
-        // exist; fall back to a lexical comparison otherwise (e.g. the old path after a move).
-        bool SamePath(const fs::path &a, const fs::path &b)
-        {
-            std::error_code ec;
-            if (fs::equivalent(a, b, ec) && !ec)
-                return true;
-            return Norm(a) == Norm(b);
-        }
-
         bool HasSceneExtension(const fs::path &p)
         {
             std::string ext = p.extension().string();
-            std::ranges::transform(ext, ext.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+            std::ranges::transform(ext, ext.begin(),
+                                   [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
             return ext == std::string(SceneFileExtension);
-        }
-
-        void FireReplaced()
-        {
-            if (gOnReplaced)
-                gOnReplaced();
         }
     } // namespace
 
@@ -139,7 +120,7 @@ namespace SF::Engine
     bool IsFileCurrentCurrentScene(const fs::path &file)
     {
         const auto &cur = CurrentScenePath();
-        return !cur.empty() && SamePath(cur, file);
+        return !cur.empty() && File::SamePath(cur, file);
     }
 
     bool OpenScene(const fs::path &file)
@@ -199,7 +180,7 @@ namespace SF::Engine
     void NotifyMovedScene(const fs::path &from, const fs::path &to)
     {
         Scene *scene = SceneManager::Get()->GetScene();
-        if (scene && !scene->GetPath().empty() && SamePath(scene->GetPath(), from))
+        if (scene && !scene->GetPath().empty() && File::SamePath(scene->GetPath(), from))
             scene->SetPath(to);
     }
 
@@ -207,9 +188,9 @@ namespace SF::Engine
     {
         // The scene stays loaded in memory, but Ctrl+S will now ask where to save.
         Scene *scene = SceneManager::Get()->GetScene();
-        if (scene && !scene->GetPath().empty() && SamePath(scene->GetPath(), file))
+        if (scene && !scene->GetPath().empty() && File::SamePath(scene->GetPath(), file))
             scene->ClearPath();
     }
 
-    void SetOnSceneReplaced(std::function<void()> cb) { gOnReplaced = std::move(cb); }
+    void SceneManager::AddOnSceneReplaced(std::function<void()> cb) { callbacks.emplace_back(std::move(cb)); }
 } // namespace SF::Engine

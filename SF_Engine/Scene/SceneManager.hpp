@@ -15,7 +15,8 @@ namespace SF::Engine
      */
     class SceneManager : public ModuleRegistrar<SceneManager>
     {
-        REGISTER_MODULE_EX(SceneManager, ModuleStage::Normal, ModuleStartupStage::PreEngineInitComplete, Requires<RenderSystem>{});
+        REGISTER_MODULE_EX(SceneManager, ModuleStage::Normal, ModuleStartupStage::PreEngineInitComplete,
+                           Requires<RenderSystem>{});
 
     public:
         SceneManager();
@@ -51,6 +52,19 @@ namespace SF::Engine
         std::unique_ptr<Scene> scene;
         std::unique_ptr<Scene> pendingScene;
         std::optional<std::filesystem::path> pendingOpen;
+        std::vector<std::function<void()>> callbacks;
+
+    public:
+        void FireReplaced() const
+        {
+            if (!callbacks.empty())
+                for (const auto &cb: callbacks)
+                    cb();
+        }
+        
+        // Called after a scene's entities are replaced, either by an OpenScene() load or a SetScene() swap
+        // (clear selections that hold Entity*).
+        void AddOnSceneReplaced(std::function<void()> cb);
     };
 
     inline Scene *GetCurrentScene() { return SceneManager::Get()->GetScene(); }
@@ -72,8 +86,4 @@ namespace SF::Engine
 
     void NotifyMovedScene(const std::filesystem::path &from, const std::filesystem::path &to);
     void NotifyDeletedScene(const std::filesystem::path &file);
-
-    // Called after a scene's entities are replaced, either by an OpenScene() load or a SetScene() swap
-    // (clear selections that hold Entity*).
-    void SetOnSceneReplaced(std::function<void()> cb);
 } // namespace SF::Engine

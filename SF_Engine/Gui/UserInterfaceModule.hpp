@@ -3,7 +3,6 @@
 
 namespace SF::Engine
 {
-
     class UserInterfaceModule : public ModuleRegistrar<UserInterfaceModule>
     {
         REGISTER_MODULE(UserInterfaceModule, Module::Stage::Pre);
