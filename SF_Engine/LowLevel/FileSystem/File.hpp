@@ -118,6 +118,19 @@ namespace SF::Engine
 
         static bool CreateSymLink(const std::filesystem::path &from, const std::filesystem::path &to);
 
+        static std::filesystem::path NormalizePath(const std::filesystem::path &p)
+        {
+            return std::filesystem::absolute(p).lexically_normal();
+        }
+        
+        static bool SamePath(const fs::path &a, const fs::path &b)
+        {
+            std::error_code ec;
+            if (fs::equivalent(a, b, ec) && !ec)
+                return true;
+            return NormalizePath(a) == NormalizePath(b);
+        }
+
         // File information
         std::string GetName() const;
         std::string GetNameWithoutExtension() const;
