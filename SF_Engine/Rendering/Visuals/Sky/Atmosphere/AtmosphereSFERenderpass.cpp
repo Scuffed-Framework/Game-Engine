@@ -18,7 +18,7 @@ namespace SF::Engine
         // (defaults to 0), so this must be > 0 - relying on registration
         // order alone (stages is a multimap, equal keys iterate in
         // insertion order) would be fragile.
-        EngineRenderpass::SetOrder(1);
+        SetOrder(1);
         vkDeviceWaitIdle(RenderSystem::Get()->GetLogicalDevice()->GetLogicalDevice());
         ubo_ = std::make_unique<UniformBuffer>(sizeof(AtmosphereFrameUBO));
 
