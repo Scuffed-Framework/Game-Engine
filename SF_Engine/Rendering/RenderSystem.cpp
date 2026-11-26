@@ -217,7 +217,7 @@ namespace SF::Engine
             if (acquireResult == VK_ERROR_DEVICE_LOST)
             {
                 Log::Critical("[RenderSystem] VK_ERROR_DEVICE_LOST during AcquireNextImage; exiting immediately.");
-                _Exit(EXIT_FAILURE);
+                std::exit(EXIT_FAILURE);
             }
 
             if (acquireResult == VK_SUBOPTIMAL_KHR)
@@ -683,7 +683,7 @@ namespace SF::Engine
         } else if (presentResult == VK_ERROR_DEVICE_LOST)
         {
             Log::Critical("[RenderSystem] VK_ERROR_DEVICE_LOST during QueuePresent; exiting immediately.");
-            _Exit(EXIT_FAILURE);
+            std::exit(EXIT_FAILURE);
         } else if (presentResult != VK_SUCCESS)
         {
             CheckVkResult(presentResult);
